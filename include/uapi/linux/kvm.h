@@ -1046,6 +1046,8 @@ struct kvm_arm_device_addr {
 	__u64 addr;
 };
 
+#define KVM_ASSIGN_QUERY_IRQ      _IO(KVMIO,  0xe8)
+
 /*
  * Device control API, available with KVM_CAP_DEVICE_CTRL
  */
@@ -1326,5 +1328,10 @@ struct kvm_assigned_msix_entry {
 
 #define KVM_X2APIC_API_USE_32BIT_IDS            (1ULL << 0)
 #define KVM_X2APIC_API_DISABLE_BROADCAST_QUIRK  (1ULL << 1)
+
+struct kvm_assigned_msix_query_irq {
+	__u32 assigned_dev_id;
+	__u32 entry;
+};
 
 #endif /* __LINUX_KVM_H */
