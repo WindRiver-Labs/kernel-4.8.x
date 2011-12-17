@@ -916,6 +916,29 @@ msix_entry_out:
 	return r;
 }
 
+static int kvm_vm_ioctl_query_irq(struct kvm *kvm, u32 assigned_dev_id,
+				  u32 entry)
+{
+	struct kvm_assigned_dev_kernel *dev;
+	int r = -EINVAL;
+
+	mutex_lock(&kvm->lock);
+
+	dev = kvm_find_assigned_dev(&kvm->arch.assigned_dev_head,
+				      assigned_dev_id);
+	if (!dev)
+		goto out;
+	if (entry >= dev->entries_nr)
+		goto out;
+	if (dev->host_irq_disabled)
+		goto out;
+
+	r = dev->host_msix_entries[entry].vector;
+out:
+	mutex_unlock(&kvm->lock);
+	return r;
+}
+
 static int kvm_vm_ioctl_set_pci_irq_mask(struct kvm *kvm,
 		struct kvm_assigned_pci_dev *assigned_dev)
 {
@@ -1038,6 +1061,17 @@ long kvm_vm_ioctl_assigned_device(struct kvm *kvm, unsigned ioctl,
 		r = kvm_vm_ioctl_set_msix_entry(kvm, &entry);
 		if (r)
 			goto out;
+		break;
+	}
+	case KVM_ASSIGN_QUERY_IRQ: {
+		struct kvm_assigned_msix_query_irq query;
+
+		r = -EFAULT;
+		if (copy_from_user(&query, argp, sizeof query))
+			goto out;
+
+		r = kvm_vm_ioctl_query_irq(kvm, query.assigned_dev_id,
+					   query.entry);
 		break;
 	}
 	case KVM_ASSIGN_SET_INTX_MASK: {
