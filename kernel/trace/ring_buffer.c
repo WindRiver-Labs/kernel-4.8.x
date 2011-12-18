@@ -24,6 +24,7 @@
 #include <linux/cpu.h>
 
 #include <asm/local.h>
+#include <asm/kvm_para.h>
 
 static void update_pages_handler(struct work_struct *work);
 
@@ -685,7 +686,7 @@ int ring_buffer_poll_wait(struct ring_buffer *buffer, int cpu,
 /* Up this if you want to test the TIME_EXTENTS and normalization */
 #define DEBUG_SHIFT 0
 
-static inline u64 rb_time_stamp(struct ring_buffer *buffer)
+inline u64 rb_time_stamp(struct ring_buffer *buffer)
 {
 	/* shift to debug/test normalization and TIME_EXTENTS */
 	return buffer->clock() << DEBUG_SHIFT;
@@ -1308,7 +1309,7 @@ struct ring_buffer *__ring_buffer_alloc(unsigned long size, unsigned flags,
 
 	nr_pages = DIV_ROUND_UP(size, BUF_PAGE_SIZE);
 	buffer->flags = flags;
-	buffer->clock = trace_clock_local;
+	buffer->clock = trace_clock_global;
 	buffer->reader_lock_key = key;
 
 	init_irq_work(&buffer->irq_work.work, rb_wake_up_waiters);
