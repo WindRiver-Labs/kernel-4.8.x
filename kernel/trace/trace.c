@@ -41,6 +41,7 @@
 #include <linux/nmi.h>
 #include <linux/fs.h>
 #include <linux/sched/rt.h>
+#include <linux/kvm_para.h>
 
 #include "trace.h"
 #include "trace_output.h"
@@ -274,6 +275,12 @@ static struct trace_array global_trace = {
 };
 
 LIST_HEAD(ftrace_trace_arrays);
+
+u64 global_trace_time_stamp(void)
+{
+	return rb_time_stamp(global_trace.trace_buffer.buffer);
+}
+EXPORT_SYMBOL_GPL(global_trace_time_stamp);
 
 int trace_array_get(struct trace_array *this_tr)
 {
@@ -755,6 +762,19 @@ static void tracer_tracing_on(struct trace_array *tr)
 	smp_wmb();
 }
 
+s64 host_guest_delta = 0;
+EXPORT_SYMBOL_GPL(host_guest_delta);
+
+static inline void host_tracing_on(void)
+{
+	u64 now = global_trace_time_stamp();
+	trace_printk("Notifying host (trace enabled)!\n");
+	trace_printk("My time: %llu\n", now);
+	outl((u32)(now >> 32), 0x56);
+	outl((u32)now, 0x56);
+}
+
+
 /**
  * tracing_on - enable tracing buffers
  *
@@ -763,6 +783,12 @@ static void tracer_tracing_on(struct trace_array *tr)
  */
 void tracing_on(void)
 {
+	trace_printk("Tracing enabled!\n");
+
+	/* notify host kernel */
+	if (kvm_para_available())
+		host_tracing_on();
+
 	tracer_tracing_on(&global_trace);
 }
 EXPORT_SYMBOL_GPL(tracing_on);
@@ -817,6 +843,7 @@ int __trace_puts(unsigned long ip, const char *str, int size)
 	return size;
 }
 EXPORT_SYMBOL_GPL(__trace_puts);
+
 
 /**
  * __trace_bputs - write the pointer to a constant string into trace buffer
@@ -1021,6 +1048,14 @@ static void tracer_tracing_off(struct trace_array *tr)
 	smp_wmb();
 }
 
+
+static inline void host_tracing_off(void)
+{
+	trace_printk("Notifying host (trace disabled)!\n");
+	outl(0x1, 0x55);
+}
+
+
 /**
  * tracing_off - turn off tracing buffers
  *
@@ -1031,6 +1066,12 @@ static void tracer_tracing_off(struct trace_array *tr)
  */
 void tracing_off(void)
 {
+	trace_printk("Tracing disabled!\n");
+
+	/* notify host kernel */
+	if (kvm_para_available())
+		host_tracing_off();
+
 	tracer_tracing_off(&global_trace);
 }
 EXPORT_SYMBOL_GPL(tracing_off);
@@ -6874,6 +6915,18 @@ static void create_trace_options_dir(struct trace_array *tr)
 }
 
 static ssize_t
+host_guest_delta_read(struct file *filp, char __user *ubuf,
+               size_t cnt, loff_t *ppos)
+{
+	char buf[64];
+	int r;
+
+	r = sprintf(buf, "%lli\n", host_guest_delta);
+
+	return simple_read_from_buffer(ubuf, cnt, ppos, buf, r);
+}
+
+static ssize_t
 rb_simple_read(struct file *filp, char __user *ubuf,
 	       size_t cnt, loff_t *ppos)
 {
@@ -6906,7 +6959,17 @@ rb_simple_write(struct file *filp, const char __user *ubuf,
 			tracer_tracing_on(tr);
 			if (tr->current_trace->start)
 				tr->current_trace->start(tr);
+			/* notify host kernel */
+			if (kvm_para_available()) {
+				trace_printk("Notifying host (trace enabled)!\n");
+				host_tracing_on();
+			}
 		} else {
+			/* notify host kernel */
+			if (kvm_para_available()) {
+				trace_printk("Notifying host (trace disabled)!\n");
+				host_tracing_off();
+			}
 			tracer_tracing_off(tr);
 			if (tr->current_trace->stop)
 				tr->current_trace->stop(tr);
@@ -7370,6 +7433,14 @@ static struct notifier_block trace_module_nb = {
 };
 #endif /* CONFIG_MODULES */
 
+static const struct file_operations host_guest_delta_fops = {
+	.open		= tracing_open_generic,
+	.read		= host_guest_delta_read,
+	.llseek		= default_llseek,
+};
+
+extern unsigned long ring_buffer_flags;
+
 static __init int tracer_init_tracefs(void)
 {
 	struct dentry *d_tracer;
@@ -7402,6 +7473,9 @@ static __init int tracer_init_tracefs(void)
 #ifdef CONFIG_MODULES
 	register_module_notifier(&trace_module_nb);
 #endif
+
+	trace_create_file("host_guest_delta", 0644, d_tracer,
+			    NULL, &host_guest_delta_fops);
 
 #ifdef CONFIG_DYNAMIC_FTRACE
 	trace_create_file("dyn_ftrace_total_info", 0444, d_tracer,
