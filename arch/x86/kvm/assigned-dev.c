@@ -928,12 +928,18 @@ static int kvm_vm_ioctl_query_irq(struct kvm *kvm, u32 assigned_dev_id,
 				      assigned_dev_id);
 	if (!dev)
 		goto out;
-	if (entry >= dev->entries_nr)
-		goto out;
+
 	if (dev->host_irq_disabled)
 		goto out;
 
-	r = dev->host_msix_entries[entry].vector;
+	if (entry >= dev->entries_nr) {
+		if (entry)
+			goto out;
+		/* MSI case */
+		r = dev->host_irq;
+	} else {
+		r = dev->host_msix_entries[entry].vector;
+	}
 out:
 	mutex_unlock(&kvm->lock);
 	return r;
