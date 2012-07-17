@@ -1748,6 +1748,7 @@ static irqreturn_t xemacps_interrupt(int irq, void *dev_id)
 	u32 regisr;
 
 	regisr = xemacps_read(lp->baseaddr, XEMACPS_ISR_OFFSET);
+	rmb();
 
 	if (unlikely(!regisr))
 		return IRQ_NONE;
@@ -1786,7 +1787,11 @@ static irqreturn_t xemacps_interrupt(int irq, void *dev_id)
 		(XEMACPS_IXR_TXCOMPL_MASK | XEMACPS_IXR_TX_ERR_MASK))
 			xemacps_tx_poll(ndev);
 
+		/* acknowledge interrupt and clear it */
+		xemacps_write(lp->baseaddr, XEMACPS_ISR_OFFSET, regisr);
+		wmb();
 		regisr = xemacps_read(lp->baseaddr, XEMACPS_ISR_OFFSET);
+		rmb();
 	}
 	spin_unlock(&lp->lock);
 
