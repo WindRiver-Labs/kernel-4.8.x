@@ -360,6 +360,19 @@ void force_external_irq_replay(void)
 
 #endif /* CONFIG_PPC64 */
 
+#ifdef CONFIG_PPC64
+notrace unsigned int check_irq_replay(void)
+{
+	return __check_irq_replay();
+}
+#else
+notrace unsigned int check_irq_replay(void)
+{
+	return 0;
+}
+#endif /* CONFIG_PPC64 */
+EXPORT_SYMBOL(check_irq_replay);
+
 int arch_show_interrupts(struct seq_file *p, int prec)
 {
 	int j;
