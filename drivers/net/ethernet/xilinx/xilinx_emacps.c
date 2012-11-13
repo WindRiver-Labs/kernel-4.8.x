@@ -2131,7 +2131,8 @@ static int xemacps_open(struct net_device *ndev)
 
 	rc = pm_runtime_get(&lp->pdev->dev);
 	if (rc < 0) {
-		pr_err("%s pm_runtime_get() failed, rc %d\n", ndev->name, rc);
+		dev_err(&lp->pdev->dev,
+			"%s pm_runtime_get() failed, rc %d\n", ndev->name, rc);
 		goto err_free_rings;
 	}
 
