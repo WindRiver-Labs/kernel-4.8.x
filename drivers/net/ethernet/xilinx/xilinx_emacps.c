@@ -923,15 +923,8 @@ static int xemacps_mii_init(struct net_local *lp)
 	if (of_mdiobus_register(lp->mii_bus, np))
 		goto err_out_free_mdio_irq;
 
-	if (xemacps_mii_probe(lp->ndev) != 0) {
-		printk(KERN_ERR "%s mii_probe fail.\n", lp->mii_bus->name);
-		goto err_out_unregister_bus;
-	}
-
 	return 0;
 
-err_out_unregister_bus:
-	mdiobus_unregister(lp->mii_bus);
 err_out_free_mdio_irq:
 	kfree(lp->mii_bus->irq);
 err_out_free_mdiobus:
@@ -2145,7 +2138,7 @@ static int xemacps_open(struct net_device *ndev)
 
 	xemacps_init_hw(lp);
 	napi_enable(&lp->napi);
-/*	rc = xemacps_mii_probe(ndev);
+	rc = xemacps_mii_probe(ndev);
 	if (rc != 0) {
 		printk(KERN_ERR "%s mii_probe fail.\n", lp->mii_bus->name);
 		if (rc == (-2)) {
@@ -2155,7 +2148,7 @@ static int xemacps_open(struct net_device *ndev)
 		}
 		rc = -ENXIO;
 		goto err_pm_put;
-	} */
+	}
 
 	netif_carrier_on(ndev);
 
@@ -3094,12 +3087,6 @@ static int __init xemacps_probe(struct platform_device *pdev)
 
 	printk(KERN_INFO "%s, pdev->id %d, baseaddr 0x%08lx, irq %d\n",
 		ndev->name, pdev->id, ndev->base_addr, ndev->irq);
-
-	printk(KERN_INFO "%s, phy_addr 0x%x, phy_id 0x%08x\n",
-		ndev->name, lp->phy_dev->addr, lp->phy_dev->phy_id);
-
-	printk(KERN_INFO "%s, attach [%s] phy driver\n", ndev->name,
-		lp->phy_dev->drv->name);
 
 	return 0;
 
