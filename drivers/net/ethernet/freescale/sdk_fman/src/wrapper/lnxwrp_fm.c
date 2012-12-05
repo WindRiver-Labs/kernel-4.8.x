@@ -67,6 +67,8 @@
 #include <linux/stat.h>	   /* For file access mask */
 #include <linux/skbuff.h>
 #include <linux/proc_fs.h>
+#include <linux/device.h>
+#include <asm/kexec.h>
 
 /* NetCommSw Headers --------------- */
 #include "std_ext.h"
@@ -2782,6 +2784,42 @@ int fm_macsec_secy_get_txsc_phys_id(struct fm_macsec_secy_dev *fm_macsec_secy_de
 EXPORT_SYMBOL(fm_macsec_secy_get_txsc_phys_id);
 
 static t_Handle h_FmLnxWrp;
+
+#ifdef CONFIG_KEXEC
+static int fm_crash_shutdown(struct device *dev, void *data)
+{
+
+	t_LnxWrpFmDev   *p;
+
+        struct platform_driver *drv = data;
+
+        if (dev->driver != &drv->driver)
+                return 0;
+
+        p = dev_get_drvdata(dev);
+
+        if (p->h_Dev)
+                FM_Free(p->h_Dev);
+
+        return 0;
+}
+
+static void fm_crash_shutdown_all(void)
+{
+        bus_for_each_dev(&platform_bus_type, NULL,
+                        &fm_driver, fm_crash_shutdown);
+}
+
+__init int fman_init_early(void)
+{
+        crash_shutdown_register(&fm_crash_shutdown_all);
+
+        return 0;
+}
+#else
+__init int fman_init_early(void) {return 0;}
+#endif
+postcore_initcall_sync(fman_init_early);
 
 static int __init __cold fm_load (void)
 {
