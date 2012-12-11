@@ -740,12 +740,9 @@ static void xemacps_adjust_link(struct net_device *ndev)
 {
 	struct net_local *lp = netdev_priv(ndev);
 	struct phy_device *phydev = lp->phy_dev;
-	unsigned long flags;
 	int status_change = 0;
 	u32 regval;
 	long rate;
-
-	spin_lock_irqsave(&lp->lock, flags);
 
 	if (phydev->link) {
 		if ((lp->speed != phydev->speed) ||
@@ -799,8 +796,6 @@ static void xemacps_adjust_link(struct net_device *ndev)
 		lp->link = phydev->link;
 		status_change = 1;
 	}
-
-	spin_unlock_irqrestore(&lp->lock, flags);
 
 	if (status_change) {
 		if (phydev->link)
@@ -857,7 +852,7 @@ static int xemacps_mii_probe(struct net_device *ndev)
 	if (lp->phy_node) {
 		phydev = of_phy_connect(lp->ndev,
 					lp->phy_node,
-					xemacps_adjust_link,
+					&xemacps_adjust_link,
 					0,
 					PHY_INTERFACE_MODE_RGMII_ID);
 	}
