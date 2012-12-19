@@ -1943,6 +1943,8 @@ struct qman_cgr {
 #define QMAN_FQ_FLAG_LOCKED          0x00000008 /* multi-core locking */
 #define QMAN_FQ_FLAG_AS_IS           0x00000010 /* query h/w state */
 #define QMAN_FQ_FLAG_DYNAMIC_FQID    0x00000020 /* (de)allocate fqid */
+/* indicates fqs' cb needs sleep */
+#define QMAN_FQ_FLAG_FQSCB_NEED_SLP  0x00000040
 
 /* Flags to qman_destroy_fq() */
 #define QMAN_FQ_DESTROY_PARKED       0x00000001 /* FQ can be parked or OOS */
