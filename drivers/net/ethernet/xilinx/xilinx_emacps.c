@@ -3148,7 +3148,7 @@ static int xemacps_suspend(struct device *device)
  * xemacps_resume - Resume after previous suspend
  * @pdev: Pointer to platform device structure
  *
- * Return 0
+ * Returns 0 on success, errno otherwise.
  */
 static int xemacps_resume(struct device *device)
 {
@@ -3158,8 +3158,17 @@ static int xemacps_resume(struct device *device)
 	struct net_local *lp = netdev_priv(ndev);
 
 	if (!pm_runtime_suspended(device)) {
-		clk_enable(lp->aperclk);
-		clk_enable(lp->devclk);
+		int ret;
+
+		ret = clk_enable(lp->aperclk);
+		if (ret)
+			return ret;
+
+		ret = clk_enable(lp->devclk);
+		if (ret) {
+			clk_disable(lp->aperclk);
+			return ret;
+		}
 	}
 	netif_device_attach(ndev);
 	return 0;
@@ -3174,13 +3183,22 @@ static int xemacps_runtime_idle(struct device *dev)
 
 static int xemacps_runtime_resume(struct device *device)
 {
+	int ret;
 	struct platform_device *pdev = container_of(device,
 			struct platform_device, dev);
 	struct net_device *ndev = platform_get_drvdata(pdev);
 	struct net_local *lp = netdev_priv(ndev);
 
-	clk_enable(lp->aperclk);
-	clk_enable(lp->devclk);
+	ret = clk_enable(lp->aperclk);
+	if (ret)
+		return ret;
+
+	ret = clk_enable(lp->devclk);
+	if (ret) {
+		clk_disable(lp->aperclk);
+		return ret;
+	}
+
 	return 0;
 }
 
