@@ -1,4 +1,4 @@
-obj-$(CONFIG_XILINX_DMATEST) += dmatest.o
+obj-$(CONFIG_XILINX_DMATEST) += axidmatest.o
 obj-$(CONFIG_XILINX_VDMATEST) += vdmatest.o
 obj-$(CONFIG_XILINX_CDMATEST) += cdmatest.o
 obj-$(CONFIG_XILINX_DMA) += xilinx_dma.o
