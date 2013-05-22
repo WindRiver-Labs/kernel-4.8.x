@@ -2618,14 +2618,6 @@ static int __init xemacps_probe(struct platform_device *pdev)
 
 	ndev->irq = platform_get_irq(pdev, 0);
 
-	rc = request_irq(ndev->irq, xemacps_interrupt, IRQF_SAMPLE_RANDOM,
-		ndev->name, ndev);
-	if (rc) {
-		dev_err(&lp->pdev->dev, "Unable to request IRQ %p, error %d\n",
-				r_irq, rc);
-		goto err_out_iounmap;
-	}
-
 	ndev->netdev_ops = &netdev_ops;
 	ndev->watchdog_timeo = TX_TIMEOUT;
 	ndev->ethtool_ops = &xemacps_ethtool_ops;
@@ -2638,7 +2630,7 @@ static int __init xemacps_probe(struct platform_device *pdev)
 	rc = register_netdev(ndev);
 	if (rc) {
 		dev_err(&pdev->dev, "Cannot register net device, aborting.\n");
-		goto err_out_free_irq;
+		goto err_out_iounmap;
 	}
 
 	if (ndev->irq == 54)
@@ -2732,6 +2724,14 @@ static int __init xemacps_probe(struct platform_device *pdev)
 	dev_info(&lp->pdev->dev, "pdev->id %d, baseaddr 0x%08lx, irq %d\n",
 		pdev->id, ndev->base_addr, ndev->irq);
 
+	rc = request_irq(ndev->irq, xemacps_interrupt, 0,
+		ndev->name, ndev);
+	if (rc) {
+		dev_err(&lp->pdev->dev, "Unable to request IRQ %p, error %d\n",
+				r_irq, rc);
+		goto err_out_unregister_clk_notifier;
+	}
+
 	return 0;
 
 err_out_unregister_clk_notifier:
@@ -2745,8 +2745,6 @@ err_out_clk_put_aper:
 	clk_put(lp->aperclk);
 err_out_unregister_netdev:
 	unregister_netdev(ndev);
-err_out_free_irq:
-	free_irq(ndev->irq, ndev);
 err_out_iounmap:
 	iounmap(lp->baseaddr);
 err_out_free_netdev:
