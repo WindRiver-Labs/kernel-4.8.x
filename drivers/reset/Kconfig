@@ -27,6 +27,13 @@ config TI_SYSCON_RESET
 	  you wish to use the reset framework for such memory-mapped devices,
 	  say Y here. Otherwise, say N.
 
+config RESET_GPIO
+	tristate "GPIO reset controller support"
+	depends on GPIOLIB && OF
+	help
+	  This driver provides support for reset lines that are controlled
+	  directly by GPIOs.
+
 source "drivers/reset/sti/Kconfig"
 source "drivers/reset/hisilicon/Kconfig"
 
