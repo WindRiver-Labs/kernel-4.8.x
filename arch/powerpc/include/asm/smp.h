@@ -208,6 +208,7 @@ extern unsigned long __secondary_hold_spinloop;
 extern unsigned long __secondary_hold_acknowledge;
 extern char __secondary_hold;
 extern unsigned int booting_thread_hwid;
+extern unsigned long __run_at_kexec;
 
 extern void __early_start(void);
 #endif /* __ASSEMBLY__ */
