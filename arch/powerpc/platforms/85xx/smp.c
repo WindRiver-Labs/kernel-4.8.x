@@ -197,6 +197,9 @@ static int smp_85xx_start_cpu(int cpu)
 	int ioremappable;
 	int hw_cpu = get_hard_smp_processor_id(cpu);
 	struct epapr_spin_table __iomem *spin_table;
+#ifdef CONFIG_PPC64
+	unsigned long *ptr = NULL;
+#endif
 
 	np = of_get_cpu_node(cpu, NULL);
 	cpu_rel_addr = of_get_property(np, "cpu-release-addr", NULL);
@@ -249,15 +252,26 @@ static int smp_85xx_start_cpu(int cpu)
 		}
 	}
 
+#ifdef CONFIG_PPC32
 	flush_spin_table(spin_table);
 	out_be32(&spin_table->pir, hw_cpu);
-#ifdef CONFIG_PPC64
+	out_be32(&spin_table->addr_l, __pa(__early_start));
+	flush_spin_table(spin_table);
+#else
 	out_be64((u64 *)(&spin_table->addr_h),
 		__pa(ppc_function_entry(generic_secondary_smp_init)));
-#else
-	out_be32(&spin_table->addr_l, __pa(__early_start));
+	ptr  = (unsigned long *)((unsigned long)&__run_at_kexec);
+	/* We shouldn't access spin_table from the bootloader to up any
+	 * secondary cpu for kexec kernel, and kexec kernel already
+	 * know how to jump to generic_secondary_smp_init.
+	*/
+	if (!*ptr) {
+		flush_spin_table(spin_table);
+		out_be64((u64 *)(&spin_table->addr_h),
+			__pa(ppc_function_entry(generic_secondary_smp_init)));
+		flush_spin_table(spin_table);
+	}
 #endif
-	flush_spin_table(spin_table);
 err:
 	local_irq_restore(flags);
 
