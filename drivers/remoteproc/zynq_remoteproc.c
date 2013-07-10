@@ -299,7 +299,7 @@ static int __devinit zynq_remoteproc_probe(struct platform_device *pdev)
 				&zynq_rproc_ops, prop, sizeof(struct rproc));
 		if (!local->rproc) {
 			dev_err(&pdev->dev, "rproc allocation failed\n");
-			goto rproc_fault;
+			goto ipi_fault;
 		}
 
 		ret = rproc_add(local->rproc);
