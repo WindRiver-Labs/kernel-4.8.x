@@ -29,8 +29,8 @@
 #include <linux/slab.h>
 
 /* Register Offset Definitions */
-#define XGPIO_DATA_OFFSET   (0x0)	/* Data register  */
-#define XGPIO_TRI_OFFSET    (0x4)	/* I/O direction register  */
+#define XGPIO_DATA_OFFSET	0x0 /* Data register */
+#define XGPIO_TRI_OFFSET	0x4 /* I/O direction register */
 #define XGPIO_GIER_OFFSET	0x11c /* Global Interrupt Enable */
 #define XGPIO_GIER_IE		BIT(31)
 
