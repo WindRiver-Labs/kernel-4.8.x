@@ -104,6 +104,8 @@ source "drivers/staging/fsl-dpaa2/Kconfig"
 
 source "drivers/staging/fsl_pme2/Kconfig"
 
+source "drivers/staging/fsl_dce/Kconfig"
+
 source "drivers/staging/wilc1000/Kconfig"
 
 source "drivers/staging/most/Kconfig"
