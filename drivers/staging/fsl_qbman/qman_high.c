@@ -702,7 +702,7 @@ struct qman_portal *qman_create_portal(
 	isdr ^= (QM_PIRQ_DQRI | QM_PIRQ_MRI);
 	qm_isr_disable_write(__p, isdr);
 	while (qm_dqrr_current(__p) != NULL)
-		qm_dqrr_cdc_consume_n(__p, 0xffff);
+		qm_drain_dqrr(__p);
 	/* drain all mr message */
 	qm_drain_mr(__p);
 	/* Success */
