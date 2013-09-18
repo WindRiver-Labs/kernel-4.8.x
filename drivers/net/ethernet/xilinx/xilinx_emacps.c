@@ -2592,10 +2592,10 @@ static int __init xemacps_probe(struct platform_device *pdev)
 	spin_lock_init(&lp->rx_lock);
 	spin_lock_init(&lp->nwctrlreg_lock);
 
-	lp->baseaddr = ioremap(r_mem->start, (r_mem->end - r_mem->start + 1));
-	if (!lp->baseaddr) {
+	lp->baseaddr = devm_ioremap_resource(&pdev->dev, r_mem);
+	if (IS_ERR(lp->baseaddr)) {
 		dev_err(&pdev->dev, "failed to map baseaddress.\n");
-		rc = -ENOMEM;
+		rc = PTR_ERR(lp->baseaddr);
 		goto err_out_free_netdev;
 	}
 	dev_dbg(&lp->pdev->dev, "BASEADDRESS hw: %p virt: %p\n",
