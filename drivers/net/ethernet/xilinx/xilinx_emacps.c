@@ -2620,7 +2620,6 @@ static int __init xemacps_probe(struct platform_device *pdev)
 
 	lp->baseaddr = devm_ioremap_resource(&pdev->dev, r_mem);
 	if (IS_ERR(lp->baseaddr)) {
-		dev_err(&pdev->dev, "failed to map baseaddress.\n");
 		rc = PTR_ERR(lp->baseaddr);
 		goto err_out_free_netdev;
 	}
