@@ -557,13 +557,25 @@ static irqreturn_t xqspips_irq(int irq, void *dev_id)
 		/* Read out the data from the RX FIFO */
 		while (rxcount) {
 
-			data = xqspips_read(xqspi->regs + XQSPIPS_RXD_OFFSET);
-
-			if (xqspi->bytes_to_receive < 4 && !xqspi->is_dual)
+			if (xqspi->bytes_to_receive < 4 && !xqspi->is_dual) {
+				data = xqspips_read(xqspi->regs +
+						XQSPIPS_RXD_OFFSET);
 				xqspips_copy_read_data(xqspi, data,
 					xqspi->bytes_to_receive);
-			else
-				xqspips_copy_read_data(xqspi, data, 4);
+			} else {
+				if (xqspi->rxbuf) {
+					(*(u32 *)xqspi->rxbuf) =
+					xqspips_read(xqspi->regs +
+						XQSPIPS_RXD_OFFSET);
+					xqspi->rxbuf += 4;
+				} else {
+					data = xqspips_read(xqspi->regs +
+							XQSPIPS_RXD_OFFSET);
+				}
+				xqspi->bytes_to_receive -= 4;
+				if (xqspi->bytes_to_receive < 0)
+					xqspi->bytes_to_receive = 0;
+			}
 			rxcount--;
 		}
 
