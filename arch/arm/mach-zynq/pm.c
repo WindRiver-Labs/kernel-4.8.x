@@ -22,10 +22,12 @@
 #include <linux/clk.h>
 #include <linux/bitops.h>
 #include <linux/err.h>
+#include <linux/genalloc.h>
 #include <linux/init.h>
 #include <linux/io.h>
 #include <linux/kernel.h>
 #include <linux/of_address.h>
+#include <linux/of_device.h>
 #include <linux/slab.h>
 #include <linux/suspend.h>
 #include <mach/slcr.h>
@@ -65,13 +67,7 @@ static int zynq_pm_suspend(unsigned long arg)
 {
 	u32 reg;
 	int (*zynq_suspend_ptr)(void __iomem *, void __iomem *);
-	void *ocm_swap_area;
 	int do_ddrpll_bypass = 1;
-
-	/* Allocate some space for temporary OCM storage */
-	ocm_swap_area = kmalloc(zynq_sys_suspend_sz, GFP_ATOMIC);
-	if (!ocm_swap_area)
-		do_ddrpll_bypass = 0;
 
 	/* Enable DDR self-refresh and clock stop */
 	if (ddrc_base) {
@@ -106,12 +102,7 @@ static int zynq_pm_suspend(unsigned long arg)
 		      : /* no inputs */
 		      : "r12");
 
-
-	if (ocm_swap_area && ocm_base) {
-		/* Backup a small area of OCM used for the suspend code */
-		memcpy(ocm_swap_area, (__force void *)ocm_base,
-			zynq_sys_suspend_sz);
-
+	if (ocm_base) {
 		/*
 		 * Copy code to suspend system into OCM. The suspend code
 		 * needs to run from OCM as DRAM may no longer be available
