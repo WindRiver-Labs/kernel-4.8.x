@@ -23,6 +23,7 @@ extern void zynq_slcr_cpu_stop(int cpu);
 extern void zynq_slcr_cpu_start(int cpu);
 extern bool zynq_slcr_cpu_state_read(int cpu);
 extern void zynq_slcr_cpu_state_write(int cpu, bool die);
+extern u32 zynq_slcr_get_ocm_config(void);
 extern u32 zynq_slcr_get_device_id(void);
 
 #ifdef CONFIG_SMP
@@ -33,6 +34,10 @@ extern int zynq_cpun_start(u32 address, int cpu);
 extern const struct smp_operations zynq_smp_ops;
 #endif
 
+extern void zynq_slcr_init_preload_fpga(void);
+extern void zynq_slcr_init_postload_fpga(void);
+
+extern void __iomem *zynq_slcr_base;
 extern void __iomem *zynq_scu_base;
 
 void zynq_pm_late_init(void);
