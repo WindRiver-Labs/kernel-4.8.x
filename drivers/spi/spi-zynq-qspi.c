@@ -32,7 +32,7 @@
 /*
  * Name of this driver
  */
-#define DRIVER_NAME			"xqspips"
+#define DRIVER_NAME			"zynq-qspi"
 
 /*
  * Register offset definitions
