@@ -59,6 +59,7 @@ MODULE_LICENSE("GPL v2");
 #define ADV7511_MAX_HEIGHT 1200
 #define ADV7511_MIN_PIXELCLOCK 20000000
 #define ADV7511_MAX_PIXELCLOCK 225000000
+#define XYLON_LOGICVC_INTG
 
 #define ADV7511_MAX_ADDRS (3)
 
@@ -2368,7 +2369,9 @@ static int adv7511_probe(struct i2c_client *client, const struct i2c_device_id *
 
 	INIT_DELAYED_WORK(&state->edid_handler, adv7511_edid_handler);
 
+#ifndef XYLON_LOGICVC_INTG
 	adv7511_init_setup(sd);
+#endif
 
 #if IS_ENABLED(CONFIG_VIDEO_ADV7511_CEC)
 	state->cec_adap = cec_allocate_adapter(&adv7511_cec_adap_ops,
@@ -2381,9 +2384,10 @@ static int adv7511_probe(struct i2c_client *client, const struct i2c_device_id *
 		goto err_unreg_pktmem;
 	}
 #endif
-
 	adv7511_set_isr(sd, true);
+#ifndef XYLON_LOGICVC_INTG
 	adv7511_check_monitor_present_status(sd);
+#endif
 
 	v4l2_info(sd, "%s found @ 0x%x (%s)\n", client->name,
 			  client->addr << 1, client->adapter->name);
