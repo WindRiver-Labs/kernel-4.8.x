@@ -55,6 +55,24 @@
 #define PR_SET_NAME    15		/* Set process name */
 #define PR_GET_NAME    16		/* Get process name */
 
+#ifdef CONFIG_SIGEXIT
+#define PR_DO_NOTIFY_TASK_STATE 17	/* Set/get notification for task
+					   state changes */
+
+/* This is the data structure for requestion process death
+ * (and other state change) information.  Sig of -1 means
+ * query, sig of 0 means deregistration, positive sig means
+ * that you want to set it.  sig and events are value-result
+ * and will be updated with the previous values on every
+ * successful call.
+ */
+struct task_state_notify_info {
+	pid_t pid;
+	int sig;
+	unsigned int events;
+};
+#endif
+
 /* Get/set process endian */
 #define PR_GET_ENDIAN	19
 #define PR_SET_ENDIAN	20

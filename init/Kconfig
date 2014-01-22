@@ -1756,6 +1756,22 @@ config VM_EVENT_COUNTERS
 	  on EXPERT systems.  /proc/vmstat will only show page counts
 	  if VM event counters are disabled.
 
+config SIGEXIT
+	bool "Notification of death of arbitrary processes"
+	default n
+	help
+	  When enabled this exposes a new feature which may be called to request
+	  notification when an arbitrary process changes state.  The caller specifies
+	  a pid, signal number, and event mask, and when that pid dies, or is
+	  stopped, or anything else that would normally cause a SIGCHLD, the
+	  kernel will send the specified signal to the caller if the event is in
+	  the event mask originally passed down. The siginfo_t struct will
+	  contain the same information as would be included with SIGCHLD.
+
+	  This is exposed to userspace via the prctl()
+	  call with the PR_DO_NOTIFY_TASK_STATE option
+
+
 config ALWAYS_RESTART
 	default n
 	bool "Force the system to restart instead of halt or power off"

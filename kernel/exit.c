@@ -59,6 +59,9 @@
 #include <asm/unistd.h>
 #include <asm/pgtable.h>
 #include <asm/mmu_context.h>
+#ifdef CONFIG_SIGEXIT
+#include "death_notify.h"
+#endif
 
 static void __unhash_process(struct task_struct *p, bool group_dead)
 {
@@ -179,6 +182,10 @@ repeat:
 	proc_flush_task(p);
 
 	write_lock_irq(&tasklist_lock);
+
+#ifdef CONFIG_SIGEXIT
+	release_notify_others(p);
+#endif
 	ptrace_release_task(p);
 	__exit_signal(p);
 

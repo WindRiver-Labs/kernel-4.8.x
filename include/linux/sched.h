@@ -1684,6 +1684,13 @@ struct task_struct {
  * mempolicy */
 	spinlock_t alloc_lock;
 
+#ifdef CONFIG_SIGEXIT
+	/* list of processes to notify on death */
+	struct list_head notify;
+	/* list of outstanding monitor requests */
+	struct list_head monitor;
+#endif
+
 	/* Protection of the PI data structures: */
 	raw_spinlock_t pi_lock;
 

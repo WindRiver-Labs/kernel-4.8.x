@@ -60,6 +60,9 @@
 #include <asm/uaccess.h>
 #include <asm/io.h>
 #include <asm/unistd.h>
+#ifdef CONFIG_SIGEXIT
+#include "death_notify.h"
+#endif
 
 #ifndef SET_UNALIGN_CTL
 # define SET_UNALIGN_CTL(a, b)	(-EINVAL)
@@ -2270,6 +2273,11 @@ SYSCALL_DEFINE5(prctl, int, option, unsigned long, arg2, unsigned long, arg3,
 	case PR_GET_FP_MODE:
 		error = GET_FP_MODE(me);
 		break;
+#ifdef CONFIG_SIGEXIT
+	case PR_DO_NOTIFY_TASK_STATE:
+		error = do_notify_task_state(arg2);
+		break;
+#endif
 	default:
 		error = -EINVAL;
 		break;

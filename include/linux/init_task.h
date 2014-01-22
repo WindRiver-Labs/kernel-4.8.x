@@ -62,6 +62,15 @@ extern struct fs_struct init_fs;
 
 extern struct nsproxy init_nsproxy;
 
+#ifdef CONFIG_SIGEXIT
+#define INIT_SIGEXIT(tsk) \
+	.notify		= LIST_HEAD_INIT(tsk.notify),			\
+	.monitor	= LIST_HEAD_INIT(tsk.monitor),
+#else
+#define INIT_SIGEXIT(tsk)
+#endif
+
+
 #define INIT_SIGHAND(sighand) {						\
 	.count		= ATOMIC_INIT(1), 				\
 	.action		= { { { .sa_handler = SIG_DFL, } }, },		\
@@ -237,6 +246,7 @@ extern struct task_group root_task_group;
 	.alloc_lock	= __SPIN_LOCK_UNLOCKED(tsk.alloc_lock),		\
 	.journal_info	= NULL,						\
 	.cpu_timers	= INIT_CPU_TIMERS(tsk.cpu_timers),		\
+	INIT_SIGEXIT(tsk)						\
 	.pi_lock	= __RAW_SPIN_LOCK_UNLOCKED(tsk.pi_lock),	\
 	.timer_slack_ns = 50000, /* 50 usec default slack */		\
 	.pids = {							\
