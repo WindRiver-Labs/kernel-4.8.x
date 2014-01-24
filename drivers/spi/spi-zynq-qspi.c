@@ -1136,7 +1136,6 @@ static int zynq_qspi_probe(struct platform_device *pdev)
 	if (clk_notifier_register(xqspi->devclk, &xqspi->clk_rate_change_nb))
 		dev_warn(&pdev->dev, "Unable to register clock notifier.\n");
 
-
 	/* QSPI controller initializations */
 	zynq_qspi_init_hw(xqspi->regs, xqspi->is_dual);
 
@@ -1231,7 +1230,6 @@ static int zynq_qspi_remove(struct platform_device *pdev)
 
 	spi_unregister_master(master);
 	spi_master_put(master);
-
 
 	dev_dbg(&pdev->dev, "remove succeeded\n");
 	return 0;
