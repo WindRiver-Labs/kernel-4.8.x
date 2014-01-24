@@ -1,8 +1,7 @@
 /*
- *
  * Xilinx PS Quad-SPI (QSPI) controller driver (master mode only)
  *
- * (c) 2009-2011 Xilinx, Inc.
+ * Copyright (C) 2009 - 2014 Xilinx, Inc.
  *
  * based on Xilinx PS SPI Driver (xspips.c)
  *
@@ -15,7 +14,6 @@
  * this program; if not, write to the Free Software Foundation, Inc., 59 Temple
  * Place, Suite 330, Boston, MA  02111-1307  USA
  */
-
 
 #include <linux/clk.h>
 #include <linux/delay.h>
