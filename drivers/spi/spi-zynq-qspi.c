@@ -1239,7 +1239,7 @@ static int zynq_qspi_remove(struct platform_device *pdev)
 MODULE_ALIAS("platform:" DRIVER_NAME);
 
 static struct of_device_id zynq_qspi_of_match[] = {
-	{ .compatible = "xlnx,ps7-qspi-1.00.a", },
+	{ .compatible = "xlnx,zynq-qspi-1.00.a", },
 	{ /* end of table */}
 };
 MODULE_DEVICE_TABLE(of, zynq_qspi_of_match);
