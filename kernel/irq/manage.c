@@ -242,16 +242,16 @@ int irq_set_affinity_locked(struct irq_data *data, const struct cpumask *mask,
 
 int __irq_set_affinity(unsigned int irq, const struct cpumask *mask, bool force)
 {
-	struct irq_desc *desc = irq_to_desc(irq);
 	unsigned long flags;
+	struct irq_desc *desc = irq_get_desc_buslock(irq, &flags,
+			IRQ_GET_DESC_CHECK_GLOBAL);
 	int ret;
 
 	if (!desc)
 		return -EINVAL;
 
-	raw_spin_lock_irqsave(&desc->lock, flags);
 	ret = irq_set_affinity_locked(irq_desc_get_irq_data(desc), mask, force);
-	raw_spin_unlock_irqrestore(&desc->lock, flags);
+	irq_put_desc_busunlock(desc, flags);
 	return ret;
 }
 
@@ -1312,8 +1312,8 @@ __setup_irq(unsigned int irq, struct irq_desc *desc, struct irqaction *new)
 				goto out_mask;
 		}
 
-		desc->istate &= ~(IRQS_AUTODETECT | IRQS_SPURIOUS_DISABLED | \
-				  IRQS_ONESHOT | IRQS_WAITING);
+		desc->istate &= ~(IRQS_AUTODETECT | IRQS_SPURIOUS_DISABLED |
+				IRQS_ONESHOT | IRQS_WAITING);
 		irqd_clear(&desc->irq_data, IRQD_IRQ_INPROGRESS);
 
 		if (new->flags & IRQF_PERCPU) {
@@ -1555,7 +1555,7 @@ void remove_irq(unsigned int irq, struct irqaction *act)
 	struct irq_desc *desc = irq_to_desc(irq);
 
 	if (desc && !WARN_ON(irq_settings_is_per_cpu_devid(desc)))
-	    __free_irq(irq, act->dev_id);
+		__free_irq(irq, act->dev_id);
 }
 EXPORT_SYMBOL_GPL(remove_irq);
 
@@ -1889,7 +1889,7 @@ void remove_percpu_irq(unsigned int irq, struct irqaction *act)
 	struct irq_desc *desc = irq_to_desc(irq);
 
 	if (desc && irq_settings_is_per_cpu_devid(desc))
-	    __free_percpu_irq(irq, act->percpu_dev_id);
+		__free_percpu_irq(irq, act->percpu_dev_id);
 }
 
 /**
