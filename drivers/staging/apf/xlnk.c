@@ -783,7 +783,9 @@ static int xlnk_dmarequest_ioctl(struct file *filp, unsigned int code,
 	temp_args.dmarequest.bd_space_phys_addr = chan->bd_phys_addr;
 	temp_args.dmarequest.bd_space_size = chan->bd_chain_size;
 
-	copy_to_user((void __user *)args, &temp_args, sizeof(union xlnk_args));
+	if (copy_to_user((void __user *)args, &temp_args,
+			sizeof(union xlnk_args)))
+		return -EFAULT;
 
 	return 0;
 
@@ -826,8 +828,9 @@ static int xlnk_dmasubmit_ioctl(struct file *filp, unsigned int code,
 		temp_args.dmasubmit.dmahandle = (u32)dmahead;
 		temp_args.dmasubmit.last_bd_index =
 					(u32)dmahead->last_bd_index;
-		copy_to_user((void __user *)args, &temp_args,
-				sizeof(union xlnk_args));
+		if (copy_to_user((void __user *)args, &temp_args,
+				sizeof(union xlnk_args)))
+			return -EFAULT;
 		return 0;
 	}
 #endif
@@ -857,8 +860,9 @@ static int xlnk_dmawait_ioctl(struct file *filp, unsigned int code,
 		memcpy(temp_args.dmawait.appwords, dmahead->appwords_o,
 			   dmahead->nappwords_o * sizeof(u32));
 
-		copy_to_user((void __user *)args, &temp_args,
-				sizeof(union xlnk_args));
+		if (copy_to_user((void __user *)args, &temp_args,
+				sizeof(union xlnk_args)))
+			return -EFAULT;
 	}
 	kfree(dmahead);
 
@@ -1213,8 +1217,9 @@ static int xlnk_dump_events(unsigned long buf)
 	 * xlnk_get_event_size() and ignore the rest to avoid
 	 * buffer overflow issue
 	 */
-	copy_to_user((void __user *)buf, xlnk_et,
-		xlnk_et_numbers_to_dump * sizeof(struct event_tracer));
+	if (copy_to_user((void __user *)buf, xlnk_et,
+		xlnk_et_numbers_to_dump * sizeof(struct event_tracer)))
+		return -EFAULT;
 
 	/* clear up event pool so it's ready to use again */
 	xlnk_et_index = 0;
