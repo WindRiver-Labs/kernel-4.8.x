@@ -83,6 +83,7 @@ static DEFINE_MUTEX(xdevcfg_mutex);
 
 /* Interrupt Status/Mask Register Bit definitions */
 #define XDCFG_IXR_DMA_DONE_MASK		0x00002000 /* DMA Command Done */
+#define XDCFG_IXR_D_P_DONE_MASK		0x00001000 /* DMA and PCAP Cmd Done */
 #define XDCFG_IXR_PCFG_DONE_MASK	0x00000004 /* FPGA programmed */
 #define XDCFG_IXR_ERROR_FLAGS_MASK	0x00F0F860
 #define XDCFG_IXR_ALL_MASK		0xF8F7F87F
@@ -211,7 +212,8 @@ static irqreturn_t xdevcfg_irq(int irq, void *data)
 	xdevcfg_writereg(drvdata->base_address + XDCFG_INT_STS_OFFSET,
 				intr_status);
 
-	if ((intr_status & XDCFG_IXR_DMA_DONE_MASK) == XDCFG_IXR_DMA_DONE_MASK)
+	if ((intr_status & XDCFG_IXR_D_P_DONE_MASK) ==
+				XDCFG_IXR_D_P_DONE_MASK)
 		drvdata->dma_done = 1;
 
 	if ((intr_status & XDCFG_IXR_ERROR_FLAGS_MASK) ==
@@ -315,7 +317,7 @@ xdevcfg_write(struct file *file, const char __user *buf, size_t count,
 
 
 	xdevcfg_writereg(drvdata->base_address + XDCFG_INT_MASK_OFFSET,
-				(u32) (~(XDCFG_IXR_DMA_DONE_MASK |
+				(u32) (~(XDCFG_IXR_D_P_DONE_MASK |
 				XDCFG_IXR_ERROR_FLAGS_MASK)));
 
 	drvdata->dma_done = 0;
@@ -356,7 +358,7 @@ xdevcfg_write(struct file *file, const char __user *buf, size_t count,
 	intr_reg = xdevcfg_readreg(drvdata->base_address +
 					XDCFG_INT_MASK_OFFSET);
 	xdevcfg_writereg(drvdata->base_address + XDCFG_INT_MASK_OFFSET,
-				intr_reg | (XDCFG_IXR_DMA_DONE_MASK |
+				intr_reg | (XDCFG_IXR_D_P_DONE_MASK |
 				XDCFG_IXR_ERROR_FLAGS_MASK));
 
 	/* If we didn't write correctly, then bail out. */
@@ -419,7 +421,7 @@ xdevcfg_read(struct file *file, char __user *buf, size_t count, loff_t *ppos)
 				XDCFG_IXR_ALL_MASK);
 
 	xdevcfg_writereg(drvdata->base_address + XDCFG_INT_MASK_OFFSET,
-				(u32) (~(XDCFG_IXR_DMA_DONE_MASK |
+				(u32) (~(XDCFG_IXR_D_P_DONE_MASK |
 				XDCFG_IXR_ERROR_FLAGS_MASK)));
 	/* Initiate DMA read command */
 	xdevcfg_writereg(drvdata->base_address + XDCFG_DMA_SRC_ADDR_OFFSET,
@@ -446,7 +448,7 @@ xdevcfg_read(struct file *file, char __user *buf, size_t count, loff_t *ppos)
 	intr_reg = xdevcfg_readreg(drvdata->base_address +
 					XDCFG_INT_MASK_OFFSET);
 	xdevcfg_writereg(drvdata->base_address + XDCFG_INT_MASK_OFFSET,
-				intr_reg | (XDCFG_IXR_DMA_DONE_MASK |
+				intr_reg | (XDCFG_IXR_D_P_DONE_MASK |
 				XDCFG_IXR_ERROR_FLAGS_MASK));
 
 
