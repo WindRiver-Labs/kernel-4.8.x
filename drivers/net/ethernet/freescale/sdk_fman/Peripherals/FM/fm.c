@@ -36,6 +36,8 @@
 
  @Description   FM driver routines implementation.
 *//***************************************************************************/
+#include <linux/of.h>
+#include <linux/of_address.h>
 #include "std_ext.h"
 #include "error_ext.h"
 #include "xx_ext.h"
@@ -51,6 +53,7 @@
 #ifndef CONFIG_ARM64
 #include <linux/fsl/svr.h>
 #endif
+#include <linux/fsl/guts.h>
 #include "fsl_fman.h"
 
 
@@ -59,6 +62,29 @@
 /****************************************/
 
 static volatile bool blockingFlag = FALSE;
+
+#ifdef FM_SOFT_REST_IS_NOT_FINISHED_PROPERLY_A007273
+static struct ccsr_guts __iomem *Fm_GetCcsrGutsReg(void)
+{
+	struct device_node *np;
+	struct ccsr_guts __iomem *guts_regs = NULL;
+
+	np = of_find_compatible_node(NULL, NULL, "fsl,t4240-device-config");
+
+	if (np) {
+		guts_regs = of_iomap(np, 0);
+		of_node_put(np);
+		if (!guts_regs) {
+			pr_err("%s: Could not map ccsr guts regs node address\n",
+					__func__);
+			return NULL;
+		}
+		return guts_regs;
+	}
+	return NULL;
+}
+#endif /* FM_SOFT_REST_IS_NOT_FINISHED_PROPERLY_A007273 */
+
 static void IpcMsgCompletionCB(t_Handle   h_Fm,
                                uint8_t    *p_Msg,
                                uint8_t    *p_Reply,
@@ -3536,6 +3562,8 @@ t_Error FM_Init(t_Handle h_Fm)
 #ifndef CONFIG_FMAN_ARM
         {
             u32 svr = mfspr(SPRN_SVR);
+            u32 disr2 = 0;
+            struct ccsr_guts __iomem *ccsr_guts_regs = NULL;
 
             if (((SVR_SOC_VER(svr) == SVR_T4240 && SVR_REV(svr) > 0x10)) ||
                 ((SVR_SOC_VER(svr) == SVR_T4160 && SVR_REV(svr) > 0x10)) ||
@@ -3544,14 +3572,31 @@ t_Error FM_Init(t_Handle h_Fm)
                 (SVR_SOC_VER(svr) == SVR_T1023) ||
                 (SVR_SOC_VER(svr) == SVR_T2080) ||
                 (SVR_SOC_VER(svr) == SVR_T2081)) {
-                DBG(WARNING, ("Hack: No FM reset!\n"));
-            } else {
-                WRITE_UINT32(p_Fm->p_FmFpmRegs->fm_rstc, FPM_RSTC_FM_RESET);
-                CORE_MemoryBarrier();
-                XX_UDelay(100);
-            }
-        }
-#endif
+
+		ccsr_guts_regs = Fm_GetCcsrGutsReg();
+
+		if (ccsr_guts_regs) {
+			/* Get the origin value of devdisr2. */
+			disr2 = ioread32be(&ccsr_guts_regs->devdisr2);
+			/* Set the devsir2 to enable all fmans */
+			iowrite32be(0, &ccsr_guts_regs->devdisr2);
+		}
+	}
+
+	WRITE_UINT32(p_Fm->p_FmFpmRegs->fm_rstc, FPM_RSTC_FM_RESET);
+	CORE_MemoryBarrier();
+	XX_UDelay(100);
+
+#ifdef FM_SOFT_REST_IS_NOT_FINISHED_PROPERLY_A007273
+	if (disr2 && ccsr_guts_regs) {
+		/* Restore the value of devdisr2. */
+		iowrite32be(disr2, &ccsr_guts_regs->devdisr2);
+	}
+	if (ccsr_guts_regs)
+		iounmap(ccsr_guts_regs);
+	}
+#endif/* FM_SOFT_REST_IS_NOT_FINISHED_PROPERLY_A007273 */
+#endif /* FMAN_ARM */
         if (fman_is_qmi_halt_not_busy_state(p_Fm->p_FmQmiRegs))
         {
             fman_resume(p_Fm->p_FmFpmRegs);
