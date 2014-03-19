@@ -1185,7 +1185,6 @@ static int zynq_qspi_remove(struct platform_device *pdev)
 	clk_disable_unprepare(xqspi->aperclk);
 
 	spi_unregister_master(master);
-	spi_master_put(master);
 
 	dev_dbg(&pdev->dev, "remove succeeded\n");
 	return 0;
