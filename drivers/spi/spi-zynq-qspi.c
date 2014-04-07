@@ -231,8 +231,6 @@ static void zynq_qspi_copy_read_data(struct zynq_qspi *xqspi, u32 data, u8 size)
 		xqspi->rxbuf += size;
 	}
 	xqspi->bytes_to_receive -= size;
-	if (xqspi->bytes_to_receive < 0)
-		xqspi->bytes_to_receive = 0;
 }
 
 /**
@@ -253,8 +251,6 @@ static void zynq_qspi_copy_write_data(struct zynq_qspi *xqspi, u32 *data,
 	}
 
 	xqspi->bytes_to_transfer -= size;
-	if (xqspi->bytes_to_transfer < 0)
-		xqspi->bytes_to_transfer = 0;
 }
 
 /**
@@ -470,8 +466,6 @@ static irqreturn_t zynq_qspi_irq(int irq, void *dev_id)
 							ZYNQ_QSPI_RXD_OFFSET);
 				}
 				xqspi->bytes_to_receive -= 4;
-				if (xqspi->bytes_to_receive < 0)
-					xqspi->bytes_to_receive = 0;
 			}
 			rxindex++;
 		}
