@@ -24,6 +24,7 @@
 #include <linux/fsl/svr.h>
 #include <linux/interrupt.h>
 #include <linux/genalloc.h>
+#include <asm/reg.h>
 
 
 /* define indexes for each operation mapping scenario */
@@ -507,6 +508,16 @@ void get_ome_index(u32 *omi_index, struct device *dev)
 		*omi_index = OMI_QMAN_PRIV;
 }
 
+static bool has_erratum_a007907(void)
+{
+	u32 pvr = mfspr(SPRN_PVR);
+
+	if (PVR_VER(pvr) == PVR_VER_E6500 && PVR_REV(pvr) <= 0x20)
+		return true;
+
+	return false;
+}
+
 /**
  * get_stash_id - Returns stash destination id corresponding to a
  *                cache type and vcpu.
@@ -523,6 +534,10 @@ u32 get_stash_id(u32 stash_dest_hint, u32 vcpu)
 	u32 cache_level;
 	int len, found = 0;
 	int i;
+
+	if (stash_dest_hint == PAMU_ATTR_CACHE_L1 &&
+	    has_erratum_a007907())
+		stash_dest_hint = PAMU_ATTR_CACHE_L2;
 
 	/* Fastpath, exit early if L3/CPC cache is target for stashing */
 	if (stash_dest_hint == PAMU_ATTR_CACHE_L3) {
