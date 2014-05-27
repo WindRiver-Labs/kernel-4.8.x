@@ -112,7 +112,6 @@ static const char *const swdt_ext_clk_input_names[] __initconst = {
 	"swdt_ext_clk"};
 
 #ifdef CONFIG_SUSPEND
-unsigned int zynq_clk_suspended;
 static struct clk *armpll_save_parent;
 static struct clk *iopll_save_parent;
 
@@ -121,8 +120,6 @@ static struct clk *iopll_save_parent;
 int zynq_clk_suspend_early(void)
 {
 	int ret;
-
-	zynq_clk_suspended = 1;
 
 	iopll_save_parent = clk_get_parent(clks[iopll]);
 	armpll_save_parent = clk_get_parent(clks[armpll]);
@@ -142,8 +139,6 @@ void zynq_clk_resume_late(void)
 {
 	clk_set_parent(clks[armpll], armpll_save_parent);
 	clk_set_parent(clks[iopll], iopll_save_parent);
-
-	zynq_clk_suspended = 0;
 }
 
 void zynq_clk_topswitch_enable(void)
