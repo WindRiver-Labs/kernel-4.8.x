@@ -109,6 +109,7 @@
 	tbi-handle = <&tbi1>;
 	phy-handle = <&phy1>;
 	phy-connection-type = "sgmii";
+	fsl,dma-endian-le;
 	status = "ok";
 };
 
@@ -116,6 +117,7 @@
 	tbi-handle = <&tbi1>;
 	phy-handle = <&phy3>;
 	phy-connection-type = "sgmii";
+	fsl,dma-endian-le;
 	status = "ok";
 };
 
@@ -123,6 +125,7 @@
 	tbi-handle = <&tbi1>;
 	fixed-link = <2 1 1000 0 0>;
 	phy-connection-type = "rgmii";
+	fsl,dma-endian-le;
 	status = "ok";
 };
 
@@ -200,11 +203,9 @@
 	};
 	phy1: ethernet-phy@1 {
 		reg = <0x1>;
-		interrupts = <GIC_SPI 165 IRQ_TYPE_LEVEL_LOW>;
 	};
 	phy3: ethernet-phy@3 {
 		reg = <0x3>;
-		interrupts = <GIC_SPI 165 IRQ_TYPE_LEVEL_LOW>;
 	};
 	tbi1: tbi-phy@1f {
 		reg = <0x1f>;
