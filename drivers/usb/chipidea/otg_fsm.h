@@ -66,6 +66,8 @@
 
 #define TB_AIDL_BDIS         (20)	/* 4ms ~ 150ms, section 5.2.1 */
 
+#define T_HOST_REQ_POLL      (1500)	/* HNP polling interval 1s~2s */
+
 #if IS_ENABLED(CONFIG_USB_OTG_FSM)
 
 int ci_hdrc_otg_fsm_init(struct ci_hdrc *ci);
