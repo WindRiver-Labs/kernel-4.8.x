@@ -21,7 +21,7 @@ Required properties:
 
 Required plane properties:
  - dmas: the phandle list of DMA specifiers
- - dma-names: the indentifier strings for DMAs
+ - dma-names: the indentifier strings for DMAs. The value should be "dma"
  - rgb2yuv: the phandle for rgb2ycrcb IP if used for plane
  - cresample: the phandle for chroma resampler IP if used for plane
 
@@ -38,7 +38,7 @@ vdma - [remap] - rgb2yuv - cresample - [axi2vid] - adv7511
 		planes {
 			plane0 {
 				dma = <&axi_vdma_0>;
-				dma-names = "vdma";
+				dma-names = "dma";
 				rgb2yuv = <&v_rgb2ycrcb_0>;
 				cresample = <&v_cresample_0>;
 			};
