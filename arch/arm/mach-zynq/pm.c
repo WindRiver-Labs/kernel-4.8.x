@@ -19,18 +19,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <linux/clk.h>
 #include <linux/clk/zynq.h>
-#include <linux/bitops.h>
-#include <linux/err.h>
 #include <linux/genalloc.h>
-#include <linux/init.h>
-#include <linux/io.h>
-#include <linux/kernel.h>
-#include <linux/of_device.h>
-#include <linux/slab.h>
 #include <linux/suspend.h>
-#include <mach/slcr.h>
 #include <asm/cacheflush.h>
 #include <asm/hardware/cache-l2x0.h>
 #include <asm/mach/map.h>
