@@ -79,19 +79,6 @@ static int zynq_pm_suspend(unsigned long arg)
 		(__force void *)ocm_base;
 	int do_ddrpll_bypass = 1;
 
-	/* Enable DDR self-refresh and clock stop */
-	if (ddrc_base) {
-		reg = readl(ddrc_base + DDRC_CTRL_REG1_OFFS);
-		reg |= DDRC_SELFREFRESH_MASK;
-		writel(reg, ddrc_base + DDRC_CTRL_REG1_OFFS);
-
-		reg = readl(ddrc_base + DDRC_DRAM_PARAM_REG3_OFFS);
-		reg |= DDRC_CLOCKSTOP_MASK;
-		writel(reg, ddrc_base + DDRC_DRAM_PARAM_REG3_OFFS);
-	} else {
-		do_ddrpll_bypass = 0;
-	}
-
 	/* SCU standby mode */
 	if (scu_base) {
 		reg = readl(scu_base + SCU_CTRL);
@@ -112,7 +99,7 @@ static int zynq_pm_suspend(unsigned long arg)
 		      : /* no inputs */
 		      : "r12");
 
-	if (!ocm_base)
+	if (!ocm_base || !ddrc_base)
 		do_ddrpll_bypass = 0;
 
 	if (do_ddrpll_bypass) {
@@ -156,17 +143,6 @@ static int zynq_pm_suspend(unsigned long arg)
 		      : /* no outputs */
 		      : /* no inputs */
 		      : "r12");
-
-	/* Disable DDR self-refresh and clock stop */
-	if (ddrc_base) {
-		reg = readl(ddrc_base + DDRC_CTRL_REG1_OFFS);
-		reg &= ~DDRC_SELFREFRESH_MASK;
-		writel(reg, ddrc_base + DDRC_CTRL_REG1_OFFS);
-
-		reg = readl(ddrc_base + DDRC_DRAM_PARAM_REG3_OFFS);
-		reg &= ~DDRC_CLOCKSTOP_MASK;
-		writel(reg, ddrc_base + DDRC_DRAM_PARAM_REG3_OFFS);
-	}
 
 	return 0;
 }
