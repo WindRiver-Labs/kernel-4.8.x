@@ -857,7 +857,7 @@ static int do_operation(void)
 	u32 total_out = 0;
 	char *p_out;
 
-	pr_info("DCE thread on cpu %d\n", smp_processor_id());
+	pr_info("DCE thread on cpu %d\n", raw_smp_processor_id());
 
 	if (bman_output)
 		pr_info("Using BMan for output\n");
