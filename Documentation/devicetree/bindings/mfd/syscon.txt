@@ -14,6 +14,7 @@ Required properties:
 - reg: the register region can be accessed from syscon
 
 Optional property:
+- clocks: clock used for accessing the regmap
 - reg-io-width: the size (in bytes) of the IO accesses that should be
   performed on the device.
 
