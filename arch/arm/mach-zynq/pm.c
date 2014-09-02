@@ -53,6 +53,7 @@ static void zynq_pm_wake(void)
 
 static int zynq_pm_suspend(unsigned long arg)
 {
+	u32 reg;
 	int (*zynq_suspend_ptr)(void __iomem *, void __iomem *) =
 		(__force void *)ocm_base;
 	int do_ddrpll_bypass = 1;
@@ -68,8 +69,14 @@ static int zynq_pm_suspend(unsigned long arg)
 		      : /* no inputs */
 		      : "r12");
 
-	if (!ocm_base || !ddrc_base)
+	if (!ocm_base || !ddrc_base) {
 		do_ddrpll_bypass = 0;
+	} else {
+		/* enable DDRC self-refresh mode */
+		reg = readl(ddrc_base + DDRC_CTRL_REG1_OFFS);
+		reg |= DDRC_SELFREFRESH_MASK;
+		writel(reg, ddrc_base + DDRC_CTRL_REG1_OFFS);
+	}
 
 	if (do_ddrpll_bypass) {
 		/*
@@ -91,6 +98,13 @@ static int zynq_pm_suspend(unsigned long arg)
 		memcpy((__force void *)ocm_base, ocm_swap_area,
 			zynq_sys_suspend_sz);
 		kfree(ocm_swap_area);
+	}
+
+	/* disable DDRC self-refresh mode */
+	if (do_ddrpll_bypass) {
+		reg = readl(ddrc_base + DDRC_CTRL_REG1_OFFS);
+		reg &= ~DDRC_SELFREFRESH_MASK;
+		writel(reg, ddrc_base + DDRC_CTRL_REG1_OFFS);
 	}
 
 	/* Topswitch clock stop enable */
