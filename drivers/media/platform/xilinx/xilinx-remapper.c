@@ -511,7 +511,7 @@ static int xremap_remove(struct platform_device *pdev)
 }
 
 static const struct of_device_id xremap_of_id_table[] = {
-	{ .compatible = "xlnx,axi-remapper" },
+	{ .compatible = "xlnx,v-remapper" },
 	{ }
 };
 MODULE_DEVICE_TABLE(of, xremap_of_id_table);
@@ -519,7 +519,7 @@ MODULE_DEVICE_TABLE(of, xremap_of_id_table);
 static struct platform_driver xremap_driver = {
 	.driver = {
 		.owner = THIS_MODULE,
-		.name = "xilinx-axi-remapper",
+		.name = "xilinx-remapper",
 		.of_match_table = xremap_of_id_table,
 	},
 	.probe = xremap_probe,
