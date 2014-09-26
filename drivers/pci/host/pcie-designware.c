@@ -222,6 +222,28 @@ void dw_pcie_msi_init(struct pcie_port *pp)
 			    (u32)(msi_target >> 32 & 0xffffffff));
 }
 
+void dw_pcie_msi_cfg_store(struct pcie_port *pp)
+{
+	int i;
+
+	for (i = 0; i < MAX_MSI_CTRLS; i++)
+		dw_pcie_rd_own_conf(pp, PCIE_MSI_INTR0_ENABLE + i * 12, 4,
+				&pp->msi_enable[i]);
+}
+
+void dw_pcie_msi_cfg_restore(struct pcie_port *pp)
+{
+	int i;
+
+	for (i = 0; i < MAX_MSI_CTRLS; i++) {
+		dw_pcie_wr_own_conf(pp, PCIE_MSI_ADDR_LO, 4,
+				virt_to_phys((void *)pp->msi_data));
+		dw_pcie_wr_own_conf(pp, PCIE_MSI_ADDR_HI, 4, 0);
+		dw_pcie_wr_own_conf(pp, PCIE_MSI_INTR0_ENABLE + i * 12, 4,
+				pp->msi_enable[i]);
+	}
+}
+
 static void dw_pcie_msi_clear_irq(struct pcie_port *pp, int irq)
 {
 	unsigned int res, bit, val;
@@ -779,6 +801,11 @@ void dw_pcie_setup_rc(struct pcie_port *pp)
 	val |= 0x00010100;
 	dw_pcie_writel_rc(pp, val, PCI_PRIMARY_BUS);
 
+	/* program correct class for RC */
+	dw_pcie_readl_rc(pp, PCI_CLASS_REVISION, &val);
+	val |= PCI_CLASS_BRIDGE_PCI << 16;
+	dw_pcie_writel_rc(pp, val, PCI_CLASS_REVISION);
+
 	/* setup command register */
 	dw_pcie_readl_rc(pp, PCI_COMMAND, &val);
 	val &= 0xffff0000;
@@ -797,9 +824,6 @@ void dw_pcie_setup_rc(struct pcie_port *pp)
 					  pp->mem_bus_addr, pp->mem_size);
 
 	dw_pcie_wr_own_conf(pp, PCI_BASE_ADDRESS_0, 4, 0);
-
-	/* program correct class for RC */
-	dw_pcie_wr_own_conf(pp, PCI_CLASS_DEVICE, 2, PCI_CLASS_BRIDGE_PCI);
 
 	dw_pcie_rd_own_conf(pp, PCIE_LINK_WIDTH_SPEED_CONTROL, 4, &val);
 	val |= PORT_LOGIC_SPEED_CHANGE;
