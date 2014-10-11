@@ -1026,7 +1026,7 @@ static void  noinline __sched rt_spin_lock_slowlock(struct rt_mutex *lock,
 	raw_spin_unlock(&self->pi_lock);
 
 	ret = task_blocks_on_rt_mutex(lock, &waiter, self, RT_MUTEX_MIN_CHAINWALK);
-	BUG_ON(ret);
+	BUG_ON(ret && ret != -EDEADLK);
 
 	for (;;) {
 		/* Try to acquire the lock again. */
