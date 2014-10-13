@@ -42,6 +42,11 @@ config ARCH_BERLIN
 	help
 	  This enables support for Marvell Berlin SoC Family
 
+config ARCH_AXXIA
+	bool "Axxia SoC family"
+	help
+	  This enables support for LSI Axxia 56xx SOC Family
+
 config ARCH_EXYNOS
 	bool "ARMv8 based Samsung Exynos SoC family"
 	select COMMON_CLK_SAMSUNG
