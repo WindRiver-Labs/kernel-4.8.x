@@ -240,6 +240,37 @@ static inline int set_4byte(struct spi_nor *nor, const struct flash_info *info,
 		return nor->write_reg(nor, SPINOR_OP_BRWR, nor->cmd_buf, 1);
 	}
 }
+
+/**
+ * read_ear - Get the extended/bank address register value
+ * @nor:	Pointer to the flash control structure
+ *
+ * This routine reads the Extended/bank address register value
+ *
+ * Return:	Negative if error occured.
+ */
+static int read_ear(struct spi_nor *nor, struct flash_info *info)
+{
+	int ret;
+	u8 val;
+	u8 code;
+
+	/* This is actually Spansion */
+	if (JEDEC_MFR(info) == CFI_MFR_AMD)
+		code = SPINOR_OP_BRRD;
+	/* This is actually Micron */
+	else if (JEDEC_MFR(info) == CFI_MFR_ST)
+		code = SPINOR_OP_RDEAR;
+	else
+		return -EINVAL;
+
+	ret = nor->read_reg(nor, code, &val, 1);
+	if (ret < 0)
+		return ret;
+
+	return val;
+}
+
 static inline int spi_nor_sr_ready(struct spi_nor *nor)
 {
 	int sr = read_sr(nor);
@@ -304,6 +335,51 @@ static int spi_nor_wait_till_ready(struct spi_nor *nor)
 {
 	return spi_nor_wait_till_ready_with_timeout(nor,
 						    DEFAULT_READY_WAIT_JIFFIES);
+}
+
+
+/*
+ * Update Extended Address/bank selection Register.
+ * Call with flash->lock locked.
+ */
+static int write_ear(struct spi_nor *nor, u32 addr)
+{
+	u8 code;
+	u8 ear;
+	int ret;
+	struct mtd_info *mtd = &nor->mtd;
+
+	/* Wait until finished previous write command. */
+	if (spi_nor_wait_till_ready(nor))
+		return 1;
+
+	if (mtd->size <= (0x1000000) << nor->shift)
+		return 0;
+
+	addr = addr % (u32) mtd->size;
+	ear = addr >> 24;
+
+	if ((!nor->isstacked) && (ear == nor->curbank))
+		return 0;
+
+	if (nor->isstacked && (mtd->size <= 0x2000000))
+		return 0;
+
+	if (nor->jedec_id == CFI_MFR_AMD)
+		code = SPINOR_OP_BRWR;
+	if (nor->jedec_id == CFI_MFR_ST) {
+		write_enable(nor);
+		code = SPINOR_OP_WREAR;
+	}
+	nor->cmd_buf[0] = ear;
+
+	ret = nor->write_reg(nor, code, nor->cmd_buf, 1);
+	if (ret < 0)
+		return ret;
+
+	nor->curbank = ear;
+
+	return 0;
 }
 
 /*
