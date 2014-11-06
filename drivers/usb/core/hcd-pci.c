@@ -341,9 +341,9 @@ void usb_hcd_pci_remove(struct pci_dev *dev)
 	 * to test whether the controller hardware has been removed (e.g.,
 	 * cardbus physical eject).
 	 */
-	local_irq_disable();
+	local_irq_disable_nort();
 	usb_hcd_irq(0, hcd);
-	local_irq_enable();
+	local_irq_enable_nort();
 
 	/* Note: dev_set_drvdata must be called while holding the rwsem */
 	if (dev->class == CL_EHCI) {
