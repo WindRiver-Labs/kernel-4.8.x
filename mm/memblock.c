@@ -1571,10 +1571,13 @@ static int __init_memblock memblock_search(struct memblock_type *type, phys_addr
 	return -1;
 }
 
-bool __init memblock_is_reserved(phys_addr_t addr)
+bool __init_memblock memblock_is_reserved(phys_addr_t addr)
 {
 	return memblock_search(&memblock.reserved, addr) != -1;
 }
+#ifndef CONFIG_ARCH_DISCARD_MEMBLOCK
+EXPORT_SYMBOL_GPL(memblock_is_reserved);
+#endif
 
 bool __init_memblock memblock_is_memory(phys_addr_t addr)
 {
