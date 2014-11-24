@@ -2061,6 +2061,8 @@ int kvm_set_msr_common(struct kvm_vcpu *vcpu, struct msr_data *msr_info)
 	case MSR_VM_HSAVE_PA:
 	case MSR_AMD64_PATCH_LOADER:
 	case MSR_AMD64_BU_CFG2:
+	case MSR_LBR_NHM_FROM ... MSR_LBR_NHM_FROM_MAX:
+	case MSR_LBR_NHM_TO ... MSR_LBR_NHM_TO_MAX:
 		break;
 
 	case MSR_EFER:
