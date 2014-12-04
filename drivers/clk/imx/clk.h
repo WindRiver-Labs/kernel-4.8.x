@@ -15,6 +15,19 @@ extern struct imx_sema4_mutex *amp_power_mutex;
 extern struct imx_shared_mem *shared_mem;
 extern bool uart_from_osc;
 extern bool imx_src_is_m4_enabled(void);
+extern int imx_update_shared_mem(struct clk_hw *hw, bool enable);
+extern void imx_gpc_hold_m4_in_sleep(void);
+extern void imx_gpc_release_m4_in_sleep(void);
+
+enum mxc_cpu_pwr_mode {
+	WAIT_CLOCKED,		/* wfi only */
+	WAIT_UNCLOCKED,		/* WAIT */
+	WAIT_UNCLOCKED_POWER_OFF,	/* WAIT + SRPG */
+	STOP_POWER_ON,		/* just STOP */
+	STOP_POWER_OFF,		/* STOP + SRPG */
+};
+extern int imx6_set_lpm(enum mxc_cpu_pwr_mode mode);
+
 
 enum imx_pllv1_type {
 	IMX_PLLV1_IMX1,
