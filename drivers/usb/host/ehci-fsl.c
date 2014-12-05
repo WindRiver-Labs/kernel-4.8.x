@@ -692,6 +692,9 @@ static int ehci_fsl_drv_suspend(struct device *dev)
 	struct usb_bus host = hcd->self;
 #endif
 
+	ehci_fsl_save_context(hcd);
+
+
 	if (of_device_is_compatible(dev->parent->of_node,
 				    "fsl,mpc5121-usb2-dr")) {
 		return ehci_fsl_mpc512x_drv_suspend(dev);
@@ -712,8 +715,6 @@ static int ehci_fsl_drv_suspend(struct device *dev)
 	ehci_prepare_ports_for_controller_suspend(hcd_to_ehci(hcd),
 			device_may_wakeup(dev));
 
-	ehci_fsl_save_context(hcd);
-
 	if (!fsl_deep_sleep())
 		return 0;
 
@@ -727,12 +728,12 @@ static int ehci_fsl_drv_resume(struct device *dev)
 	struct ehci_fsl *ehci_fsl = hcd_to_ehci_fsl(hcd);
 	struct ehci_hcd *ehci = hcd_to_ehci(hcd);
 	void __iomem *non_ehci = hcd->regs;
-
-	ehci_fsl_restore_context(hcd);
-
 #if defined(CONFIG_FSL_USB2_OTG) || defined(CONFIG_FSL_USB2_OTG_MODULE)
 	struct usb_bus host = hcd->self;
 #endif
+
+	ehci_fsl_restore_context(hcd);
+
 
 	if (of_device_is_compatible(dev->parent->of_node,
 				    "fsl,mpc5121-usb2-dr")) {
