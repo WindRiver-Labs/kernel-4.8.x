@@ -1,6 +1,14 @@
 menu "PCI host controller drivers"
 	depends on PCI
 
+config PCI_AXXIA
+	bool "AXXIA PCIe controller"
+	depends on ARCH_AXXIA
+	default ARCH_AXXIA
+	help
+	 Enables support for the Axxia PCIe controller. There are three PEI
+	 controllers on X9. Only RootComplex mode is supported.
+
 config PCI_DRA7XX
 	bool "TI DRA7xx PCIe controller"
 	depends on OF && HAS_IOMEM && TI_PIPE3
