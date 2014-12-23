@@ -758,7 +758,7 @@ static void sdma_tasklet(unsigned long data)
 	unsigned long flags;
 
 	spin_lock_irqsave(&sdmac->lock, flags);
-	if (sdmac->status != DMA_IN_PROGRESS) {
+	if (sdmac->status != DMA_IN_PROGRESS && !(sdmac->flags & IMX_DMA_SG_LOOP)) {
 		spin_unlock_irqrestore(&sdmac->lock, flags);
 		return;
 	}
@@ -789,7 +789,7 @@ static irqreturn_t sdma_int_handler(int irq, void *dev_id)
 			sdma_update_channel_loop(sdmac);
 
 		spin_lock_irqsave(&sdmac->lock, flags);
-		if (sdmac->status == DMA_IN_PROGRESS)
+		if (sdmac->status == DMA_IN_PROGRESS || (sdmac->flags & IMX_DMA_SG_LOOP))
 			tasklet_schedule(&sdmac->tasklet);
 		spin_unlock_irqrestore(&sdmac->lock, flags);
 
