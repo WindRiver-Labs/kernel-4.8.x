@@ -41,6 +41,14 @@
 #include "raid1.h"
 #include "bitmap.h"
 
+#ifdef CONFIG_PANIC_LOGS
+extern void kcore_logon(int reboot);
+extern void kcore_logoff(void);
+#else
+#define kcore_logon(reboot) do { } while(0)
+#define kcore_logoff() do { } while(0)
+#endif /* CONFIG_PANIC_LOGS */
+
 /*
  * Number of guaranteed r1bios in case of extreme VM load:
  */
@@ -296,6 +304,98 @@ static inline void update_head_pos(int disk, struct r1bio *r1_bio)
 		r1_bio->sector + (r1_bio->sectors);
 }
 
+#ifdef CONFIG_MD_RAID1_INSTRUMENTATION
+
+#define indent_printk(indentation_level, format_string, ...) \
+	printk(KERN_DEBUG "%*s" format_string, indent_level, " ", ##__VA_ARGS__)
+
+#define MAX_DUMP_BIO_RECURSION 32
+
+#define printk_struct_field(field_name, format_specifier) \
+	indent_printk(indent_level, "" # field_name \
+			": " # format_specifier \
+			"\n", field_name)
+
+void dump_bio_iter(struct bio *bio, int indent_level)
+{
+	if (!bio) {
+		printk(KERN_DEBUG "not printing bio: it's NULL\n");
+		return;
+	}
+
+	if (indent_level == MAX_DUMP_BIO_RECURSION) {
+		printk(KERN_DEBUG "hit recursion limit. aborting.\n");
+		return;
+	}
+
+	indent_printk(indent_level, "struct bio: %p\n", bio);
+	printk_struct_field(bio->bi_iter.bi_sector, %ld);
+	printk_struct_field(bio->bi_next, %p);
+	printk_struct_field(bio->bi_bdev, %p);
+	printk_struct_field(bio->bi_flags, %lu);
+	printk_struct_field(bio->bi_rw, %lu);
+	printk_struct_field(bio->bi_vcnt, %d);
+	printk_struct_field(bio->bi_iter.bi_idx, %d);
+	printk_struct_field(bio->bi_phys_segments, %d);
+	printk_struct_field(bio->bi_iter.bi_size, %d);
+	printk_struct_field(bio->bi_max_vecs, %d);
+
+	printk_struct_field(bio->bi_io_vec, %p);
+	if (!bio->bi_io_vec) {
+		printk(KERN_DEBUG "not printing bio_vec: it's NULL\n");
+	} else {
+		int i;
+		for (i = 0; i < bio->bi_vcnt; i++) {
+			indent_printk(indent_level, "i: %d\n", i);
+			printk_struct_field(bio->bi_io_vec[i].bv_page, %p);
+			printk_struct_field(bio->bi_io_vec[i].bv_len, %d);
+			printk_struct_field(bio->bi_io_vec[i].bv_offset, %d);
+		}
+	}
+	printk_struct_field(bio->bi_end_io, %p);
+	printk_struct_field(atomic_read(&bio->bi_cnt), %d);
+	printk_struct_field(bio->bi_private, %p);
+
+	if (bio->bi_next && (bio->bi_next != bio)) {
+		dump_bio_iter(bio->bi_next, indent_level + 1);
+	}
+}
+
+void dump_bio(struct bio *bio) { dump_bio_iter(bio, 0); }
+
+void dump_r1bio_t(struct r1bio *r1_bio, int raid_disks)
+{
+	int i;
+	int indent_level = 0;
+
+	if (!r1_bio) {
+		printk(KERN_DEBUG "not printing r1_bio: it's NULL\n");
+		return;
+	}
+
+	printk_struct_field(atomic_read(&r1_bio->remaining), %d);
+	printk_struct_field(r1_bio->state, %ld);
+	printk_struct_field(r1_bio->read_disk, %d);
+	for (i = 0; i < raid_disks; i++) {
+		printk(KERN_DEBUG "contents of r1_bio->bios[%d]:\n", i);
+		dump_bio(r1_bio->bios[i]);
+	}
+	printk_struct_field(r1_bio->master_bio, %p);
+	dump_bio(r1_bio->master_bio);
+}
+
+void dump_mddev_t(struct mddev *mddev)
+{
+	int indent_level = 0;
+
+	if (!mddev) {
+		printk(KERN_DEBUG "not printing mddev: it's NULL\n");
+		return;
+	}
+	printk_struct_field(mddev->ro, %d\n);
+}
+#endif
+
 /*
  * Find the disk number which triggered given bio
  */
@@ -308,6 +408,38 @@ static int find_bio_disk(struct r1bio *r1_bio, struct bio *bio)
 	for (mirror = 0; mirror < raid_disks * 2; mirror++)
 		if (r1_bio->bios[mirror] == bio)
 			break;
+
+#ifdef CONFIG_MD_RAID1_INSTRUMENTATION
+    /*
+     * There's a chance that the above loop will not find a matching index
+     * of the mirror associated with the passed in struct bio *bio. We
+     * would then end up with (mirror == conf->raid_disks) thus accessing
+     * an out-of-bounds value of the zero-based r1_bio->bios[] array.
+     */
+    if (unlikely(mirror >= conf->raid_disks)) {
+        int cpu = get_cpu();
+#ifdef CONFIG_PANIC_LOGS
+        kcore_logon(0);
+#endif
+        printk(KERN_DEBUG "raid1.c: (CPU %d) None of the bio's in the "
+                "bios array matched the passed in bio struct. "
+                "[mirror=%d,conf->raid_disks=%d]\n", cpu,
+                mirror, conf->raid_disks);
+        MD_BUG();
+
+        printk(KERN_DEBUG "contents of passed in bio:\n");
+        dump_bio(bio);
+        printk(KERN_DEBUG "partial contents of r1_bio:\n");
+        dump_r1bio_t(r1_bio, conf->raid_disks);
+        printk(KERN_DEBUG "partial contents of r1_bio->mddev:\n");
+        dump_mddev_t(r1_bio->mddev);
+
+        put_cpu();
+#ifdef CONFIG_PANIC_LOGS
+        kcore_logoff();
+#endif
+    }
+#endif
 
 	BUG_ON(mirror == raid_disks * 2);
 	update_head_pos(mirror, r1_bio);

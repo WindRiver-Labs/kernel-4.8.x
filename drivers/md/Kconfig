@@ -100,6 +100,16 @@ config MD_RAID1
 
 	  If unsure, say Y.
 
+config MD_RAID1_INSTRUMENTATION
+    bool "Support for RAID1 instrumentation"
+    default n
+    depends on MD_RAID1
+    ---help---
+      Enables for RAID1 out-of-bounds array access detection and
+      for RAID1 bio instrumentation.
+
+      If unsure, say N.
+
 config MD_RAID10
 	tristate "RAID-10 (mirrored striping) mode"
 	depends on BLK_DEV_MD
