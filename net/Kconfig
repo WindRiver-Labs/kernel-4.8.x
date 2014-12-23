@@ -58,6 +58,16 @@ source "net/unix/Kconfig"
 source "net/xfrm/Kconfig"
 source "net/iucv/Kconfig"
 
+config QDISC_STATS
+	default n
+	bool "Qdisc statistics reporting"
+	help
+	  Enabling this option will enable tracking the high water mark for
+	  the per-device transmit queues.  The high water mark of the queue
+	  will be exported via /proc/net/dev if procfs is enabled.
+
+	  Say Y if you want this additional tracking.
+
 config DGRAM_SOCKSTATS
    bool "Datagram socket statistics"
    default n

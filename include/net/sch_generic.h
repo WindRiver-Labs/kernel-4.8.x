@@ -16,6 +16,33 @@ struct qdisc_walker;
 struct tcf_walker;
 struct module;
 
+
+#ifdef CONFIG_QDISC_STATS
+#define HIGHQLEN_DECL u32 highqlen;
+#define check_highqlen(qdisc)              \
+do {                           \
+   unsigned int qlen = qdisc->q.qlen;      \
+   if (qlen > qdisc->highqlen)         \
+       qdisc->highqlen = qlen;         \
+} while (0)
+
+#define dev_seq_printf_qdisc_stuff(seq, dev)       \
+do {                           \
+   if (netdev_get_tx_queue(dev, 0)->qdisc)     \
+       seq_printf(seq, "%10u",         \
+       netdev_get_tx_queue(dev, 0)->qdisc->highqlen); \
+} while (0)
+#define dev_seq_show_qdisc_stuff(seq)          \
+   do {seq_puts(seq, " qdhighmark"); } while (0)
+#else
+#define HIGHQLEN_DECL
+#define check_highqlen(qdisc)
+#define dev_seq_printf_qdisc_stuff(seq, dev)
+#define dev_seq_show_qdisc_stuff(seq)
+#endif
+#define qdisc_incr_qlen(qdisc)             \
+do {qdisc->q.qlen++; check_highqlen(qdisc); } while (0)
+
 struct qdisc_rate_table {
 	struct tc_ratespec rate;
 	u32		data[256];
@@ -65,6 +92,7 @@ struct Qdisc {
 	u32			handle;
 	u32			parent;
 	void			*u32_node;
+	HIGHQLEN_DECL
 
 	struct netdev_queue	*dev_queue;
 

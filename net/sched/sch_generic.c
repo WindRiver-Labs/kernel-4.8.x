@@ -50,7 +50,7 @@ static inline int dev_requeue_skb(struct sk_buff *skb, struct Qdisc *q)
 	q->gso_skb = skb;
 	q->qstats.requeues++;
 	qdisc_qstats_backlog_inc(q, skb);
-	q->q.qlen++;	/* it's still part of the queue */
+	qdisc_incr_qlen(q);	/* it's still part of the queue */
 	__netif_schedule(q);
 
 	return 0;
@@ -493,7 +493,7 @@ static int pfifo_fast_enqueue(struct sk_buff *skb, struct Qdisc *qdisc,
 		struct sk_buff_head *list = band2list(priv, band);
 
 		priv->bitmap |= (1 << band);
-		qdisc->q.qlen++;
+		qdisc_incr_qlen(qdisc);
 		return __qdisc_enqueue_tail(skb, qdisc, list);
 	}
 

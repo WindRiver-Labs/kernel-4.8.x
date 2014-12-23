@@ -2,6 +2,7 @@
 #include <linux/proc_fs.h>
 #include <linux/seq_file.h>
 #include <net/wext.h>
+#include <net/sch_generic.h>
 
 #define BUCKET_SPACE (32 - NETDEV_HASHBITS - 1)
 
@@ -80,7 +81,7 @@ static void dev_seq_printf_stats(struct seq_file *seq, struct net_device *dev)
 	const struct rtnl_link_stats64 *stats = dev_get_stats(dev, &temp);
 
 	seq_printf(seq, "%6s: %7llu %7llu %4llu %4llu %4llu %5llu %10llu %9llu "
-		   "%8llu %7llu %4llu %4llu %4llu %5llu %7llu %10llu\n",
+		   "%8llu %7llu %4llu %4llu %4llu %5llu %7llu %10llu",
 		   dev->name, stats->rx_bytes, stats->rx_packets,
 		   stats->rx_errors,
 		   stats->rx_dropped + stats->rx_missed_errors,
@@ -96,6 +97,8 @@ static void dev_seq_printf_stats(struct seq_file *seq, struct net_device *dev)
 		    stats->tx_window_errors +
 		    stats->tx_heartbeat_errors,
 		   stats->tx_compressed);
+		dev_seq_printf_qdisc_stuff(seq, dev);
+		seq_printf(seq, "\n");
 }
 
 /*
@@ -104,13 +107,15 @@ static void dev_seq_printf_stats(struct seq_file *seq, struct net_device *dev)
  */
 static int dev_seq_show(struct seq_file *seq, void *v)
 {
-	if (v == SEQ_START_TOKEN)
+	if (v == SEQ_START_TOKEN) {
 		seq_puts(seq, "Inter-|   Receive                            "
 			      "                    |  Transmit\n"
 			      " face |bytes    packets errs drop fifo frame "
 			      "compressed multicast|bytes    packets errs "
-			      "drop fifo colls carrier compressed\n");
-	else
+			      "drop fifo colls carrier compressed");
+		dev_seq_show_qdisc_stuff(seq);
+		seq_puts(seq, "\n");
+	} else
 		dev_seq_printf_stats(seq, v);
 	return 0;
 }
