@@ -410,9 +410,11 @@ int __sock_queue_rcv_skb(struct sock *sk, struct sk_buff *skb)
 	unsigned long flags;
 	struct sk_buff_head *list = &sk->sk_receive_queue;
 
+	inc_dgram_stats_received(sk);
 	if (atomic_read(&sk->sk_rmem_alloc) >= sk->sk_rcvbuf) {
 		atomic_inc(&sk->sk_drops);
 		trace_sock_rcvqueue_full(sk, skb);
+		inc_dgram_stats_dropped(sk);
 		return -ENOMEM;
 	}
 
@@ -2074,6 +2076,8 @@ static void __release_sock(struct sock *sk)
 
 		spin_lock_bh(&sk->sk_lock.slock);
 	}
+
+	init_dgram_stats(sk);
 
 	/*
 	 * Doing the zeroing here guarantee we can not loop forever

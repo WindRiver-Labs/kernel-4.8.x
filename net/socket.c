@@ -948,6 +948,27 @@ static long sock_ioctl(struct file *file, unsigned cmd, unsigned long arg)
 				err = dlci_ioctl_hook(cmd, argp);
 			mutex_unlock(&dlci_ioctl_mutex);
 			break;
+
+#ifdef CONFIG_DGRAM_SOCKSTATS
+		case SIOCGSOCKSTATS:
+			{
+				socket_stats stats;
+				err = -EINVAL;
+				if (!sock->sk)
+					break;
+				copy_dgram_stats(&stats, sock->sk);
+				err = copy_to_user(argp, &stats,
+						sizeof(stats));
+				break;
+			}
+		case SIOCZEROSOCKSTATS:
+			err = -EINVAL;
+			if (!sock->sk)
+				break;
+			zero_dgram_stats(sock->sk);
+			err = 0;
+			break;
+#endif
 		default:
 			err = sock_do_ioctl(net, sock, cmd, arg);
 			break;
@@ -3098,6 +3119,10 @@ static int compat_sock_ioctl_trans(struct file *file, struct socket *sock,
 	case SIOCSIFVLAN:
 	case SIOCADDDLCI:
 	case SIOCDELDLCI:
+#ifdef CONFIG_DGRAM_SOCKSTATS
+	case SIOCGSOCKSTATS:
+	case SIOCZEROSOCKSTATS:
+#endif
 		return sock_ioctl(file, cmd, arg);
 
 	case SIOCGIFFLAGS:

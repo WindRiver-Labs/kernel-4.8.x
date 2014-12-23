@@ -128,6 +128,10 @@
 #define SIOCSHWTSTAMP	0x89b0		/* set and get config		*/
 #define SIOCGHWTSTAMP	0x89b1		/* get config			*/
 
+/* per-socket statistics manipulation */
+#define SIOCGSOCKSTATS     0x89c0  /* get the per-socket statistics */
+#define SIOCZEROSOCKSTATS  0x89c1  /* zero the per-socket statistics */
+
 /* Device private ioctl calls */
 
 /*

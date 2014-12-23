@@ -58,6 +58,17 @@ source "net/unix/Kconfig"
 source "net/xfrm/Kconfig"
 source "net/iucv/Kconfig"
 
+config DGRAM_SOCKSTATS
+   bool "Datagram socket statistics"
+   default n
+   help
+     If you say Y here, datagram sockets will be able to retrieve and
+     or reset counters for both the number of packets received in total
+     as well as the number of packets dropped due to buffer overflow.
+     See code for data structures.
+
+     If unsure, say N.
+
 config INET
 	bool "TCP/IP networking"
 	select CRYPTO

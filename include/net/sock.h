@@ -90,6 +90,55 @@ void SOCK_DEBUG(const struct sock *sk, const char *msg, ...)
 }
 #endif
 
+/* per-socket statistics.  received is the total number of skbuffs received
+ * on that socket.  dropped_no_mem is the number of packets dropped due
+ * to a lack of space on the socket receive buffer.
+ *
+ * Note:  The lock only protects the reader from another cpu trying to zero
+ * the data.  There is still a race between the counts being updated and the
+ * counts being zeroed.  We don't worry about that.
+ */
+typedef struct {
+	__u64	received;
+	__u32	dropped_no_mem;
+} socket_stats;
+
+typedef struct {
+	socket_stats data;
+	spinlock_t lock;
+} socket_stats_struct;
+
+#ifdef CONFIG_DGRAM_SOCKSTATS
+#define inc_dgram_stats_received(sk)					\
+	do {sk->stats.data.received++; } while (0)
+#define inc_dgram_stats_dropped(sk)					\
+	do {sk->stats.data.dropped_no_mem++; } while (0)
+#define init_dgram_stats(sk)						\
+do {									\
+	(sk)->stats.data.dropped_no_mem = 0;				\
+	(sk)->stats.data.received = 0;					\
+	spin_lock_init(&(sk)->stats.lock);				\
+} while (0)
+#define zero_dgram_stats(sk)						\
+do {									\
+	spin_lock(&(sk)->stats.lock);					\
+	(sk)->stats.data.dropped_no_mem = 0;				\
+	(sk)->stats.data.received = 0;					\
+	spin_unlock(&(sk)->stats.lock);					\
+} while (0)
+#define copy_dgram_stats(tostats, sk)					\
+do {									\
+	spin_lock(&(sk)->stats.lock);					\
+	(tostats)->dropped_no_mem = (sk)->stats.data.dropped_no_mem;	\
+	(tostats)->received = (sk)->stats.data.received;		\
+	spin_unlock(&(sk)->stats.lock);					\
+} while	(0)
+#else
+#define inc_dgram_stats_received(sk)
+#define inc_dgram_stats_dropped(sk)
+#define init_dgram_stats(sk)
+#endif
+
 /* This is the per-socket lock.  The spinlock provides a synchronization
  * between user contexts and software interrupt processing, whereas the
  * mini-semaphore synchronizes multiple users amongst themselves.
@@ -446,6 +495,9 @@ struct sock {
 	void                    (*sk_destruct)(struct sock *sk);
 	struct sock_reuseport __rcu	*sk_reuseport_cb;
 	struct rcu_head		sk_rcu;
+#ifdef CONFIG_DGRAM_SOCKSTATS
+	socket_stats_struct			stats;
+#endif
 };
 
 #define __sk_user_data(sk) ((*((void __rcu **)&(sk)->sk_user_data)))
