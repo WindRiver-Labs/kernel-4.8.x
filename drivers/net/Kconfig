@@ -55,6 +55,14 @@ config BONDING
 	  To compile this driver as a module, choose M here: the module
 	  will be called bonding.
 
+config BONDING_DEVINFO
+	default n
+	bool "Bonding driver device info support"
+	depends on BONDING
+	---help---
+	  This provides the physical device the packet came in from
+	  for a bonded ethernet device. (as ancillary data)
+
 config DUMMY
 	tristate "Dummy net driver support"
 	---help---

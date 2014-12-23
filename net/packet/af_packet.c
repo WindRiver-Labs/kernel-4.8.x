@@ -3249,6 +3249,9 @@ static int packet_recvmsg(struct socket *sock, struct msghdr *msg, size_t len,
 	int copied, err;
 	int vnet_hdr_len = 0;
 	unsigned int origlen = 0;
+#ifdef CONFIG_BONDING_DEVINFO
+	int index = 0;
+#endif
 
 	err = -EINVAL;
 	if (flags & ~(MSG_PEEK|MSG_DONTWAIT|MSG_TRUNC|MSG_CMSG_COMPAT|MSG_ERRQUEUE))
@@ -3320,6 +3323,15 @@ static int packet_recvmsg(struct socket *sock, struct msghdr *msg, size_t len,
 	}
 
 	sock_recv_ts_and_drops(msg, sk, skb);
+
+#ifdef CONFIG_BONDING_DEVINFO
+	if (msg->msg_controllen == 16 && msg->msg_control != NULL &&
+	  ((struct cmsghdr *)msg->msg_control)->cmsg_type == IP_PKTINFO) {
+		if (skb->real_dev)
+			index = skb->real_dev->ifindex;
+		put_cmsg(msg, SOL_SOCKET, IP_PKTINFO, sizeof(int), &index);
+	}
+#endif
 
 	if (msg->msg_name) {
 		/* If the address length field is there to be filled

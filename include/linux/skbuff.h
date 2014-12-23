@@ -648,6 +648,10 @@ struct sk_buff {
 	struct sock		*sk;
 	struct net_device	*dev;
 
+#ifdef CONFIG_BONDING_DEVINFO
+	struct net_device   *real_dev;
+#endif
+
 	/*
 	 * This is the control buffer. It is free to use for every
 	 * layer. Please put your private variables there. If you

@@ -21,6 +21,10 @@ bool vlan_do_receive(struct sk_buff **skbp)
 	if (unlikely(!skb))
 		return false;
 
+#ifdef CONFIG_BONDING_DEVINFO
+	skb->real_dev = skb->dev;
+#endif
+
 	skb->dev = vlan_dev;
 	if (unlikely(skb->pkt_type == PACKET_OTHERHOST)) {
 		/* Our lower layer thinks this is not local, let's make sure.
