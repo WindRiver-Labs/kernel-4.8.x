@@ -6,7 +6,11 @@
 #include <linux/fcntl.h>
 #include <linux/errno.h>
 
+#ifdef CONFIG_MAX_NESTED_LINKS
+enum { MAX_NESTED_LINKS = CONFIG_MAX_NESTED_LINKS };
+#else
 enum { MAX_NESTED_LINKS = 8 };
+#endif
 
 #define MAXSYMLINKS 40
 

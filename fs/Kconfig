@@ -70,6 +70,14 @@ config FS_POSIX_ACL
 config EXPORTFS
 	tristate
 
+config MAX_NESTED_LINKS
+	int "Symblic link nest limit"
+	default 8
+	help
+	  Specifies the nesting limit on symbolic links.  You may increase
+	  this value, but setting it too high could lead to kernel stack
+	  overflows.
+
 config EXPORTFS_BLOCK_OPS
 	bool "Enable filesystem export operations for block IO"
 	help
