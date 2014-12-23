@@ -22,7 +22,7 @@
 #include "internals.h"
 
 #ifdef CONFIG_IRQ_FORCED_THREADING
-__read_mostly bool force_irqthreads;
+__read_mostly bool force_irqthreads = true;
 
 static int __init setup_forced_irqthreads(char *arg)
 {
@@ -30,6 +30,12 @@ static int __init setup_forced_irqthreads(char *arg)
 	return 0;
 }
 early_param("threadirqs", setup_forced_irqthreads);
+static int __init setup_no_forced_irqthreads(char *arg)
+{
+	force_irqthreads = false;
+	return 0;
+}
+early_param("nothreadirqs", setup_no_forced_irqthreads);
 #endif
 
 static void __synchronize_hardirq(struct irq_desc *desc)
