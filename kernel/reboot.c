@@ -243,9 +243,15 @@ void kernel_halt(void)
 	kernel_shutdown_prepare(SYSTEM_HALT);
 	migrate_to_reboot_cpu();
 	syscore_shutdown();
+#ifdef CONFIG_ALWAYS_RESTART
+	pr_emerg("System restarting.\n");
+	kmsg_dump(KMSG_DUMP_RESTART);
+	machine_restart(NULL);
+#else
 	pr_emerg("System halted\n");
 	kmsg_dump(KMSG_DUMP_HALT);
 	machine_halt();
+#endif
 }
 EXPORT_SYMBOL_GPL(kernel_halt);
 
@@ -261,9 +267,15 @@ void kernel_power_off(void)
 		pm_power_off_prepare();
 	migrate_to_reboot_cpu();
 	syscore_shutdown();
+#ifdef CONFIG_ALWAYS_RESTART
+	pr_emerg("System now powering down, restarting.\n");
+	kmsg_dump(KMSG_DUMP_RESTART);
+	machine_restart(NULL);
+#else
 	pr_emerg("Power down\n");
 	kmsg_dump(KMSG_DUMP_POWEROFF);
 	machine_power_off();
+#endif
 }
 EXPORT_SYMBOL_GPL(kernel_power_off);
 

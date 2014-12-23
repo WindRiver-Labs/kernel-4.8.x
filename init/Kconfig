@@ -1756,6 +1756,15 @@ config VM_EVENT_COUNTERS
 	  on EXPERT systems.  /proc/vmstat will only show page counts
 	  if VM event counters are disabled.
 
+config ALWAYS_RESTART
+	default n
+	bool "Force the system to restart instead of halt or power off"
+	help
+	  This effectively disables the ability for the system to halt.  Instead a
+	  restart will happen under any circumstances.  This is mostly of use to
+	  systems that need to come back up immediately regardless of the reason it
+	  went down (eg. unattended systems in remote locations).
+
 config SLUB_DEBUG
 	default y
 	bool "Enable SLUB debugging support" if EXPERT
