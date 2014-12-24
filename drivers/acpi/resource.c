@@ -647,7 +647,9 @@ int acpi_dev_filter_resource_type(struct acpi_resource *ares,
 		break;
 	case ACPI_RESOURCE_TYPE_ADDRESS16:
 	case ACPI_RESOURCE_TYPE_ADDRESS32:
+#if BITS_PER_LONG == 64
 	case ACPI_RESOURCE_TYPE_ADDRESS64:
+#endif
 	case ACPI_RESOURCE_TYPE_EXTENDED_ADDRESS64:
 		if (ares->data.address.resource_type == ACPI_MEMORY_RANGE)
 			type = IORESOURCE_MEM;
