@@ -176,6 +176,10 @@ extern unsigned int alarm_setitimer(unsigned int seconds);
 
 extern long do_utimes(int dfd, const char __user *filename, struct timespec *times, int flags);
 
+#ifdef CONFIG_NOTIFY_SETTIME
+extern void do_notify_timechange(void);
+#endif
+
 struct tms;
 extern void do_sys_times(struct tms *);
 

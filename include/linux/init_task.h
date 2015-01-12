@@ -78,6 +78,13 @@ extern struct nsproxy init_nsproxy;
 	.signalfd_wqh	= __WAIT_QUEUE_HEAD_INITIALIZER(sighand.signalfd_wqh),	\
 }
 
+#ifdef CONFIG_NOTIFY_SETTIME
+#define INIT_NOTIFY_SETTIME(tsk)\
+	.settime_sig    = 0,
+#else
+#define INIT_NOTIFY_SETTIME(tsk)
+#endif
+
 extern struct group_info init_groups;
 
 #define INIT_STRUCT_PID {						\
@@ -270,6 +277,7 @@ extern struct task_group root_task_group;
 	INIT_VTIME(tsk)							\
 	INIT_NUMA_BALANCING(tsk)					\
 	INIT_KASAN(tsk)							\
+	INIT_NOTIFY_SETTIME(tsk)					\
 }
 
 

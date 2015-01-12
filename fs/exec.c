@@ -1749,6 +1749,10 @@ static int do_execveat_common(int fd, struct filename *filename,
 	free_bprm(bprm);
 	kfree(pathbuf);
 	putname(filename);
+#ifdef CONFIG_NOTIFY_SETTIME
+	/* there's got to be a better place for this!  */
+	current->settime_sig = 0;
+#endif
 	if (displaced)
 		put_files_struct(displaced);
 	return retval;

@@ -746,6 +746,11 @@ void clock_was_set(void)
 	/* Retrigger the CPU local events everywhere */
 	on_each_cpu(retrigger_next_event, NULL, 1);
 #endif
+
+#ifdef CONFIG_NOTIFY_SETTIME
+	/* Notify any userspace apps that were interested in the change */
+	do_notify_timechange();
+#endif
 	timerfd_clock_was_set();
 }
 

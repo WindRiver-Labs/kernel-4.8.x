@@ -1913,6 +1913,16 @@ config TRACEPOINTS
 
 source "arch/Kconfig"
 
+config NOTIFY_SETTIME
+	bool "Notify processes when time of day is changed"
+	default y
+	help
+	  Enabling this will allow apps to register to be sent a signal
+	  whenever the time of day on the system has changed (due to someone
+	  calling settimeofday(), for instance).
+
+	  This is exposed to userspace via /proc/notify_settime_signal
+
 endmenu		# General setup
 
 config HAVE_GENERIC_DMA_COHERENT
