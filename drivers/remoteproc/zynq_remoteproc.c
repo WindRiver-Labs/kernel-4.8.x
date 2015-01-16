@@ -366,7 +366,6 @@ static struct platform_driver zynq_remoteproc_driver = {
 	.remove = __devexit_p(zynq_remoteproc_remove),
 	.driver = {
 		.name = "zynq_remoteproc",
-		.owner = THIS_MODULE,
 		.of_match_table = zynq_remoteproc_match,
 	},
 };
