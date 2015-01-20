@@ -73,7 +73,7 @@ static int notify_settime_signal_proc_open(struct inode *inode, struct file *fil
 	return single_open(file, notify_settime_signal_show, PDE_DATA(inode));
 }
 
-static int notify_settime_signal_proc_write(struct file *file,
+static ssize_t notify_settime_signal_proc_write(struct file *file,
 					const char __user *buffer,
 				       size_t count, loff_t *pos)
 {
