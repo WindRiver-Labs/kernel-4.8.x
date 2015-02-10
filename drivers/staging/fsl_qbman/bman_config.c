@@ -328,6 +328,7 @@ static int __init fsl_bman_init(struct device_node *node)
 	BUG_ON(!bm);
 	if (bm_is_initalized(bm))
 		standby = 1;
+	bm_reserve_memory(bm);
 	/* Global configuration */
 	bm_node = node;
 	bm_get_version(bm, &id, &major, &minor);
@@ -344,11 +345,6 @@ static int __init fsl_bman_init(struct device_node *node)
 	} else {
 		pr_warn("unknown Bman version, default to rev1.0\n");
 	}
-
-	/* Unfortunately we have to reserve those memory used for Bman
-	 * since currently we can't clean these usage from boot kernel.
-	 */
-	bm_reserve_memory(bm);
 
 	if (standby) {
 		pr_info("  -> in standby mode\n");

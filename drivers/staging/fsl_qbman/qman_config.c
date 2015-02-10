@@ -577,13 +577,21 @@ static int __init fsl_qman_init(struct device_node *node)
 						&fqd_a, &fqd_sz, 1);
 			pr_info("qman-fqd addr 0x%llx size 0x%zx\n", fqd_a, fqd_sz);
 			BUG_ON(ret);
-		}
+		} else /* FQD memory */
+		/* Unfortunately we have to reserve those memory used for Qman
+		 * since currently we can't clean these usage from boot kernel.
+		 */
+			qm_reserve_memory(qm, qm_memory_fqd);
 		if (!qm_is_initalized(qm, qm_memory_pfdr)) {
 			ret = parse_mem_property(node, "fsl,qman-pfdr",
 						&pfdr_a, &pfdr_sz, 0);
 			pr_info("qman-pfdr addr 0x%llx size 0x%zx\n", pfdr_a, pfdr_sz);
 			BUG_ON(ret);
-		}
+		} else /* PFDR memory */
+		/* Unfortunately we have to reserve those memory used for Qman
+		 * since currently we can't clean these usage from boot kernel.
+		 */
+			qm_reserve_memory(qm, qm_memory_pfdr);
 	}
 	/* Global configuration */
 	qm_node = node;
@@ -612,14 +620,6 @@ static int __init fsl_qman_init(struct device_node *node)
 		}
 		qman_ip_cfg = cfg;
 	}
-
-	/* Unfortunately we have to reserve those memory used for Qman
-	 * since currently we can't clean these usage from boot kernel.
-	 */
-	/* FQD memory */
-	qm_reserve_memory(qm, qm_memory_fqd);
-	/* PFDR memory */
-	qm_reserve_memory(qm, qm_memory_pfdr);
 
 	if (standby) {
 		pr_info("  -> in standby mode\n");
