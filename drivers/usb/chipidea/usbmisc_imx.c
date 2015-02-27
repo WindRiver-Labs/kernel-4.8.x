@@ -868,6 +868,10 @@ static const struct of_device_id usbmisc_imx_dt_ids[] = {
 		.compatible = "fsl,imx6ul-usbmisc",
 		.data = &imx6sx_usbmisc_ops,
 	},
+	{
+		.compatible = "fsl,imx7d-usbmisc",
+		.data = &imx7d_usbmisc_ops,
+	},
 	{ /* sentinel */ }
 };
 MODULE_DEVICE_TABLE(of, usbmisc_imx_dt_ids);
