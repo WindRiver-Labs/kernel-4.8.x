@@ -893,6 +893,7 @@ EXPORT_SYMBOL(__unregister_cpu_notifier);
 void clear_tasks_mm_cpumask(int cpu)
 {
 	struct task_struct *p;
+	struct task_struct *t;
 
 	/*
 	 * This function is called after the cpu is taken down and marked
@@ -903,19 +904,12 @@ void clear_tasks_mm_cpumask(int cpu)
 	 */
 	WARN_ON(cpu_online(cpu));
 	rcu_read_lock();
-	for_each_process(p) {
-		struct task_struct *t;
-
-		/*
-		 * Main thread might exit, but other threads may still have
-		 * a valid mm. Find one.
-		 */
-		t = find_lock_task_mm(p);
-		if (!t)
-			continue;
-		cpumask_clear_cpu(cpu, mm_cpumask(t->mm));
-		task_unlock(t);
-	}
+	do_each_thread(p, t) {
+		if (likely(t->mm)) {
+			cpumask_clear_cpu(cpu, mm_cpumask(t->mm));
+			break;
+		}
+	} while_each_thread(p, t);
 	rcu_read_unlock();
 }
 
