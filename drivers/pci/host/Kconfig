@@ -53,6 +53,9 @@ config PCIE_DW
 	bool
 	depends on PCI_MSI_IRQ_DOMAIN
 
+config PCIE_DW_BASE
+	bool
+
 config PCI_EXYNOS
 	bool "Samsung Exynos PCIe controller"
 	depends on SOC_EXYNOS5440
