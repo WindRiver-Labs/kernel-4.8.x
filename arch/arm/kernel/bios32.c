@@ -7,6 +7,7 @@
  */
 #include <linux/export.h>
 #include <linux/kernel.h>
+#include <linux/of_pci.h>
 #include <linux/pci.h>
 #include <linux/slab.h>
 #include <linux/init.h>
@@ -17,6 +18,7 @@
 #include <asm/mach/pci.h>
 
 static int debug_pci;
+static int pci_commont_init_enable;
 
 /*
  * We can't use pci_get_device() here since we are
@@ -512,6 +514,8 @@ void pci_common_init_dev(struct device *parent, struct hw_pci *hw)
 	struct pci_sys_data *sys;
 	LIST_HEAD(head);
 
+	pci_commont_init_enable = 1;
+
 	pci_add_flags(PCI_REASSIGN_ALL_RSRC);
 	if (hw->preinit)
 		hw->preinit();
@@ -590,7 +594,7 @@ resource_size_t pcibios_align_resource(void *data, const struct resource *res,
 
 	host_bridge = pci_find_host_bridge(dev->bus);
 
-	if (host_bridge->align_resource)
+	if (pci_commont_init_enable && host_bridge->align_resource)
 		return host_bridge->align_resource(dev, res,
 				start, size, align);
 
@@ -626,4 +630,14 @@ void __init pci_map_io_early(unsigned long pfn)
 
 	pci_io_desc.pfn = pfn;
 	iotable_init(&pci_io_desc, 1);
+}
+
+/*
+ * Try to assign the IRQ number from DT when adding a new device
+ */
+int pcibios_add_device(struct pci_dev *dev)
+{
+	dev->irq = of_irq_parse_and_map_pci(dev, 0, 0);
+
+	return 0;
 }
