@@ -1,7 +1,7 @@
 /*
  * PCIe host controller driver for Freescale Layerscape SoCs
  *
- * Copyright (C) 2014 Freescale Semiconductor.
+ * Copyright (C) 2014 - 2015 Freescale Semiconductor.
  *
  * Author: Minghuan Lian <Minghuan.Lian@freescale.com>
  *
@@ -11,19 +11,16 @@
  */
 
 #include <linux/kernel.h>
-#include <linux/interrupt.h>
+#include <linux/mfd/syscon.h>
 #include <linux/init.h>
 #include <linux/of_pci.h>
 #include <linux/of_platform.h>
-#include <linux/of_irq.h>
-#include <linux/of_address.h>
 #include <linux/pci.h>
 #include <linux/platform_device.h>
-#include <linux/resource.h>
-#include <linux/mfd/syscon.h>
 #include <linux/regmap.h>
+#include <linux/resource.h>
 
-#include "pcie-designware.h"
+#include "pcie-designware-base.h"
 
 /* PEX1/2 Misc Ports Status Register */
 #define SCFG_PEXMSCPORTSR(pex_idx)	(0x94 + (pex_idx) * 4)
@@ -32,10 +29,10 @@
 #define LTSSM_PCIE_L0		0x11 /* L0 state */
 
 /* PEX Internal Configuration Registers */
-#define PCIE_STRFMR1		0x71c /* Symbol Timer & Filter Mask Register1 */
 #define PCIE_DBI_RO_WR_EN	0x8bc /* DBI Read-Only Write Enable Register */
 
 /* PEX LUT registers */
+#define PCIE_LUT_BASE		0x80000
 #define PCIE_LUT_DBG		0x7FC /* PEX LUT Debug Register */
 
 struct ls_pcie_drvdata {
@@ -45,12 +42,11 @@ struct ls_pcie_drvdata {
 };
 
 struct ls_pcie {
-	void __iomem *dbi;
-	void __iomem *lut;
-	struct regmap *scfg;
-	struct pcie_port pp;
-	const struct ls_pcie_drvdata *drvdata;
-	int index;
+	struct dw_pcie_port	pp;
+	void __iomem		*regs;
+	void __iomem		*lut;
+	struct regmap		*scfg;
+	int			index;
 };
 
 #define to_ls_pcie(x)	container_of(x, struct ls_pcie, pp)
@@ -129,10 +125,13 @@ static void ls1021_pcie_host_init(struct pcie_port *pp)
 	ls_pcie_drop_msg_tlp(pcie);
 }
 
-static int ls_pcie_link_up(struct pcie_port *pp)
+static int ls1_pcie_link_up(struct dw_pcie_port *pp)
 {
 	struct ls_pcie *pcie = to_ls_pcie(pp);
 	u32 state;
+
+	if (!pcie->scfg)
+		return 0;
 
 	state = (ioread32(pcie->lut + PCIE_LUT_DBG) >>
 		 pcie->drvdata->ltssm_shift) &
@@ -144,15 +143,43 @@ static int ls_pcie_link_up(struct pcie_port *pp)
 	return 1;
 }
 
-static void ls_pcie_host_init(struct pcie_port *pp)
+static int ls1_pcie_host_init(struct dw_pcie_port *pp)
 {
 	struct ls_pcie *pcie = to_ls_pcie(pp);
+	u32 val, index[2];
+	int ret;
 
-	iowrite32(1, pcie->dbi + PCIE_DBI_RO_WR_EN);
-	ls_pcie_fix_class(pcie);
-	ls_pcie_clear_multifunction(pcie);
-	ls_pcie_drop_msg_tlp(pcie);
-	iowrite32(0, pcie->dbi + PCIE_DBI_RO_WR_EN);
+	pcie->scfg = syscon_regmap_lookup_by_phandle(pp->dev->of_node,
+						     "fsl,pcie-scfg");
+	if (IS_ERR(pcie->scfg)) {
+		dev_err(pp->dev, "No syscfg phandle specified\n");
+		return PTR_ERR(pcie->scfg);
+ 	}
+ 
+	ret = of_property_read_u32_array(pp->dev->of_node,
+					 "fsl,pcie-scfg", index, 2);
+	if (ret)
+		return ret;
+
+	pcie->index = index[1];
+
+ 	/*
+ 	 * LS1021A Workaround for internal TKT228622
+ 	 * to fix the INTx hang issue
+ 	 */
+	val = dw_pcie_dbi_read(pp, PCIE_SYMBOL_TIMER_1);
+ 	val &= 0xffff;
+	dw_pcie_dbi_write(pp, val, PCIE_SYMBOL_TIMER_1);
+
+	/* Fix class value */
+	val = dw_pcie_dbi_read(pp, PCI_CLASS_REVISION);
+	val = (val & 0x0000ffff) | (PCI_CLASS_BRIDGE_PCI << 16);
+	dw_pcie_dbi_write(pp, val, PCI_CLASS_REVISION);
+
+	if (!ls1_pcie_link_up(pp))
+		dev_err(pp->dev, "phy link never came up\n");
+
+	return 0;
 }
 
 static int ls_pcie_msi_host_init(struct pcie_port *pp,
@@ -182,10 +209,9 @@ static struct pcie_host_ops ls1021_pcie_host_ops = {
 	.msi_host_init = ls_pcie_msi_host_init,
 };
 
-static struct pcie_host_ops ls_pcie_host_ops = {
-	.link_up = ls_pcie_link_up,
-	.host_init = ls_pcie_host_init,
-	.msi_host_init = ls_pcie_msi_host_init,
+static struct dw_host_ops ls1_dw_host_ops = {
+	.link_up = ls1_pcie_link_up,
+	.host_init = ls1_pcie_host_init,
 };
 
 static struct ls_pcie_drvdata ls1021_drvdata = {
@@ -212,30 +238,55 @@ static const struct of_device_id ls_pcie_of_match[] = {
 	{ },
 };
 
-static int __init ls_add_pcie_port(struct pcie_port *pp,
-				   struct platform_device *pdev)
+static int ls2_pcie_link_up(struct dw_pcie_port *pp)
 {
-	int ret;
 	struct ls_pcie *pcie = to_ls_pcie(pp);
+	u32 state;
 
-	pp->dev = &pdev->dev;
-	pp->dbi_base = pcie->dbi;
-	pp->ops = pcie->drvdata->ops;
+	if (!pcie->lut)
+		return 0;
 
-	ret = dw_pcie_host_init(pp);
-	if (ret) {
-		dev_err(pp->dev, "failed to initialize host\n");
-		return ret;
-	}
+	state = ioread32(pcie->lut + PCIE_LUT_DBG) & LTSSM_STATE_MASK;
+	if (state < LTSSM_PCIE_L0)
+		return 0;
 
+	return 1;
+}
+
+static int ls2_pcie_host_init(struct dw_pcie_port *pp)
+{
+	struct ls_pcie *pcie = to_ls_pcie(pp);
+	u32 val;
+
+	pcie->lut = pp->dbi + PCIE_LUT_BASE;
+
+	dw_pcie_dbi_write(pp, 1, PCIE_DBI_RO_WR_EN);
+	/* Fix class value */
+	val = dw_pcie_dbi_read(pp, PCI_CLASS_REVISION);
+	val = (val & 0x0000ffff) | (PCI_CLASS_BRIDGE_PCI << 16);
+	dw_pcie_dbi_write(pp, val, PCI_CLASS_REVISION);
+	/* clean multi-func bit */
+	val = dw_pcie_dbi_read(pp, PCI_HEADER_TYPE & ~0x3);
+	val &= ~(1 << 23);
+	dw_pcie_dbi_write(pp, val, PCI_HEADER_TYPE & ~0x3);
+	dw_pcie_dbi_write(pp, 0, PCIE_DBI_RO_WR_EN);
+
+	if (!ls2_pcie_link_up(pp))
+		dev_err(pp->dev, "phy link never came up\n");
+ 
 	return 0;
 }
+ 
+static struct dw_host_ops ls2_dw_host_ops = {
+	.link_up = ls2_pcie_link_up,
+	.host_init = ls2_pcie_host_init,
+};
 
 static int __init ls_pcie_probe(struct platform_device *pdev)
 {
 	const struct of_device_id *match;
 	struct ls_pcie *pcie;
-	struct resource *dbi_base;
+	struct resource *res;
 	int ret;
 
 	match = of_match_device(ls_pcie_of_match, &pdev->dev);
@@ -246,20 +297,20 @@ static int __init ls_pcie_probe(struct platform_device *pdev)
 	if (!pcie)
 		return -ENOMEM;
 
-	dbi_base = platform_get_resource_byname(pdev, IORESOURCE_MEM, "regs");
-	pcie->dbi = devm_ioremap_resource(&pdev->dev, dbi_base);
-	if (IS_ERR(pcie->dbi)) {
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "regs");
+	pcie->regs = devm_ioremap_resource(&pdev->dev, res);
+	if (IS_ERR(pcie->regs)) {
 		dev_err(&pdev->dev, "missing *regs* space\n");
-		return PTR_ERR(pcie->dbi);
-	}
+		return PTR_ERR(pcie->regs);
+ 	}
 
-	pcie->drvdata = match->data;
-	pcie->lut = pcie->dbi + pcie->drvdata->lut_offset;
+	pcie->lut = pcie->regs + PCIE_LUT_BASE;
+	pcie->pp.dev = &pdev->dev;
+	pcie->pp.dbi = pcie->regs;
+	pcie->pp.dw_ops = (struct dw_host_ops *)match->data;
+	pcie->pp.atu_num = PCIE_ATU_NUM;
 
-	if (!ls_pcie_is_bridge(pcie))
-		return -ENODEV;
-
-	ret = ls_add_pcie_port(&pcie->pp, pdev);
+	ret = dw_pcie_port_init(&pcie->pp);
 	if (ret < 0)
 		return ret;
 
