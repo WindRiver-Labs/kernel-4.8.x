@@ -37,6 +37,11 @@
 #include <linux/fsl_devices.h>
 #include <linux/of_platform.h>
 
+#ifdef CONFIG_PPC
+#include <asm/fsl_pm.h>
+#include <linux/suspend.h>
+#endif
+
 #include "ehci.h"
 #include "ehci-fsl.h"
 
@@ -504,6 +509,7 @@ static int ehci_fsl_setup(struct usb_hcd *hcd)
 #ifdef CONFIG_PM
 void __iomem *phy_reg;
 
+#ifdef CONFIG_PPC
 /* save usb registers */
 static int ehci_fsl_save_context(struct usb_hcd *hcd)
 {
@@ -537,6 +543,7 @@ static int ehci_fsl_restore_context(struct usb_hcd *hcd)
 	iowrite32be(ehci_fsl->usb_ctrl, non_ehci + FSL_SOC_USB_CTRL);
 	return 0;
 }
+#endif
 
 #ifdef CONFIG_PPC_MPC512x
 static int ehci_fsl_mpc512x_drv_suspend(struct device *dev)
@@ -692,8 +699,13 @@ static int ehci_fsl_drv_suspend(struct device *dev)
 	struct usb_bus host = hcd->self;
 #endif
 
-	ehci_fsl_save_context(hcd);
+#ifdef CONFIG_PPC
+	suspend_state_t pm_state;
+	pm_state = pm_suspend_state();
 
+	if (pm_state == PM_SUSPEND_MEM)
+		ehci_fsl_save_context(hcd);
+#endif
 
 	if (of_device_is_compatible(dev->parent->of_node,
 				    "fsl,mpc5121-usb2-dr")) {
@@ -732,8 +744,13 @@ static int ehci_fsl_drv_resume(struct device *dev)
 	struct usb_bus host = hcd->self;
 #endif
 
-	ehci_fsl_restore_context(hcd);
+#ifdef CONFIG_PPC
+	suspend_state_t pm_state;
+	pm_state = pm_suspend_state();
 
+	if (pm_state == PM_SUSPEND_MEM)
+		ehci_fsl_restore_context(hcd);
+#endif
 
 	if (of_device_is_compatible(dev->parent->of_node,
 				    "fsl,mpc5121-usb2-dr")) {
