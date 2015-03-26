@@ -14,6 +14,13 @@ LDFLAGS_vmlinux	:=-p --no-undefined -X
 CPPFLAGS_vmlinux.lds = -DTEXT_OFFSET=$(TEXT_OFFSET)
 GZFLAGS		:=-9
 
+ifdef SYSROOT
+LIBGCC 		:= $(shell $(CC) $(KBUILD_CFLAGS) --sysroot=$(SYSROOT) -print-libgcc-file-name)
+else
+LIBGCC 		:= $(shell $(CC) $(KBUILD_CFLAGS) -print-libgcc-file-name)
+endif
+
+
 ifneq ($(CONFIG_RELOCATABLE),)
 LDFLAGS_vmlinux		+= -pie -Bsymbolic
 endif
