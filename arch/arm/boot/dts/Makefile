@@ -387,6 +387,7 @@ dtb-$(CONFIG_SOC_IMX6Q) += \
 	imx6q-sabreauto-ecspi.dtb \
 	imx6q-sabreauto-gpmi-weim.dtb \
 	imx6qp-sabresd-btwifi.dtb \
+	imx6qp-sabreauto-ecspi.dtb \
 	imx6qp-sabreauto-gpmi-weim.dtb \
 	imx6q-sabrelite.dtb \
 	imx6q-sabresd.dtb \
