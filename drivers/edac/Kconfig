@@ -385,6 +385,30 @@ config EDAC_OCTEON_PCI
 	  Support for error detection and correction on the
 	  Cavium Octeon family of SOCs.
 
+config EDAC_AXXIA_SYSMEM
+	tristate "AXXIA EDAC SysMem Controller"
+	help
+	  Support for System Memory Denali controller error
+	  detection on the AXXIA AXM55xx devices. This enables
+	  the System Memory error detection. System Memory error
+	  detection is interrupt driven.
+
+config EDAC_AXXIA_L3
+	tristate "AXXIA EDAC L3 Controller"
+	help
+	  Support for the eight L3 caches error detection
+	  on the AXXIA AXM55xx devices. This enables the
+	  L3 cache error detection. L3 cache error detection
+	  uses polling mechanism.
+
+config EDAC_AXXIA_L2_CPU
+	tristate "AXXIA EDAC L2/CPU Controller"
+	help
+	  Support for L2 cache and A15 CPU error detection
+	  on AXXIA AXM55xx devices. This enables the L2
+	  cache and A15 CPU error detction. L2 cache and A15
+	  CPU error detection uses polling mechanism.
+
 config EDAC_ALTERA
 	bool "Altera SOCFPGA ECC"
 	depends on EDAC_MM_EDAC=y && ARCH_SOCFPGA
