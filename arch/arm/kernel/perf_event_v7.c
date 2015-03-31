@@ -94,6 +94,7 @@
 #define ARMV7_A5_PERFCTR_PREFETCH_LINEFILL_DROP		0xc3
 
 /* ARMv7 Cortex-A15 specific event types */
+#define ARMV7_A15_PERFCTR_CPU_CYCLES				0x11
 #define ARMV7_A15_PERFCTR_L1_DCACHE_ACCESS_READ		0x40
 #define ARMV7_A15_PERFCTR_L1_DCACHE_ACCESS_WRITE	0x41
 #define ARMV7_A15_PERFCTR_L1_DCACHE_REFILL_READ		0x42
@@ -295,7 +296,7 @@ static const unsigned armv7_a5_perf_cache_map[PERF_COUNT_HW_CACHE_MAX]
  */
 static const unsigned armv7_a15_perf_map[PERF_COUNT_HW_MAX] = {
 	PERF_MAP_ALL_UNSUPPORTED,
-	[PERF_COUNT_HW_CPU_CYCLES]		= ARMV7_PERFCTR_CPU_CYCLES,
+	[PERF_COUNT_HW_CPU_CYCLES]		= ARMV7_A15_PERFCTR_CPU_CYCLES,
 	[PERF_COUNT_HW_INSTRUCTIONS]		= ARMV7_PERFCTR_INSTR_EXECUTED,
 	[PERF_COUNT_HW_CACHE_REFERENCES]	= ARMV7_PERFCTR_L1_DCACHE_ACCESS,
 	[PERF_COUNT_HW_CACHE_MISSES]		= ARMV7_PERFCTR_L1_DCACHE_REFILL,
@@ -720,6 +721,7 @@ static const struct attribute_group *armv7_pmuv2_attr_groups[] = {
 static inline u32 armv7_pmnc_read(void)
 {
 	u32 val;
+
 	asm volatile("mrc p15, 0, %0, c9, c12, 0" : "=r"(val));
 	return val;
 }
@@ -750,6 +752,7 @@ static inline int armv7_pmnc_counter_has_overflowed(u32 pmnc, int idx)
 static inline void armv7_pmnc_select_counter(int idx)
 {
 	u32 counter = ARMV7_IDX_TO_COUNTER(idx);
+
 	asm volatile("mcr p15, 0, %0, c9, c12, 5" : : "r" (counter));
 	isb();
 }
@@ -801,24 +804,28 @@ static inline void armv7_pmnc_write_evtsel(int idx, u32 val)
 static inline void armv7_pmnc_enable_counter(int idx)
 {
 	u32 counter = ARMV7_IDX_TO_COUNTER(idx);
+
 	asm volatile("mcr p15, 0, %0, c9, c12, 1" : : "r" (BIT(counter)));
 }
 
 static inline void armv7_pmnc_disable_counter(int idx)
 {
 	u32 counter = ARMV7_IDX_TO_COUNTER(idx);
+
 	asm volatile("mcr p15, 0, %0, c9, c12, 2" : : "r" (BIT(counter)));
 }
 
 static inline void armv7_pmnc_enable_intens(int idx)
 {
 	u32 counter = ARMV7_IDX_TO_COUNTER(idx);
+
 	asm volatile("mcr p15, 0, %0, c9, c14, 1" : : "r" (BIT(counter)));
 }
 
 static inline void armv7_pmnc_disable_intens(int idx)
 {
 	u32 counter = ARMV7_IDX_TO_COUNTER(idx);
+
 	asm volatile("mcr p15, 0, %0, c9, c14, 2" : : "r" (BIT(counter)));
 	isb();
 	/* Clear the overflow flag in case an interrupt is pending. */
@@ -1353,7 +1360,9 @@ static void krait_write_pmresrn(int n, u32 val)
 static u32 venum_read_pmresr(void)
 {
 	u32 val;
+
 	asm volatile("mrc p10, 7, %0, c11, c0, 0" : "=r" (val));
+
 	return val;
 }
 

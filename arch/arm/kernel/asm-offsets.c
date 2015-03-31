@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 1995-2003 Russell King
  *               2001-2002 Keith Owens
- *     
+ *
  * Generate definitions needed by assembly language modules.
  * This code generates raw asm output which is post-processed to extract
  * and format the required data.
@@ -50,10 +50,12 @@
 #error Your compiler is too buggy; it is known to miscompile kernels.
 #error    Known good compilers: 3.3, 4.x
 #endif
+/*
 #if GCC_VERSION >= 40800 && GCC_VERSION < 40803
 #error Your compiler is too buggy; it is known to miscompile kernels
 #error and result in filesystem corruption and oopses.
 #endif
+*/
 #endif
 
 int main(void)
@@ -130,9 +132,9 @@ int main(void)
   DEFINE(VMA_VM_MM,		offsetof(struct vm_area_struct, vm_mm));
   DEFINE(VMA_VM_FLAGS,		offsetof(struct vm_area_struct, vm_flags));
   BLANK();
-  DEFINE(VM_EXEC,	       	VM_EXEC);
+  DEFINE(VM_EXEC,			VM_EXEC);
   BLANK();
-  DEFINE(PAGE_SZ,	       	PAGE_SIZE);
+  DEFINE(PAGE_SZ,			PAGE_SIZE);
   BLANK();
   DEFINE(SYS_ERROR0,		0x9f0000);
   BLANK();
@@ -183,5 +185,5 @@ int main(void)
 #ifdef CONFIG_VDSO
   DEFINE(VDSO_DATA_SIZE,	sizeof(union vdso_data_store));
 #endif
-  return 0; 
+  return 0;
 }
