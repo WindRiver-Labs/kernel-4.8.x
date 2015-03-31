@@ -11,7 +11,7 @@
 #include <linux/random.h>
 #include <asm/cachetype.h>
 
-#define COLOUR_ALIGN(addr,pgoff)		\
+#define COLOUR_ALIGN(addr, pgoff)		\
 	((((addr)+SHMLBA-1)&~(SHMLBA-1)) +	\
 	 (((pgoff)<<PAGE_SHIFT) & (SHMLBA-1)))
 

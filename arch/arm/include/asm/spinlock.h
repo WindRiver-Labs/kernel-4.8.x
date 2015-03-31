@@ -88,7 +88,12 @@ static inline void arch_spin_lock(arch_spinlock_t *lock)
 	: "cc");
 
 	while (lockval.tickets.next != lockval.tickets.owner) {
+#ifdef CONFIG_ARCH_AXXIA
+		extern void __axxia_arch_wfe(void);
+		__axxia_arch_wfe();
+#else
 		wfe();
+#endif
 		lockval.tickets.owner = ACCESS_ONCE(lock->tickets.owner);
 	}
 
@@ -141,6 +146,7 @@ static inline int arch_spin_is_locked(arch_spinlock_t *lock)
 static inline int arch_spin_is_contended(arch_spinlock_t *lock)
 {
 	struct __raw_tickets tickets = READ_ONCE(lock->tickets);
+
 	return (tickets.next - tickets.owner) > 1;
 }
 #define arch_spin_is_contended	arch_spin_is_contended

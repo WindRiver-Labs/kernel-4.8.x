@@ -481,6 +481,17 @@ asmlinkage __visible void __init start_kernel(void)
 	char *command_line;
 	char *after_dashes;
 
+#if defined(CONFIG_ARCH_AXXIA) && defined(DEBUG_LL)
+	{
+		*(unsigned long *)(0xf0080000 + 0x24) = 13;
+		*(unsigned long *)(0xf0080000 + 0x28) = 1;
+		*(unsigned long *)(0xf0080000 + 0x2c) = 0x70;
+		*(unsigned long *)(0xf0080000 + 0x30) = 0x301;
+		*(unsigned long *)(0xf0080000 + 0x34) = 0;
+		*(unsigned long *)(0xf0080000 + 0x38) = 0x700;
+	}
+#endif	/* CONFIG_ARCH_AXXIA && DEBUG_LL */
+
 	set_task_stack_end_magic(&init_task);
 	smp_setup_processor_id();
 	debug_objects_early_init();
