@@ -340,8 +340,10 @@ static int mc_polling_wait_preemptible(struct fsl_mc_io *mc_io,
 		 * TODO: When MC command completion interrupts are supported
 		 * call wait function here instead of usleep_range()
 		 */
-		usleep_range(MC_CMD_COMPLETION_POLLING_MIN_SLEEP_USECS,
-			     MC_CMD_COMPLETION_POLLING_MAX_SLEEP_USECS);
+		if (preemptible()) {
+			usleep_range(MC_CMD_COMPLETION_POLLING_MIN_SLEEP_USECS,
+				     MC_CMD_COMPLETION_POLLING_MAX_SLEEP_USECS);
+		}
 
 		if (time_after_eq(jiffies, jiffies_until_timeout)) {
 			dev_dbg(mc_io->dev,

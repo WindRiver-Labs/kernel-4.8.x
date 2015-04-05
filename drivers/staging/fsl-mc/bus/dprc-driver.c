@@ -234,12 +234,17 @@ static void dprc_cleanup_resource_pool(struct fsl_mc_device *mc_bus_dev,
 	WARN_ON(free_count != res_pool->free_count);
 }
 
+/*
+ * Clean up all resource pools other than the IRQ pool
+ */
 static void dprc_cleanup_all_resource_pools(struct fsl_mc_device *mc_bus_dev)
 {
 	int pool_type;
 
-	for (pool_type = 0; pool_type < FSL_MC_NUM_POOL_TYPES; pool_type++)
-		dprc_cleanup_resource_pool(mc_bus_dev, pool_type);
+	for (pool_type = 0; pool_type < FSL_MC_NUM_POOL_TYPES; pool_type++) {
+		if (pool_type != FSL_MC_POOL_IRQ)
+			dprc_cleanup_resource_pool(mc_bus_dev, pool_type);
+	}
 }
 
 /**
@@ -355,6 +360,57 @@ int dprc_scan_objects(struct fsl_mc_device *mc_bus_dev,
 EXPORT_SYMBOL_GPL(dprc_scan_objects);
 
 /**
+ * dprc_lookup_object - Finds a given MC object in a DPRC and returns
+ * the index of the object in the DPRC
+ *
+ * @mc_bus_dev: pointer to the fsl-mc device that represents a DPRC object
+ * @child_dev: pointer to the fsl-mc device to be looked up
+ * @child_obj_index: output parameter to hold the index of the object
+ */
+int dprc_lookup_object(struct fsl_mc_device *mc_bus_dev,
+		       struct fsl_mc_device *child_dev,
+		       uint32_t *child_obj_index)
+{
+	int i;
+	int num_child_objects;
+	int error;
+
+	error = dprc_get_obj_count(mc_bus_dev->mc_io,
+				   mc_bus_dev->mc_handle,
+				   &num_child_objects);
+	if (error < 0) {
+		dev_err(&mc_bus_dev->dev, "dprc_get_obj_count() failed: %d\n",
+			error);
+		return error;
+	}
+
+	for (i = 0; i < num_child_objects; i++) {
+		struct dprc_obj_desc obj_desc;
+
+		error = dprc_get_obj(mc_bus_dev->mc_io,
+				     mc_bus_dev->mc_handle,
+				     i, &obj_desc);
+		if (error < 0) {
+			dev_err(&mc_bus_dev->dev,
+				"dprc_get_obj(i=%d) failed: %d\n",
+				i, error);
+			return error;
+		}
+
+		if (strcmp(obj_desc.type, child_dev->obj_desc.type) == 0 &&
+		    obj_desc.id == child_dev->obj_desc.id) {
+			*child_obj_index = i;
+			return 0;
+		}
+	}
+
+	dev_err(&mc_bus_dev->dev, "%s.%u not found\n",
+		child_dev->obj_desc.type, child_dev->obj_desc.id);
+
+	return -ENODEV;
+}
+
+/**
  * dprc_scan_container - Scans a physical DPRC and synchronizes Linux bus state
  *
  * @mc_bus_dev: pointer to the fsl-mc device that represents a DPRC object
@@ -396,6 +452,7 @@ int dprc_scan_container(struct fsl_mc_device *mc_bus_dev)
 
 	return 0;
 error:
+	device_for_each_child(&mc_bus_dev->dev, NULL, __fsl_mc_device_remove);
 	dprc_cleanup_all_resource_pools(mc_bus_dev);
 	return error;
 }
@@ -741,10 +798,15 @@ static int dprc_probe(struct fsl_mc_device *mc_dev)
 	 */
 	error = dprc_setup_irq(mc_dev);
 	if (error < 0)
-		goto error_cleanup_open;
+		goto error_cleanup_dprc_scan;
 
 	dev_info(&mc_dev->dev, "DPRC device bound to driver");
 	return 0;
+
+error_cleanup_dprc_scan:
+	device_for_each_child(&mc_dev->dev, NULL, __fsl_mc_device_remove);
+	dprc_cleanup_all_resource_pools(mc_dev);
+	fsl_mc_cleanup_irq_pool(mc_bus);
 
 error_cleanup_open:
 	(void)dprc_close(mc_dev->mc_io, 0, mc_dev->mc_handle);
