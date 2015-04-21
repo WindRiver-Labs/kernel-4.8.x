@@ -235,6 +235,9 @@ int fsl_mc_io_setup_dpmcp_irq(struct fsl_mc_io *mc_io)
 	if (WARN_ON(!dpmcp_dev))
 		return -EINVAL;
 
+	if (WARN_ON(!fsl_mc_interrupts_supported()))
+		return -EINVAL;
+
 	if (WARN_ON(dpmcp_dev->obj_desc.irq_count != 1))
 		return -EINVAL;
 
@@ -278,6 +281,8 @@ static void teardown_dpmcp_irq(struct fsl_mc_io *mc_io)
 	struct fsl_mc_device *dpmcp_dev = mc_io->dpmcp_dev;
 
 	if (WARN_ON(!dpmcp_dev))
+		return;
+	if (WARN_ON(!fsl_mc_interrupts_supported()))
 		return;
 	if (WARN_ON(!dpmcp_dev->irqs))
 		return;
@@ -355,7 +360,8 @@ int __must_check fsl_create_mc_io(struct device *dev,
 		if (error < 0)
 			goto error_destroy_mc_io;
 
-		if (!(flags & FSL_MC_IO_ATOMIC_CONTEXT_PORTAL)) {
+		if (!(flags & FSL_MC_IO_ATOMIC_CONTEXT_PORTAL) &&
+			fsl_mc_interrupts_supported()) {
 			error = fsl_mc_io_setup_dpmcp_irq(mc_io);
 			if (error < 0)
 				goto error_destroy_mc_io;
