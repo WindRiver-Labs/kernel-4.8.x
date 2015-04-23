@@ -628,8 +628,8 @@ static int __init xenboot_setup_console(struct console *console, char *string)
 	return xencons_info_pv_init(&xenboot, 0);
 }
 
-static void xenboot_write_console(struct console *console, const char *string,
-				  unsigned len)
+static void xenboot_write_console_earlycon(struct console *console,
+					   const char *string, unsigned len)
 {
 	unsigned int linelen, off = 0;
 	const char *pos;
@@ -665,6 +665,22 @@ struct console xenboot_console = {
 	.index		= -1,
 };
 #endif	/* CONFIG_EARLY_PRINTK */
+
+static void xenboot_write_console_earlycon(struct console *console,
+					   const char *string, unsigned len)
+{
+	dom0_write_console(0, string, len);
+}
+
+static int __init xen_early_console_setup(struct earlycon_device *device,
+					   const char *opt)
+{
+	device->con->write = xenboot_write_console_earlycon;
+
+	return 0;
+}
+EARLYCON_DECLARE(xen, xen_early_console_setup);
+
 
 void xen_raw_console_write(const char *str)
 {
