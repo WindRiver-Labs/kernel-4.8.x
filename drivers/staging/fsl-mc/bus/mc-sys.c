@@ -540,6 +540,8 @@ static int mc_completion_wait(struct fsl_mc_io *mc_io, struct mc_command *cmd,
 {
 	enum mc_cmd_status status;
 	unsigned long jiffies_left;
+	unsigned long timeout_jiffies =
+		msecs_to_jiffies(MC_CMD_COMPLETION_TIMEOUT_MS);
 
 	if (WARN_ON(!mc_io->dpmcp_dev))
 		return -EINVAL;
@@ -554,7 +556,7 @@ static int mc_completion_wait(struct fsl_mc_io *mc_io, struct mc_command *cmd,
 
 		jiffies_left = wait_for_completion_timeout(
 					&mc_io->mc_command_done_completion,
-					MC_CMD_COMPLETION_TIMEOUT_JIFFIES);
+					timeout_jiffies);
 		if (jiffies_left == 0)
 			return -ETIMEDOUT;
 	}
