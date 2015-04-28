@@ -632,6 +632,9 @@ static int mc_completion_wait(struct fsl_mc_io *mc_io, struct mc_command *cmd,
 	if (WARN_ON(!mc_io->dpmcp_dev))
 		return -EINVAL;
 
+	if (WARN_ON(mc_io->flags & FSL_MC_IO_ATOMIC_CONTEXT_PORTAL))
+		return -EINVAL;
+
 	for (;;) {
 		status = mc_read_response(mc_io->portal_virt_addr, cmd);
 		if (status != MC_CMD_STATUS_READY)
