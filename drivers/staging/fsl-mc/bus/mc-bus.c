@@ -55,9 +55,12 @@ static int fsl_mc_bus_match(struct device *dev, struct device_driver *drv)
 	/*
 	 * If the object is not 'plugged' don't match.
 	 * Only exception is the root DPRC, which is a special case.
+	 *
+	 * NOTE: Only when this function is invoked for the root DPRC,
+	 * mc_dev->mc_io is not NULL
 	 */
 	if ((mc_dev->obj_desc.state & DPRC_OBJ_STATE_PLUGGED) == 0 &&
-	    !fsl_mc_is_root_dprc(&mc_dev->dev))
+		!mc_dev->mc_io)
 		goto out;
 
 	/*

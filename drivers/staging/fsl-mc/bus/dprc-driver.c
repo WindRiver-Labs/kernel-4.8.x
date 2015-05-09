@@ -740,6 +740,7 @@ static int dprc_probe(struct fsl_mc_device *mc_dev)
 	struct fsl_mc_bus *mc_bus = to_fsl_mc_bus(mc_dev);
 	bool mc_io_created = false;
 	bool msi_domain_set = false;
+	bool dev_root_set = false;
 
 	if (WARN_ON(strcmp(mc_dev->obj_desc.type, "dprc") != 0))
 		return -EINVAL;
@@ -755,6 +756,9 @@ static int dprc_probe(struct fsl_mc_device *mc_dev)
 			return -EINVAL;
 
 		if (WARN_ON(mc_dev->obj_desc.region_count == 0))
+			return -EINVAL;
+
+		if (WARN_ON(!fsl_mc_bus_type.dev_root))
 			return -EINVAL;
 
 		region_size = mc_dev->regions[0].end -
@@ -795,6 +799,12 @@ static int dprc_probe(struct fsl_mc_device *mc_dev)
 			dev_set_msi_domain(&mc_dev->dev, mc_msi_domain);
 			msi_domain_set = true;
 		}
+
+		if (WARN_ON(fsl_mc_bus_type.dev_root))
+			return -EINVAL;
+
+		fsl_mc_bus_type.dev_root = &mc_dev->dev;
+		dev_root_set = true;
 	}
 
 	error = dprc_open(mc_dev->mc_io, 0, mc_dev->obj_desc.id,
@@ -894,6 +904,9 @@ error_cleanup_msi_domain:
 		fsl_destroy_mc_io(mc_dev->mc_io);
 		mc_dev->mc_io = NULL;
 	}
+
+	if (dev_root_set)
+		fsl_mc_bus_type.dev_root = NULL;
 
 	return error;
 }
