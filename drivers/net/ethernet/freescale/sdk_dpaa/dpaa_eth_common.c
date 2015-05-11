@@ -1548,6 +1548,7 @@ void dpa_release_sgt(struct qm_sg_entry *sgt)
 
 		j = 0;
 		do {
+			be32_to_cpus(&sgt[i].sgt_efl);
 			DPA_BUG_ON(sgt[i].extension);
 
 			bmb[j].hi       = sgt[i].addr_hi;
