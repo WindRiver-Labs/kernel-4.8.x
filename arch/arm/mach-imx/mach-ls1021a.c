@@ -8,10 +8,39 @@
  */
 
 #include <asm/mach/arch.h>
+#include <linux/dma-mapping.h>
 #include <linux/of_platform.h>
+#include <linux/platform_data/dcfg-ls1021a.h>
 #include <linux/phy.h>
 #include <linux/phy_fixed.h>
 #include "common.h"
+
+static int ls1021a_platform_notifier(struct notifier_block *nb,
+				  unsigned long event, void *__dev)
+{
+	struct device *dev = __dev;
+
+	if (event != BUS_NOTIFY_ADD_DEVICE)
+		return NOTIFY_DONE;
+
+	if (of_device_is_compatible(dev->of_node, "fsl,etsec2"))
+		set_dma_ops(dev, &arm_coherent_dma_ops);
+	else if (of_property_read_bool(dev->of_node, "dma-coherent"))
+		set_dma_ops(dev, &arm_coherent_dma_ops);
+
+	return NOTIFY_OK;
+}
+
+static struct notifier_block ls1021a_platform_nb = {
+	.notifier_call = ls1021a_platform_notifier,
+};
+
+static void __init ls1021a_init_machine(void)
+{
+	if (!is_ls1021a_rev1())
+		bus_register_notifier(&platform_bus_type, &ls1021a_platform_nb);
+	of_platform_populate(NULL, of_default_bus_match_table, NULL, NULL);
+}
 
 #ifdef CONFIG_FIXED_PHY
 static int __init of_add_fixed_phys(void)
@@ -51,5 +80,6 @@ static const char * const ls1021a_dt_compat[] __initconst = {
 
 DT_MACHINE_START(LS1021A, "Freescale LS1021A")
 	.smp		= smp_ops(ls1021a_smp_ops),
+	.init_machine   = ls1021a_init_machine,
 	.dt_compat	= ls1021a_dt_compat,
 MACHINE_END
