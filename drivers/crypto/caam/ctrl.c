@@ -311,10 +311,10 @@ static int caam_remove(struct platform_device *pdev)
 #ifdef CONFIG_ARM
 	/* shut clocks off before finalizing shutdown */
 	clk_disable_unprepare(ctrlpriv->caam_ipg);
-	/* imx7d only has one caam clock */
+	clk_disable_unprepare(ctrlpriv->caam_aclk);
+	/* imx7d only has two caam clock */
 	if (!(of_find_compatible_node(NULL, NULL, "fsl,imx7d-caam"))) {
 		clk_disable_unprepare(ctrlpriv->caam_mem);
-		clk_disable_unprepare(ctrlpriv->caam_aclk);
 		clk_disable_unprepare(ctrlpriv->caam_emi_slow);
 	}
 #endif
@@ -427,7 +427,6 @@ static int caam_probe(struct platform_device *pdev)
 	struct device_node *nprop, *np;
 	struct caam_ctrl __iomem *ctrl;
 	struct caam_drv_private *ctrlpriv;
-	struct clk *clk;
 #ifdef CONFIG_DEBUG_FS
 	struct caam_perfmon *perfmon;
 #endif
@@ -451,7 +450,7 @@ static int caam_probe(struct platform_device *pdev)
 	if (ctrl == NULL) {
 		dev_err(dev, "caam: of_iomap() failed\n");
 		ret = -ENOMEM;
-		goto disable_caam_emi_slow;
+		goto iounmap_ctrl;
 	}
 
 	caam_little_end = !(bool)(rd_reg32(&ctrl->perfmon.status) &
@@ -499,21 +498,30 @@ static int caam_probe(struct platform_device *pdev)
 			"can't identify CAAM ipg clk: %d\n", ret);
 		return -ENODEV;
 	}
-	ret = clk_prepare(ctrlpriv->caam_ipg);
-	if (ret < 0) {
-		dev_err(&pdev->dev, "can't prepare CAAM ipg clock: %d\n", ret);
-		return -ENODEV;
-	}
-	ret = clk_enable(ctrlpriv->caam_ipg);
+	ret = clk_prepare_enable(ctrlpriv->caam_ipg);
 	if (ret < 0) {
 		dev_err(&pdev->dev, "can't enable CAAM ipg clock: %d\n", ret);
 		return -ENODEV;
 	}
-
 	pr_debug("%s caam_ipg clock:%d\n", __func__,
 			 (int)clk_get_rate(ctrlpriv->caam_ipg));
 
-	/* imx7d only has one caam clock */
+	ctrlpriv->caam_aclk = devm_clk_get(&ctrlpriv->pdev->dev, "caam_aclk");
+	if (IS_ERR(ctrlpriv->caam_aclk)) {
+		ret = PTR_ERR(ctrlpriv->caam_aclk);
+		dev_err(&ctrlpriv->pdev->dev,
+			"can't identify CAAM aclk clk: %d\n", ret);
+			goto disable_caam_ipg;
+	}
+	ret = clk_prepare_enable(ctrlpriv->caam_aclk);
+	if (ret < 0) {
+		dev_err(&pdev->dev, "can't enable CAAM aclk clock: %d\n", ret);
+			goto disable_caam_ipg;
+	}
+	pr_debug("%s caam_aclk clock:%d\n", __func__,
+			(int)clk_get_rate(ctrlpriv->caam_aclk));
+
+	/* imx7d only has two caam clock */
 	if (!(of_find_compatible_node(NULL, NULL, "fsl,imx7d-caam"))) {
 		ctrlpriv->caam_mem = devm_clk_get(&ctrlpriv->pdev->dev,
 						  "caam_mem");
@@ -522,55 +530,33 @@ static int caam_probe(struct platform_device *pdev)
 			dev_err(&ctrlpriv->pdev->dev,
 					"can't identify CAAM secure mem clk: %d\n",
 					ret);
-			return -ENODEV;
+			goto disable_caam_aclk;
 		}
-		ret = clk_prepare(ctrlpriv->caam_mem);
-		if (ret < 0) {
-			dev_err(&pdev->dev, "can't prepare CAAM secure mem clock: %d\n",
-					ret);
-			return -ENODEV;
-		}
-		ret = clk_enable(ctrlpriv->caam_mem);
+		ret = clk_prepare_enable(ctrlpriv->caam_mem);
 		if (ret < 0) {
 			dev_err(&pdev->dev, "can't enable CAAM secure mem clock: %d\n",
 					ret);
-			return -ENODEV;
+			goto disable_caam_aclk;
 		}
 		pr_debug("%s caam_mem clock:%d\n", __func__,
 				 (int)clk_get_rate(ctrlpriv->caam_mem));
-		ctrlpriv->caam_aclk = devm_clk_get(&ctrlpriv->pdev->dev,
-						   "caam_aclk");
-		if (IS_ERR(ctrlpriv->caam_aclk)) {
-			ret = PTR_ERR(ctrlpriv->caam_aclk);
-			dev_err(&ctrlpriv->pdev->dev,
-					"can't identify CAAM aclk clk: %d\n",
-					ret);
-			return -ENODEV;
-		}
-		ret = clk_prepare(ctrlpriv->caam_aclk);
-		if (ret < 0) {
-			dev_err(&pdev->dev,
-					"can't prepare CAAM aclk clock: %d\n",
-					ret);
-			return -ENODEV;
-		}
-		ret = clk_enable(ctrlpriv->caam_aclk);
-		if (ret < 0) {
-			dev_err(&pdev->dev, "can't enable CAAM aclk clock: %d\n",
-					ret);
-			return -ENODEV;
-		}
-		pr_debug("%s caam_aclk clock:%d\n", __func__,
-				 (int)clk_get_rate(ctrlpriv->caam_aclk));
+
 		if (!(of_find_compatible_node(NULL, NULL, "fsl,imx6ul-caam"))) {
 			ctrlpriv->caam_emi_slow = devm_clk_get(&ctrlpriv->pdev->dev,
 							       "caam_emi_slow");
+			if (IS_ERR(ctrlpriv->caam_emi_slow)) {
+				ret = PTR_ERR(ctrlpriv->caam_emi_slow);
+				dev_err(&ctrlpriv->pdev->dev,
+						"can't identify CAAM secure emi slow clk: %d\n",
+						ret);
+				goto disable_caam_mem;
+			}
 			ret = clk_prepare_enable(ctrlpriv->caam_emi_slow);
 			if (ret < 0) {
 				dev_err(&pdev->dev,
 					"can'to prepare CAAM emi slow clock: %d\n",
 					ret);
-				return -ENODEV;
+				goto disable_caam_mem;
 			}
 		}
 	}
@@ -650,7 +636,7 @@ static int caam_probe(struct platform_device *pdev)
 					sizeof(*ctrlpriv->jrpdev), GFP_KERNEL);
 	if (ctrlpriv->jrpdev == NULL) {
 		ret = -ENOMEM;
-		goto iounmap_ctrl;
+		goto disable_caam_emi_slow;
 	}
 
 	ring = 0;
@@ -866,16 +852,16 @@ static int caam_probe(struct platform_device *pdev)
 
 caam_remove:
 	caam_remove(pdev);
-iounmap_ctrl:
-	iounmap(ctrl);
 disable_caam_emi_slow:
 	clk_disable_unprepare(ctrlpriv->caam_emi_slow);
-disable_caam_aclk:
-	clk_disable_unprepare(ctrlpriv->caam_aclk);
 disable_caam_mem:
 	clk_disable_unprepare(ctrlpriv->caam_mem);
+disable_caam_aclk:
+	clk_disable_unprepare(ctrlpriv->caam_aclk);
 disable_caam_ipg:
 	clk_disable_unprepare(ctrlpriv->caam_ipg);
+iounmap_ctrl:
+	iounmap(ctrl);
 	return ret;
 }
 
