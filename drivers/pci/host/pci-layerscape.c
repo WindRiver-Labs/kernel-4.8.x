@@ -21,19 +21,10 @@
 #include <linux/resource.h>
 
 #include "pcie-designware-base.h"
-
-/* PEX1/2 Misc Ports Status Register */
-#define SCFG_PEXMSCPORTSR(pex_idx)	(0x94 + (pex_idx) * 4)
-#define LTSSM_STATE_SHIFT	20
-#define LTSSM_STATE_MASK	0x3f
-#define LTSSM_PCIE_L0		0x11 /* L0 state */
+#include "pci-layerscape.h"
 
 /* PEX Internal Configuration Registers */
 #define PCIE_DBI_RO_WR_EN	0x8bc /* DBI Read-Only Write Enable Register */
-
-/* PEX LUT registers */
-#define PCIE_LUT_BASE		0x80000
-#define PCIE_LUT_DBG		0x7FC /* PEX LUT Debug Register */
 
 struct ls_pcie_drvdata {
 	u32 lut_offset;
@@ -47,9 +38,29 @@ struct ls_pcie {
 	void __iomem		*lut;
 	struct regmap		*scfg;
 	int			index;
+	const u32 *avail_streamids;
+	int streamid_index;
 };
 
 #define to_ls_pcie(x)	container_of(x, struct ls_pcie, pp)
+
+u32 set_pcie_streamid_translation(struct pci_dev *pdev, u32 devid)
+{
+	u32 index, streamid;
+	struct dw_pcie_port *pp = pdev->bus->sysdata;
+	struct ls_pcie *pcie = to_ls_pcie(pp);
+
+	if (!pcie->avail_streamids || !pcie->streamid_index)
+		return ~(u32)0;
+
+	index = --pcie->streamid_index;
+	/* mask is set as all zeroes, want to match all bits */
+	iowrite32((devid << 16), pcie->lut + PCIE_LUT_UDR(index));
+	streamid = be32_to_cpup(&pcie->avail_streamids[index]);
+	iowrite32(streamid | PCIE_LUT_ENABLE, pcie->lut + PCIE_LUT_LDR(index));
+
+	return streamid;
+}
 
 static bool ls_pcie_is_bridge(struct ls_pcie *pcie)
 {
@@ -259,6 +270,8 @@ static int ls2_pcie_host_init(struct dw_pcie_port *pp)
 	u32 val;
 
 	pcie->lut = pp->dbi + PCIE_LUT_BASE;
+	/* Disable LDR zero */
+	iowrite32(0, pcie->lut + PCIE_LUT_LDR(0));
 
 	dw_pcie_dbi_write(pp, 1, PCIE_DBI_RO_WR_EN);
 	/* Fix class value */
@@ -305,10 +318,26 @@ static int __init ls_pcie_probe(struct platform_device *pdev)
  	}
 
 	pcie->lut = pcie->regs + PCIE_LUT_BASE;
+	/* Disable LDR zero */
+	iowrite32(0, pcie->lut + PCIE_LUT_LDR(0));
 	pcie->pp.dev = &pdev->dev;
 	pcie->pp.dbi = pcie->regs;
 	pcie->pp.dw_ops = (struct dw_host_ops *)match->data;
 	pcie->pp.atu_num = PCIE_ATU_NUM;
+
+	if (of_device_is_compatible(pdev->dev.of_node, "fsl,ls2085a-pcie")) {
+		int len;
+		const u32 *prop;
+		struct device_node *np;
+
+		np = pdev->dev.of_node;
+		prop = (u32 *)of_get_property(np, "available-stream-ids", &len);
+		if (prop) {
+			pcie->avail_streamids = prop;
+			pcie->streamid_index = len/sizeof(u32);
+		} else
+			dev_err(&pdev->dev, "PCIe endpoint partitioning not possible\n");
+	}
 
 	ret = dw_pcie_port_init(&pcie->pp);
 	if (ret < 0)
