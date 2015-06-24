@@ -878,6 +878,31 @@ static int dprc_probe(struct fsl_mc_device *mc_dev)
 		}
 
 		/*
+		 * Allocate MC portal to be used in atomic context
+		 * (e.g., to program MSIs from program_msi_at_mc())
+		 */
+		error = fsl_mc_portal_allocate(NULL,
+					       FSL_MC_IO_ATOMIC_CONTEXT_PORTAL,
+					       &mc_bus->atomic_mc_io);
+		if (error < 0)
+			goto error_cleanup_dprc_scan;
+
+		pr_info("fsl-mc: Allocated dpmcp.%d to dprc.%d for atomic MC I/O\n",
+			mc_bus->atomic_mc_io->dpmcp_dev->obj_desc.id,
+			mc_dev->obj_desc.id);
+
+		/*
+		 * Open DPRC handle to be used with mc_bus->atomic_mc_io:
+		 */
+		error = dprc_open(mc_bus->atomic_mc_io, 0, mc_dev->obj_desc.id,
+				  &mc_bus->atomic_dprc_handle);
+		if (error < 0) {
+			dev_err(&mc_dev->dev, "dprc_open() failed: %d\n",
+				error);
+			goto error_cleanup_atomic_mc_io;
+		}
+
+		/*
 		 * Configure interrupt for the DPMCP object associated with the
 		 * DPRC object's built-in portal:
 		 *
@@ -886,18 +911,24 @@ static int dprc_probe(struct fsl_mc_device *mc_dev)
 		 */
 		error = fsl_mc_io_setup_dpmcp_irq(mc_dev->mc_io);
 		if (error < 0)
-			goto error_cleanup_dprc_scan;
+			goto error_cleanup_atomic_dprc_handle;
 
 		/*
 		 * Configure interrupt for the DPRC object associated with this MC bus:
 		 */
 		error = dprc_setup_irq(mc_dev);
 		if (error < 0)
-			goto error_cleanup_dprc_scan;
+			goto error_cleanup_atomic_dprc_handle;
 	}
 
 	dev_info(&mc_dev->dev, "DPRC device bound to driver");
 	return 0;
+
+error_cleanup_atomic_dprc_handle:
+	(void)dprc_close(mc_bus->atomic_mc_io, 0, mc_bus->atomic_dprc_handle);
+
+error_cleanup_atomic_mc_io:
+	fsl_mc_portal_free(mc_bus->atomic_mc_io);
 
 error_cleanup_dprc_scan:
 	fsl_mc_io_unset_dpmcp(mc_dev->mc_io);
@@ -964,8 +995,17 @@ static int dprc_remove(struct fsl_mc_device *mc_dev)
 	if (WARN_ON(!mc_bus->irq_resources))
 		return -EINVAL;
 
-	if (dev_get_msi_domain(&mc_dev->dev) && fsl_mc_interrupts_supported())
+	if (dev_get_msi_domain(&mc_dev->dev) && fsl_mc_interrupts_supported()) {
 		dprc_teardown_irq(mc_dev);
+		error = dprc_close(mc_bus->atomic_mc_io, 0,
+				   mc_bus->atomic_dprc_handle);
+		if (error < 0) {
+			dev_err(&mc_dev->dev, "dprc_close() failed: %d\n",
+				error);
+		}
+
+		fsl_mc_portal_free(mc_bus->atomic_mc_io);
+	}
 
 	fsl_mc_io_unset_dpmcp(mc_dev->mc_io);
 	device_for_each_child(&mc_dev->dev, NULL, __fsl_mc_device_remove);
