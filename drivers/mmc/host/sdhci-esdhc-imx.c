@@ -588,6 +588,13 @@ static void esdhc_writeb_le(struct sdhci_host *host, u8 val, int reg)
 		mask = 0xffff & ~(ESDHC_CTRL_BUSWIDTH_MASK | ESDHC_CTRL_D3CD);
 
 		esdhc_clrset_le(host, mask, new_val, reg);
+
+		/*
+		 * The imx6q ROM code will change the default watermark
+		 * level setting to something insane.  Change it back here.
+		 */
+		if (esdhc_is_usdhc(imx_data))
+			writel(ESDHC_WTMK_DEFAULT_VAL, host->ioaddr + ESDHC_WTMK_LVL);
 		return;
 	}
 	esdhc_clrset_le(host, 0xff, val, reg);
@@ -973,11 +980,6 @@ static void sdhci_esdhc_imx_hwinit(struct sdhci_host *host)
 	int tmp;
 
 	if (esdhc_is_usdhc(imx_data)) {
-		/*
-		 * The imx6q ROM code will change the default watermark
-		 * level setting to something insane.  Change it back here.
-		 */
-		writel(ESDHC_WTMK_DEFAULT_VAL, host->ioaddr + ESDHC_WTMK_LVL);
 
 		/*
 		 * ROM code will change the bit burst_length_enable setting
