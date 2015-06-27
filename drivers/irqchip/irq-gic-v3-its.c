@@ -1787,12 +1787,13 @@ int __init its_init(struct device_node *node, struct rdists *rdists,
 		its_probe(np, parent_domain);
 	}
 
+	gic_rdists = rdists;
+
 	if (list_empty(&its_nodes)) {
 		pr_warn("ITS: No ITS available, not enabling LPIs\n");
 		return -ENXIO;
 	}
 
-	gic_rdists = rdists;
 	its_alloc_lpi_tables();
 	its_lpi_init(rdists->id_bits);
 
