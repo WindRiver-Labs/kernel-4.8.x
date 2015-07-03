@@ -53,9 +53,20 @@ config ARCH_EXYNOS
 	help
 	  This enables support for ARMv8 based Samsung Exynos SoC family.
 
+config LS2080A_ERRATA_ERR009971
+	bool "Freescale LS2085A SOC issue ERR009971"
+	help
+	  This enables support for workaround for Freescale LS2085A SOC
+	  errata ERR009971. This issue is related to CNTP_TVAL register
+	  not getting properly set leading to delay in timer interrupt
+	  being generated. As a workaround software clears the CNTP_TVAL
+	  register and then write again in case it finds mismatch between
+	  value written and read.
+
 config ARCH_LAYERSCAPE
 	bool "ARMv8 based Freescale Layerscape SoC family"
 	select PCI_LAYERSCAPE if PCI
+	select LS2080A_ERRATA_ERR009971
 	help
 	  This enables support for the Freescale Layerscape SoC family.
 
