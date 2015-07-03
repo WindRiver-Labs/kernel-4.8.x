@@ -319,9 +319,6 @@ EXPORT_SYMBOL(dpa_proxy_stop);
 static int __cold dpa_eth_proxy_remove(struct platform_device *of_dev)
 {
 	struct device *dev = &of_dev->dev;
-	struct proxy_device *proxy_dev = dev_get_drvdata(dev);
-
-	kfree(proxy_dev);
 
 	dev_set_drvdata(dev, NULL);
 
