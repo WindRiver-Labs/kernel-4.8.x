@@ -310,6 +310,16 @@ int dprc_scan_objects(struct fsl_mc_device *mc_bus_dev,
 					     0,
 					     mc_bus_dev->mc_handle,
 					     i, obj_desc);
+
+			/*
+			 * -ENXIO means object index was invalid.
+			 *  This is caused when the DPRC was changed at
+			 *  the MC during the scan.  In this case,
+			 *  abort the current scan.
+			 */
+			if (error == -ENXIO)
+				return error;
+
 			if (error < 0) {
 				dev_err(&mc_bus_dev->dev,
 					"dprc_get_obj(i=%d) failed: %d\n",
