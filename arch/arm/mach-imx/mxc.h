@@ -40,11 +40,17 @@
 #define MXC_CPU_IMX6Q		0x63
 #define MXC_CPU_IMX6UL		0x64
 #define MXC_CPU_IMX7D		0x72
+#define MXC_ARCH_CA7		0xc07
 
+#define IMX_DDR_TYPE_DDR3		0
 #define IMX_DDR_TYPE_LPDDR2		1
+#define IMX_DDR_TYPE_LPDDR3		2
+
+
 
 #ifndef __ASSEMBLY__
 extern unsigned int __mxc_cpu_type;
+extern unsigned int __mxc_arch_type;
 
 #ifdef CONFIG_SOC_IMX6SL
 static inline bool cpu_is_imx6sl(void)
@@ -81,6 +87,12 @@ static inline bool cpu_is_imx6q(void)
 static inline bool cpu_is_imx7d(void)
 {
 	return __mxc_cpu_type == MXC_CPU_IMX7D;
+}
+
+
+static inline bool arm_is_ca7(void)
+{
+	return __mxc_arch_type == MXC_ARCH_CA7;
 }
 
 struct cpu_op {

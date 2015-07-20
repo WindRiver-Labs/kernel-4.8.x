@@ -11,10 +11,17 @@
 
 unsigned int __mxc_cpu_type;
 static unsigned int imx_soc_revision;
+unsigned int __mxc_arch_type;
+EXPORT_SYMBOL(__mxc_arch_type);
 
 void mxc_set_cpu_type(unsigned int type)
 {
 	__mxc_cpu_type = type;
+}
+
+void mxc_set_arch_type(unsigned int type)
+{
+	__mxc_arch_type = type;
 }
 
 void imx_set_soc_revision(unsigned int rev)

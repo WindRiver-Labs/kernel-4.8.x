@@ -54,6 +54,9 @@ config HAVE_IMX_GPC
 config HAVE_IMX_MMDC
 	bool
 
+config HAVE_IMX_DDRC
+	bool
+
 config HAVE_IMX_SRC
 	def_bool y if SMP
 	select ARCH_HAS_RESET_CONTROLLER
@@ -554,8 +557,16 @@ config SOC_IMX6UL
 	help
 	  This enables support for Freescale i.MX6 UltraLite processor.
 
+config SOC_IMX7
+	bool
+	select CPU_V7
+	select ARM_GIC
+	select HAVE_SMP
+	select HAVE_IMX_DDRC
+
 config SOC_IMX7D
 	bool "i.MX7 Dual support"
+	select SOC_IMX7
 	select PINCTRL_IMX7D
 	select ARM_GIC
 	select HAVE_ARM_ARCH_TIMER
