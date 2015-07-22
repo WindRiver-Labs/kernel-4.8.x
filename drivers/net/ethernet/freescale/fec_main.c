@@ -2874,6 +2874,7 @@ fec_enet_open(struct net_device *ndev)
 
 	device_set_wakeup_enable(&ndev->dev, fep->wol_flag &
 				 FEC_WOL_FLAG_ENABLE);
+	fep->miibus_up_failed = false;
 
 	return 0;
 
@@ -2884,6 +2885,7 @@ err_enet_alloc:
 clk_enable:
 	pm_runtime_mark_last_busy(&fep->pdev->dev);
 	pm_runtime_put_autosuspend(&fep->pdev->dev);
+	fep->miibus_up_failed = true;
 	if (!fep->mii_bus_share)
 		pinctrl_pm_select_sleep_state(&fep->pdev->dev);
 	return ret;
@@ -3631,7 +3633,7 @@ static int __maybe_unused fec_suspend(struct device *dev)
 			enable_irq_wake(fep->wake_irq);
 		}
 		fec_enet_clk_enable(ndev, false);
-	} else if (fep->mii_bus_share && !ndev->phydev) {
+	} else if (fep->mii_bus_share && fep->miibus_up_failed && !ndev->phydev) {
 		fec_enet_clk_enable(ndev, false);
 		pinctrl_pm_select_sleep_state(&fep->pdev->dev);
 	}
@@ -3689,6 +3691,8 @@ static int __maybe_unused fec_resume(struct device *dev)
 		phy_start(ndev->phydev);
 	} else if (fep->mii_bus_share && !ndev->phydev) {
 		pinctrl_pm_select_default_state(&fep->pdev->dev);
+		fep->miibus_up_failed = true;
+		/* And then recovery mii bus */
 		fec_restore_mii_bus(ndev);
 	}
 	rtnl_unlock();
