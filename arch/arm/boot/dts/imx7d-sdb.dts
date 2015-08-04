@@ -135,6 +135,14 @@
 		wakeup-source;
 	};
 
+	backlight {
+		compatible = "pwm-backlight";
+		pwms = <&pwm1 0 5000000>;
+		brightness-levels = <0 4 8 16 32 64 128 255>;
+		default-brightness-level = <6>;
+		status = "okay";
+	};
+
 	spi4 {
 		compatible = "spi-gpio";
 		pinctrl-names = "default";
@@ -393,6 +401,12 @@
 	};
 };
 
+&pwm1 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_pwm1>;
+	status = "okay";
+};
+
 &uart1 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_uart1>;
@@ -608,6 +622,12 @@
 				MX7D_PAD_LCD_VSYNC__LCD_VSYNC	0x79
 				MX7D_PAD_LCD_HSYNC__LCD_HSYNC	0x79
 				MX7D_PAD_LCD_RESET__LCD_RESET	0x79
+			>;
+		};
+
+		pinctrl_pwm1: pwm1grp {
+			fsl,pins = <
+				MX7D_PAD_GPIO1_IO01__PWM1_OUT	0x110b0
 			>;
 		};
 
