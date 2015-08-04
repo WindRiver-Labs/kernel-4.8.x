@@ -34,6 +34,9 @@
 #define QUADSPI_QUIRK_SWAP_ENDIAN	(1 << 0)
 /* Controller needs 4x internal clock */
 #define QUADSPI_QUIRK_4X_INT_CLK	(1 << 1)
+/* Controller needs DDR delay */
+#define QUADSPI_QUIRK_DDR_DELAY		(1 << 2)
+
 /*
  * TKT253890, Controller needs driver to fill txfifo till 16 byte to
  * trigger data transfer even though extern data will not transferred.
@@ -241,7 +244,7 @@ static struct fsl_qspi_devtype_data imx6sx_data = {
 	.txfifo = 512,
 	.ahb_buf_size = 1024,
 	.driver_data = QUADSPI_QUIRK_4X_INT_CLK
-		       | QUADSPI_QUIRK_TKT245618,
+		       | QUADSPI_QUIRK_TKT245618 | QUADSPI_QUIRK_DDR_DELAY,
 };
 
 static struct fsl_qspi_devtype_data imx7d_data = {
@@ -295,6 +298,11 @@ struct fsl_qspi {
 static inline int needs_swap_endian(struct fsl_qspi *q)
 {
 	return q->devtype_data->driver_data & QUADSPI_QUIRK_SWAP_ENDIAN;
+}
+
+static inline int needs_ddr_delay(struct fsl_qspi *q)
+{
+	return q->devtype_data->driver_data & QUADSPI_QUIRK_DDR_DELAY;
 }
 
 static inline int needs_4x_clock(struct fsl_qspi *q)
@@ -746,7 +754,8 @@ static void fsl_qspi_init_abh_read(struct fsl_qspi *q)
 
 		/* Enable the module again (enable the DDR too) */
 		reg |= QUADSPI_MCR_DDR_EN_MASK;
-		if (is_imx6sx_qspi(q))
+		if (needs_ddr_delay(q) &&
+			(q->devtype_data->devtype == FSL_QUADSPI_IMX6SX))
 			reg |= MX6SX_QUADSPI_MCR_TX_DDR_DELAY_EN_MASK;
 
 		writel(reg, q->iobase + QUADSPI_MCR);
