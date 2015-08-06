@@ -735,12 +735,24 @@ END_FTR_SECTION_IFSET(CPU_FTR_ALTIVEC)
 	andis.	r15,r14,(DBSR_IC|DBSR_BT)@h
 	beq+	1f
 
+#ifdef CONFIG_RELOCATABLE
+	mflr	r14
+	LOAD_REG_ADDR_PIC(r15,interrupt_base_book3e)
+	mtlr	r14
+	cmpld	cr0,r10,r15
+	blt+	cr0,1f
+	LOAD_REG_ADDR_PIC(r15,__end_interrupts)
+	mtlr	r14
+	cmpld	cr0,r10,r15
+	bge+	cr0,1f
+#else
 	LOAD_REG_IMMEDIATE(r14,interrupt_base_book3e)
 	LOAD_REG_IMMEDIATE(r15,__end_interrupts)
 	cmpld	cr0,r10,r14
 	cmpld	cr1,r10,r15
 	blt+	cr0,1f
 	bge+	cr1,1f
+#endif
 
 	/* here it looks like we got an inappropriate debug exception. */
 	lis	r14,(DBSR_IC|DBSR_BT)@h		/* clear the event */
@@ -799,12 +811,24 @@ kernel_dbg_exc:
 	andis.	r15,r14,(DBSR_IC|DBSR_BT)@h
 	beq+	1f
 
+#ifdef CONFIG_RELOCATABLE
+	mflr	r14
+	LOAD_REG_ADDR_PIC(r15,interrupt_base_book3e)
+	mtlr	r14
+	cmpld	cr0,r10,r15
+	blt+	cr0,1f
+	LOAD_REG_ADDR_PIC(r15,__end_interrupts)
+	mtlr	r14
+	cmpld	cr0,r10,r15
+	bge+	cr0,1f
+#else
 	LOAD_REG_IMMEDIATE(r14,interrupt_base_book3e)
 	LOAD_REG_IMMEDIATE(r15,__end_interrupts)
 	cmpld	cr0,r10,r14
 	cmpld	cr1,r10,r15
 	blt+	cr0,1f
 	bge+	cr1,1f
+#endif
 
 	/* here it looks like we got an inappropriate debug exception. */
 	lis	r14,(DBSR_IC|DBSR_BT)@h		/* clear the event */
