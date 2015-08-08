@@ -346,6 +346,8 @@ static inline int pmd_protnone(pmd_t pmd)
 #define pgprot_cached(prot) \
 	__pgprot_modify(prot, PTE_ATTRINDX_MASK, PTE_ATTRINDX(MT_NORMAL) | \
 			PTE_PXN | PTE_UXN)
+#define pgprot_cached_ns(prot) \
+	__pgprot(pgprot_val(pgprot_cached(prot)) ^ PTE_SHARED)
 #define pgprot_device(prot) \
 	__pgprot_modify(prot, PTE_ATTRINDX_MASK, PTE_ATTRINDX(MT_DEVICE_nGnRE) | PTE_PXN | PTE_UXN)
 #define PROT_NORMAL_NS		(PTE_TYPE_PAGE | PTE_AF | PTE_PXN | PTE_UXN | \
