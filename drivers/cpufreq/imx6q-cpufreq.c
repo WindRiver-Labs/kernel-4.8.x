@@ -29,6 +29,9 @@ static struct clk *pll1_sys_clk;
 static struct clk *pll1_sw_clk;
 static struct clk *step_clk;
 static struct clk *pll2_pfd2_396m_clk;
+static struct clk *pll1_bypass;
+static struct clk *pll1_bypass_src;
+static struct clk *pll1;
 
 /* clk used by i.MX6UL */
 static struct clk *pll2_bus_clk;
