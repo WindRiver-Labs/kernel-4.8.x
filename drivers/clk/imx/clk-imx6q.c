@@ -135,21 +135,6 @@ static unsigned int share_count_spdif;
 static unsigned int share_count_prg0;
 static unsigned int share_count_prg1;
 
-static inline int clk_on_imx6q(void)
-{
-	return of_machine_is_compatible("fsl,imx6q");
-}
-
-static inline int clk_on_imx6qp(void)
-{
-	return of_machine_is_compatible("fsl,imx6qp");
-}
-
-static inline int clk_on_imx6dl(void)
-{
-	return of_machine_is_compatible("fsl,imx6dl");
-}
-
 static struct clk ** const uart_clks[] __initconst = {
 	&clk[IMX6QDL_CLK_UART_IPG],
 	&clk[IMX6QDL_CLK_UART_SERIAL],
