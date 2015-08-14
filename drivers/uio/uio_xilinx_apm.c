@@ -67,6 +67,7 @@ struct xapm_param {
 	u32 scalefactor;
 	u32 isr;
 	struct clk *clk;
+	bool is_32bit_filter;
 };
 
 /**
@@ -188,6 +189,8 @@ static int xapm_getprop(struct platform_device *pdev, struct xapm_param *param)
 		dev_err(&pdev->dev, "no property xlnx,metric-count-scale");
 		return ret;
 	}
+
+	param->is_32bit_filter = of_property_read_bool(node, "xlnx,id-filter-32bit");
 
 	return 0;
 }
