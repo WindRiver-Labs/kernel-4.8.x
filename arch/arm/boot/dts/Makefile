@@ -407,6 +407,7 @@ dtb-$(CONFIG_SOC_IMX6SX) += \
 	imx6sx-sdb.dtb
 dtb-$(CONFIG_SOC_IMX6UL) += \
 	imx6ul-14x14-ddr3-arm2.dtb \
+	imx6ul-14x14-ddr3-arm2-gpmi-weim.dtb \
 	imx6ul-14x14-evk.dtb \
 	imx6ul-pico-hobbit.dtb \
 	imx6ul-tx6ul-0010.dtb \
