@@ -80,7 +80,7 @@ const struct inode_operations vmfs_dir_inode_operations_unix = {
 static int vmfs_readdir(struct file *filp, struct dir_context *ctx)
 {
 	struct dentry *dentry = filp->f_path.dentry;
-	struct inode *dir = dentry->d_inode;
+	struct inode *dir = d_inode(dentry);
 	struct vmfs_sb_info *server = server_from_dentry(dentry);
 	union vmfs_dir_cache *cache = NULL;
 	struct vmfs_cache_control ctl;
@@ -155,14 +155,25 @@ static int vmfs_readdir(struct file *filp, struct dir_context *ctx)
 			struct dentry *dent;
 			int res;
 
-			dent = vmfs_dget_fpos(ctl.cache->dentry[ctl.idx],
-					      dentry, filp->f_pos);
-			if (!dent)
+			spin_lock(&dentry->d_lock);
+			if (!(VMFS_I(dir)->flags & VMFS_DIR_CACHE)) {
+				spin_unlock(&dentry->d_lock);
 				goto invalid_cache;
+			}
+			dent = ctl.cache->dentry[ctl.idx];
+			if (unlikely(!lockref_get_not_dead(&dent->d_lockref))) {
+				spin_unlock(&dentry->d_lock);
+				goto invalid_cache;
+			}
+			spin_unlock(&dentry->d_lock);
+			if (d_really_is_negative(dent)) {
+				dput(dent);
+				goto invalid_cache;
+			}
 
 			res = !dir_emit(ctx, dent->d_name.name,
 					dent->d_name.len,
-					dent->d_inode->i_ino, DT_UNKNOWN);
+					d_inode(dent)->i_ino, DT_UNKNOWN);
 			dput(dent);
 			if (res)
 				goto finished;
@@ -199,6 +210,9 @@ init_cache:
 	ctl.filled = 0;
 	ctl.valid = 1;
 read_really:
+	spin_lock(&dentry->d_lock);
+	VMFS_I(dir)->flags |= VMFS_DIR_CACHE;
+	spin_unlock(&dentry->d_lock);
 	result = server->ops->readdir(filp, ctx, &ctl);
 	if (result == -ERESTARTSYS && page)
 		ClearPageUptodate(page);
@@ -225,6 +239,14 @@ out:
 	mutex_unlock(&vmfs_mutex);
 	return result;
 }
+
+static void vmfs_d_prune(struct dentry *dentry)
+{
+	if (!dentry->d_fsdata)	/* not referenced from page cache */
+		return;
+	VMFS_I(d_inode(dentry->d_parent))->flags &= ~VMFS_DIR_CACHE;
+}
+
 
 static int vmfs_dir_open(struct inode *dir, struct file *file)
 {
@@ -253,11 +275,14 @@ static int vmfs_delete_dentry(struct dentry *);
 #else
 static int vmfs_delete_dentry(const struct dentry *);
 #endif
+static void vmfs_d_prune(struct dentry *dentry);
+
 
 
 static const struct dentry_operations vmfs__dentry_operations_case = {
 	.d_revalidate = vmfs_lookup_validate,
 	.d_delete = vmfs_delete_dentry,
+	.d_prune = vmfs_d_prune,
 };
 
 /*
@@ -266,7 +291,7 @@ static const struct dentry_operations vmfs__dentry_operations_case = {
 static int vmfs_lookup_validate(struct dentry *dentry, unsigned int flags)
 {
 	struct vmfs_sb_info *server = server_from_dentry(dentry);
-	struct inode *inode = dentry->d_inode;
+	struct inode *inode = d_inode(dentry);
 	unsigned long age = jiffies - dentry->d_time;
 	int valid;
 
@@ -309,8 +334,8 @@ vmfs_delete_dentry(struct dentry *dentry)
 vmfs_delete_dentry(const struct dentry *dentry)
 #endif
 {
-	if (dentry->d_inode) {
-		if (is_bad_inode(dentry->d_inode)) {
+	if (d_inode(dentry)) {
+		if (is_bad_inode(d_inode(dentry))) {
 			PARANOIA("bad inode, unhashing %s/%s\n",
 				 DENTRY_PATH(dentry));
 			return 1;
@@ -502,7 +527,7 @@ static int vmfs_mkdir(struct inode *dir, struct dentry *dentry, umode_t mode)
 
 static int vmfs_rmdir(struct inode *dir, struct dentry *dentry)
 {
-	struct inode *inode = dentry->d_inode;
+	struct inode *inode = d_inode(dentry);
 	int error;
 
 	VERBOSE("\n");
@@ -535,7 +560,7 @@ static int vmfs_unlink(struct inode *dir, struct dentry *dentry)
 	 * Close the file if it's open.
 	 */
 	mutex_lock(&vmfs_mutex);
-	vmfs_close(dentry->d_inode);
+	vmfs_close(d_inode(dentry));
 
 	vmfs_invalid_dir_cache(dir);
 	error = vmfs_proc_unlink(dentry);
@@ -558,10 +583,10 @@ vmfs_rename(struct inode *old_dir, struct dentry *old_dentry,
 	 * target before attempting the rename.
 	 */
 	mutex_lock(&vmfs_mutex);
-	if (old_dentry->d_inode)
-		vmfs_close(old_dentry->d_inode);
-	if (new_dentry->d_inode) {
-		vmfs_close(new_dentry->d_inode);
+	if (d_inode(old_dentry))
+		vmfs_close(d_inode(old_dentry));
+	if (d_inode(new_dentry)) {
+		vmfs_close(d_inode(new_dentry));
 		error = vmfs_proc_unlink(new_dentry);
 		if (error) {
 			VERBOSE("unlink %s/%s, error=%d\n",

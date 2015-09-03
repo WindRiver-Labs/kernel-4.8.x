@@ -108,7 +108,7 @@ MessageBox *mb_new(phys_addr_t dev_base, uint32_t dev_irq)
 
 	/* Map the messagebox registers and buffer int VM */
 
-	if (check_mem_region(dev_base, MBOX_DEVICE_SIZE)) {
+	if (!request_mem_region(dev_base, MBOX_DEVICE_SIZE, "messagebox")) {
 		DEBUG1("i/o space at 0x%llx already in use\n", dev_base);
 		return NULL;
 	}
