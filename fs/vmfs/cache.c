@@ -81,60 +81,6 @@ void vmfs_invalidate_dircache_entries(struct dentry *parent)
 #endif
 }
 
-/*
- * dget, but require that fpos and parent matches what the dentry contains.
- * dentry is not known to be a valid pointer at entry.
- */
-struct dentry *vmfs_dget_fpos(struct dentry *dentry, struct dentry *parent,
-			      unsigned long fpos)
-{
-	struct dentry *dent = dentry;
-	struct list_head *next;
-
-	if (d_validate(dent, parent)) {
-		if (dent->d_name.len <= VMFS_MAXNAMELEN &&
-		    (unsigned long)dent->d_fsdata == fpos) {
-			if (!dent->d_inode) {
-				dput(dent);
-				dent = NULL;
-			}
-			return dent;
-		}
-		dput(dent);
-	}
-
-	/* If a pointer is invalid, we search the dentry. */
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 38)
-	spin_lock(&dcache_lock);
-#else
-	spin_lock(&parent->d_lock);
-#endif
-	next = parent->d_subdirs.next;
-	while (next != &parent->d_subdirs) {
-		dent = list_entry(next, struct dentry, d_child);
-		if ((unsigned long)dent->d_fsdata == fpos) {
-			if (dent->d_inode) {
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 38)
-				dget_locked(dent);
-#else
-				dget(dent);
-#endif
-			} else {
-				dent = NULL;
-			}
-			goto out_unlock;
-		}
-		next = next->next;
-	}
-	dent = NULL;
-out_unlock:
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 38)
-	spin_unlock(&dcache_lock);
-#else
-	spin_unlock(&parent->d_lock);
-#endif
-	return dent;
-}
 
 /*
  * Create dentry/inode for this file and add it to the dircache.

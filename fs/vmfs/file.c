@@ -451,8 +451,6 @@ const struct file_operations vmfs_file_operations = {
 #else
 	.llseek = remote_llseek,
 #endif
-	.read = new_sync_read,
-	.write = new_sync_write,
 	.read_iter = vmfs_file_read_iter,
 	.write_iter = vmfs_file_write_iter,
 	.unlocked_ioctl = vmfs_unlocked_ioctl,

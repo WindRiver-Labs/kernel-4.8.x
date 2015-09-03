@@ -45,9 +45,6 @@ extern int vmfs_fill_cache(struct file *filp, struct dir_context *dirent,
 			   struct vmfs_fattr *entry);
 extern void vmfs_invalid_dir_cache(struct inode *dir);
 extern void vmfs_invalidate_dircache_entries(struct dentry *parent);
-extern struct dentry *vmfs_dget_fpos(struct dentry *dentry,
-				     struct dentry *parent,
-				     unsigned long fpos);
 /* inode.c */
 extern struct inode *vmfs_iget(struct super_block *sb,
 			       struct vmfs_fattr *fattr);

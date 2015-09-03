@@ -4,11 +4,9 @@
 
 obj-$(CONFIG_VMFS_FS) += vmfsfs.o
 
-#vmfsfs-objs := proc.o dir.o cache.o inode.o file.o ioctl.o getopt.o \
+vmfsfs-objs := proc.o dir.o cache.o inode.o file.o ioctl.o getopt.o \
 		symlink.o messagebox.o msg.o vfs.o
 
-vmfsfs-objs := proc.o dir.o inode.o ioctl.o getopt.o \
-		symlink.o msg.o vfs.o
 
 # If you want debugging output, you may add these flags to the EXTRA_CFLAGS
 # VMFSFS_PARANOIA should normally be enabled.

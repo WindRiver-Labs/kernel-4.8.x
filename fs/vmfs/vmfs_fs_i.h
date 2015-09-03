@@ -30,7 +30,9 @@ struct vmfs_inode_info {
 	uint32_t vaccess;	/* access (VMFS_OPEN_ ) */
 	uint32_t vopen;		/* set to 1 when the file is open
 				   (why not use openers?) */
-
+	int	flags;
+#define VMFS_KLUDGE_SYMLINK	0x0001
+#define VMFS_DIR_CACHE		0x0002
 	struct inode vfs_inode;	/* must be at the end */
 
 };
