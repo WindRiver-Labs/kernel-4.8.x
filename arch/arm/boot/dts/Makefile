@@ -393,6 +393,7 @@ dtb-$(CONFIG_SOC_IMX6Q) += \
 	imx6qp-sabreauto-flexcan1.dtb \
 	imx6qp-sabreauto-gpmi-weim.dtb \
 	imx6qp-sabresd-hdcp.dtb \
+	imx6qp-sabresd-ldo.dtb \
 	imx6q-sabrelite.dtb \
 	imx6q-sabresd.dtb \
 	imx6q-sabresd-btwifi.dtb \
