@@ -308,6 +308,11 @@ config MDIO_XGENE
 	  This module provides a driver for the MDIO busses found in the
 	  APM X-Gene SoC's.
 
+config XILINX_PHY
+	tristate "Drivers for xilinx PHYs"
+	help
+	  This module provides a driver for the Xilinx PCS/PMA Core.
+
 endif # PHYLIB
 
 config MICREL_KS8995MA
