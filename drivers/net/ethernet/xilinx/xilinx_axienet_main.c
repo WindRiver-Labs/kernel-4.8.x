@@ -1003,7 +1003,6 @@ static int axienet_open(struct net_device *ndev)
 {
 	int ret, mdio_mcreg;
 	struct axienet_local *lp = netdev_priv(ndev);
-	struct phy_device *phydev = NULL;
 
 	dev_dbg(&ndev->dev, "axienet_open()\n");
 
@@ -1027,13 +1026,13 @@ static int axienet_open(struct net_device *ndev)
 
 	if (lp->phy_node && !lp->is_10Gmac) {
 		lp->phy_dev = of_phy_connect(lp->ndev, lp->phy_node,
-						axienet_adjust_link, 0,
-						lp->phy_interface);
+					axienet_adjust_link, lp->phy_flags,
+					lp->phy_interface);
 
-		if (!phydev)
+		if (!lp->phy_dev)
 			dev_err(lp->dev, "of_phy_connect() failed\n");
 		else
-			phy_start(phydev);
+			phy_start(lp->phy_dev);
 	}
 
 	/* Enable tasklets for Axi DMA error handling */
@@ -1056,8 +1055,8 @@ static int axienet_open(struct net_device *ndev)
 err_rx_irq:
 	free_irq(lp->tx_irq, ndev);
 err_tx_irq:
-	if (phydev)
-		phy_disconnect(phydev);
+	if (lp->phy_dev)
+		phy_disconnect(lp->phy_dev);
 	tasklet_kill(&lp->dma_err_tasklet);
 	dev_err(lp->dev, "request_irq() failed\n");
 	return ret;
@@ -1679,6 +1678,8 @@ static int axienet_probe(struct platform_device *pdev)
 	if (ret < 0)
 		dev_warn(&pdev->dev, "couldn't find phy i/f\n");
 	lp->phy_interface = ret;
+	if (lp->phy_type == XAE_PHY_TYPE_1000BASE_X)
+		lp->phy_flags = XAE_PHY_TYPE_1000BASE_X;
 
 	lp->phy_node = of_parse_phandle(pdev->dev.of_node, "phy-handle", 0);
 	if (lp->phy_node) {
