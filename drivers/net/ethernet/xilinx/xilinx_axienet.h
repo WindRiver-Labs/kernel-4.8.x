@@ -416,6 +416,7 @@ struct axidma_bd {
  * @coalesce_count_rx:	Store the irq coalesce on RX side.
  * @coalesce_count_tx:	Store the irq coalesce on TX side.
  * @is_10Gmac:	  Check for 10g mac.
+ * @phy_interface: Phy interface type.
  */
 struct axienet_local {
 	struct net_device *ndev;
@@ -461,6 +462,7 @@ struct axienet_local {
 	u32 coalesce_count_rx;
 	u32 coalesce_count_tx;
 	u32 is_10Gmac;
+	u32 phy_interface;
 };
 
 /**
