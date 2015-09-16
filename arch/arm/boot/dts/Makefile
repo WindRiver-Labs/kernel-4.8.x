@@ -450,6 +450,7 @@ dtb-$(CONFIG_SOC_IMX7D) += \
 	imx7d-12x12-lpddr3-arm2-sai.dts \
 	imx7d-12x12-lpddr3-arm2-mqs.dtb \
 	imx7d-19x19-lpddr2-arm2.dtb \
+	imx7d-sdb-epdc.dtb \
 	imx7d-sdb-m4.dtb \
 	imx7s-colibri-eval-v3.dtb
 dtb-$(CONFIG_SOC_LS1021A) += \
