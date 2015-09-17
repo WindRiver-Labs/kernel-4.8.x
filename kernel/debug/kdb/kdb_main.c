@@ -2477,6 +2477,7 @@ static int kdb_kill(int argc, const char **argv)
 	return 0;
 }
 
+#ifndef CONFIG_PREEMPT_RT_FULL
 struct kdb_tm {
 	int tm_sec;	/* seconds */
 	int tm_min;	/* minutes */
@@ -2586,6 +2587,7 @@ static int kdb_summary(int argc, const char **argv)
 		   K(val.totalram), K(val.freeram), K(val.bufferram));
 	return 0;
 }
+#endif
 
 /*
  * kdb_per_cpu - This function implements the 'per_cpu' command.
@@ -2904,9 +2906,11 @@ static void __init kdb_inittab(void)
 	kdb_register_flags("kill", kdb_kill, "<-signal> <pid>",
 	  "Send a signal to a process", 0,
 	  KDB_ENABLE_SIGNAL);
+#ifndef CONFIG_PREEMPT_RT_FULL
 	kdb_register_flags("summary", kdb_summary, "",
 	  "Summarize the system", 4,
 	  KDB_ENABLE_ALWAYS_SAFE);
+#endif
 	kdb_register_flags("per_cpu", kdb_per_cpu, "<sym> [<bytes>] [<cpu>]",
 	  "Display per_cpu variables", 3,
 	  KDB_ENABLE_MEM_READ);
