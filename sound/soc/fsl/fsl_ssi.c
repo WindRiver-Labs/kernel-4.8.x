@@ -114,6 +114,20 @@ struct fsl_ssi_rxtx_reg_val {
 	struct fsl_ssi_reg_val tx;
 };
 
+static const struct reg_default fsl_ssi_reg_defaults[] = {
+	{0x10, 0x00000000},
+	{0x18, 0x00003003},
+	{0x1c, 0x00000200},
+	{0x20, 0x00000200},
+	{0x24, 0x00040000},
+	{0x28, 0x00040000},
+	{0x38, 0x00000000},
+	{0x48, 0x00000000},
+	{0x4c, 0x00000000},
+	{0x54, 0x00000000},
+	{0x58, 0x00000000},
+};
+
 static bool fsl_ssi_readable_reg(struct device *dev, unsigned int reg)
 {
 	switch (reg) {
@@ -179,6 +193,8 @@ static const struct regmap_config fsl_ssi_regconfig = {
 	.val_bits = 32,
 	.reg_stride = 4,
 	.val_format_endian = REGMAP_ENDIAN_NATIVE,
+	.reg_defaults = fsl_ssi_reg_defaults,
+	.num_reg_defaults = ARRAY_SIZE(fsl_ssi_reg_defaults),
 	.num_reg_defaults_raw = CCSR_SSI_SACCDIS / sizeof(uint32_t) + 1,
 	.readable_reg = fsl_ssi_readable_reg,
 	.volatile_reg = fsl_ssi_volatile_reg,
