@@ -339,6 +339,7 @@ dtb-$(CONFIG_SOC_IMX6Q) += \
 	imx6dl-sabreauto.dtb \
 	imx6dl-sabrelite.dtb \
 	imx6dl-sabresd.dtb \
+	imx6dl-sabresd-ldo.dtb \
 	imx6dl-tx6dl-comtft.dtb \
 	imx6dl-tx6s-8034.dtb \
 	imx6dl-tx6s-8035.dtb \
@@ -381,6 +382,7 @@ dtb-$(CONFIG_SOC_IMX6Q) += \
 	imx6q-sabreauto.dtb \
 	imx6q-sabrelite.dtb \
 	imx6q-sabresd.dtb \
+	imx6q-sabresd-ldo.dtb \
 	imx6q-sabresd-uart.dtb \
 	imx6q-sabresd-enetirq.dtb \
 	imx6q-sbc6x.dtb \
@@ -401,6 +403,7 @@ dtb-$(CONFIG_SOC_IMX6Q) += \
 	imx6qp-sabresd.dtb
 dtb-$(CONFIG_SOC_IMX6SL) += \
 	imx6sl-evk.dtb \
+	imx6sl-evk-ldo.dtb \
 	imx6sl-evk-uart.dtb \
 	imx6sl-warp.dtb
 dtb-$(CONFIG_SOC_IMX6SX) += \
@@ -408,9 +411,12 @@ dtb-$(CONFIG_SOC_IMX6SX) += \
 	imx6sx-nitrogen6sx.dtb \
 	imx6sx-sabreauto.dtb \
 	imx6sx-sdb-reva.dtb \
+	imx6sx-sdb-reva-ldo.dtb \
 	imx6sx-sdb-sai.dtb \
+	imx6sx-sdb-ldo.dtb	\
 	imx6sx-sdb.dtb	\
-	imx6sx-19x19-arm2.dtb
+	imx6sx-19x19-arm2.dtb \
+	imx6sx-19x19-arm2-ldo.dtb
 dtb-$(CONFIG_SOC_IMX6UL) += \
 	imx6ul-14x14-ddr3-arm2.dtb \
 	imx6ul-14x14-ddr3-arm2-gpmi-weim.dtb \
