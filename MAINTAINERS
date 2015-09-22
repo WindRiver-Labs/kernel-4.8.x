@@ -5082,6 +5082,12 @@ L:	linux-kernel@vger.kernel.org
 S:	Maintained
 F:	drivers/staging/fsl-dpaa2/mac/
 
+FREESCALE DPAA2 ETHERNET SWITCH DRIVER
+M:	Alex Marginean <Alexandru.Marginean@freescale.com>
+L:	linux-kernel@vger.kernel.org
+S:	Maintained
+F:	drivers/staging/fsl-dpaa2/ethsw/
+
 FREESCALE DPAA2 EDGE VIRTUAL BRIDGE DRIVER
 M:	Alex Marginean <Alexandru.Marginean@freescale.com>
 L:	linux-kernel@vger.kernel.org
