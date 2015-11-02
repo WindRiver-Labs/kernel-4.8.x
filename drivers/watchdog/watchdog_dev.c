@@ -346,6 +346,24 @@ static int watchdog_set_timeout(struct watchdog_device *wdd,
 }
 
 /*
+ *	watchdog_set_pretimeout: set the watchdog timer pretimeout
+ *	@wddev: the watchdog device to set the timeout for
+ *	@timeout: pretimeout to set in seconds
+ */
+
+static int watchdog_set_pretimeout(struct watchdog_device *wddev,
+							unsigned int timeout)
+{
+	if ((wddev->ops->set_pretimeout == NULL) ||
+	    !(wddev->info->options & WDIOF_PRETIMEOUT))
+		return -EOPNOTSUPP;
+	if (watchdog_pretimeout_invalid(wddev, timeout))
+		return -EINVAL;
+
+	return wddev->ops->set_pretimeout(wddev, timeout);
+}
+
+/*
  *	watchdog_get_timeleft: wrapper to get the time left before a reboot
  *	@wdd: the watchdog device to get the remaining time from
  *	@timeleft: the time that's left
@@ -645,6 +663,16 @@ static long watchdog_ioctl(struct file *file, unsigned int cmd,
 		if (err < 0)
 			break;
 		err = put_user(val, p);
+		break;
+	case WDIOC_SETPRETIMEOUT:
+		if (get_user(val, p)) {
+			err = -EFAULT;
+			break;
+		}
+		err = watchdog_set_pretimeout(wdd, val);
+		break;
+	case WDIOC_GETPRETIMEOUT:
+		err = put_user(wdd->pretimeout, p);
 		break;
 	default:
 		err = -ENOTTY;
