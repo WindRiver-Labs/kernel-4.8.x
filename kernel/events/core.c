@@ -1092,7 +1092,7 @@ static void perf_event_ctx_activate(struct perf_event_context *ctx)
 {
 	struct list_head *head = this_cpu_ptr(&active_ctx_list);
 
-	WARN_ON(!irqs_disabled());
+	WARN_ON_NONRT(!irqs_disabled());
 
 	WARN_ON(!list_empty(&ctx->active_ctx_list));
 
@@ -1101,7 +1101,7 @@ static void perf_event_ctx_activate(struct perf_event_context *ctx)
 
 static void perf_event_ctx_deactivate(struct perf_event_context *ctx)
 {
-	WARN_ON(!irqs_disabled());
+	WARN_ON_NONRT(!irqs_disabled());
 
 	WARN_ON(list_empty(&ctx->active_ctx_list));
 
