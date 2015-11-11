@@ -2990,6 +2990,7 @@ void qman_delete_cgr_safe(struct qman_cgr *cgr)
 
 	preempt_disable();
 	if (qman_cgr_cpus[cgr->cgrid] != smp_processor_id()) {
+		preempt_enable();
 		init_completion(&cgr_comp.completion);
 		cgr_comp.cgr = cgr;
 		thread = kthread_create(qman_delete_cgr_thread, &cgr_comp,
@@ -2999,7 +3000,6 @@ void qman_delete_cgr_safe(struct qman_cgr *cgr)
 			kthread_bind(thread, qman_cgr_cpus[cgr->cgrid]);
 			wake_up_process(thread);
 			wait_for_completion(&cgr_comp.completion);
-			preempt_enable();
 			return;
 		}
 	}
