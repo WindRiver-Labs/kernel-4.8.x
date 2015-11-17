@@ -371,9 +371,10 @@ enum {
 #define IS_GLK(pci) ((pci)->vendor == 0x8086 && (pci)->device == 0x3198)
 #define IS_SKL_PLUS(pci) (IS_SKL(pci) || IS_SKL_LP(pci) || IS_BXT(pci)) || \
 			IS_KBL(pci) || IS_KBL_LP(pci) || IS_KBL_H(pci)	|| \
-			IS_GLK(pci)
+			IS_GLK(pci) || IS_CNL(pci)
 #define IS_BXT(pci) ((pci)->vendor == 0x8086 && \
 		     ((pci)->device == 0x5a98 || (pci)->device == 0x1a98))
+#define IS_CNL(pci) ((pci)->vendor == 0x8086 && (pci)->device == 0x9df0)
 
 static char *driver_short_names[] = {
 	[AZX_DRIVER_ICH] = "HDA Intel",
@@ -2236,6 +2237,9 @@ static const struct pci_device_id azx_ids[] = {
 	/* Gemini-Lake */
 	{ PCI_DEVICE(0x8086, 0x3198),
 	  .driver_data = AZX_DRIVER_PCH | AZX_DCAPS_INTEL_BROXTON },
+	/* Cannonlake */
+	{ PCI_DEVICE(0x8086, 0x9df0),
+	  .driver_data = AZX_DRIVER_PCH | AZX_DCAPS_INTEL_SKYLAKE },
 	/* Haswell */
 	{ PCI_DEVICE(0x8086, 0x0a0c),
 	  .driver_data = AZX_DRIVER_HDMI | AZX_DCAPS_INTEL_HASWELL },
