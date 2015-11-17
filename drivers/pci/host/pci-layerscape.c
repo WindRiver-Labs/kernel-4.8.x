@@ -340,6 +340,9 @@ static int __init ls_pcie_probe(struct platform_device *pdev)
 			dev_err(&pdev->dev, "PCIe endpoint partitioning not possible\n");
 	}
 
+	if (!ls_pcie_is_bridge(pcie))
+		return -ENODEV;
+
 	ret = dw_pcie_port_init(&pcie->pp);
 	if (ret < 0)
 		return ret;
