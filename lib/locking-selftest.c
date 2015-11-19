@@ -997,10 +997,23 @@ static int unexpected_testcase_failures;
 static void dotest(void (*testcase_fn)(void), int expected, int lockclass_mask)
 {
 	unsigned long saved_preempt_count = preempt_count();
+#ifdef CONFIG_SCHED_DEBUG
+	struct task_struct *p = current;
+	int save_migrate_atomic;
+#endif
 
 	WARN_ON(irqs_disabled());
 
+#ifdef CONFIG_SCHED_DEBUG
+	save_migrate_atomic = p->migrate_disable_atomic;
+#endif
+
 	testcase_fn();
+
+#ifdef CONFIG_SCHED_DEBUG
+	p->migrate_disable_atomic = save_migrate_atomic;
+#endif
+
 	/*
 	 * Filter out expected failures:
 	 */
