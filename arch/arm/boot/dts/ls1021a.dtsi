@@ -722,6 +722,7 @@
 			snps,quirk-frame-length-adjustment = <0x20>;
 			snps,dis_rxdet_inp3_quirk;
 			configure-gfladj;
+			dma-coherent;
 		};
 
 		pcie@3400000 {
