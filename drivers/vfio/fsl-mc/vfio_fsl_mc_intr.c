@@ -298,23 +298,9 @@ static int vfio_fsl_mc_disable_irq(struct fsl_mc_device *mc_dev, int irq_num)
 
 static irqreturn_t vfio_fsl_mc_irq_handler(int irq_num, void *arg)
 {
-	struct vfio_fsl_mc_device *vdev;
-	int i;
-	int hw_irq_num;
-	struct eventfd_ctx *trigger;
+	struct vfio_fsl_mc_irq *mc_irq = (struct vfio_fsl_mc_irq *)arg;
 
-	vdev = (struct vfio_fsl_mc_device *)arg;
-	for (i = 0; i < vdev->mc_dev->obj_desc.irq_count; i++) {
-		hw_irq_num = vdev->mc_irqs[i].hw_irq_num;
-		if (irq_num == hw_irq_num) {
-			trigger = vdev->mc_irqs[i].trigger;
-			if (trigger) {
-				eventfd_signal(trigger, 1);
-				break;
-			}
-		}
-	}
-
+	eventfd_signal(mc_irq->trigger, 1);
 	return IRQ_HANDLED;
 }
 
@@ -345,7 +331,6 @@ int vfio_fsl_mc_configure_irq(struct vfio_fsl_mc_device *vdev,
 		return error;
 	}
 
-	mc_irq->hw_irq_num = mc_dev->irqs[irq_index]->irq_number;
 	mc_irq->irq_configured = true;
 	return 0;
 }
@@ -353,8 +338,8 @@ int vfio_fsl_mc_configure_irq(struct vfio_fsl_mc_device *vdev,
 static void vfio_fsl_mc_unconfigure_irq(struct vfio_fsl_mc_device *vdev,
 				       int irq_index)
 {
-	struct fsl_mc_device *mc_dev = vdev->mc_dev;
-	struct fsl_mc_device_irq *irq = mc_dev->irqs[irq_index];
+	struct fsl_mc_device_irq *irq = vdev->mc_dev->irqs[irq_index];
+	struct vfio_fsl_mc_irq *mc_irq = &vdev->mc_irqs[irq_index];
 
 	if (!vdev->mc_irqs[irq_index].irq_configured)
 		return;
