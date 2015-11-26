@@ -325,6 +325,7 @@ int vfio_fsl_mc_configure_irq(struct vfio_fsl_mc_device *vdev,
 	struct fsl_mc_device *mc_dev = vdev->mc_dev;
 	struct fsl_mc_device_irq *irq = mc_dev->irqs[irq_index];
 	struct vfio_fsl_mc_irq *mc_irq = &vdev->mc_irqs[irq_index];
+	struct device *dev = &mc_dev->dev;
 
 	if (WARN_ON(!mc_irq->irq_initialized))
 		return -EOPNOTSUPP;
@@ -340,6 +341,7 @@ int vfio_fsl_mc_configure_irq(struct vfio_fsl_mc_device *vdev,
 	if (error < 0) {
 		dev_err(&mc_dev->dev,
 			"IRQ registration fails with error: %d\n", error);
+		kfree(mc_irq->name);
 		return error;
 	}
 
