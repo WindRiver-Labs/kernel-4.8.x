@@ -301,6 +301,7 @@ EXPORT_SYMBOL_GPL(edac_pci_add_device);
 struct edac_pci_ctl_info *edac_pci_del_device(struct device *dev)
 {
 	struct edac_pci_ctl_info *pci;
+	int op_state;
 
 	edac_dbg(0, "\n");
 
@@ -315,13 +316,15 @@ struct edac_pci_ctl_info *edac_pci_del_device(struct device *dev)
 		return NULL;
 	}
 
+	op_state = pci->op_state;
+
 	pci->op_state = OP_OFFLINE;
 
 	del_edac_pci_from_global_list(pci);
 
 	mutex_unlock(&edac_pci_ctls_mutex);
 
-	if (pci->edac_check)
+	if (pci->edac_check && (op_state == OP_RUNNING_POLL))
 		edac_stop_work(&pci->work);
 
 	edac_printk(KERN_INFO, EDAC_PCI,
