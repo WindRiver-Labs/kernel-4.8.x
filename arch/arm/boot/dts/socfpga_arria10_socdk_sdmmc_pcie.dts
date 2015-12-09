@@ -1,0 +1,60 @@
+/dts-v1/;
+#include "socfpga_arria10_socdk.dtsi"
+
+&mmc {
+	status = "okay";
+	num-slots = <1>;
+	cap-sd-highspeed;
+	broken-cd;
+	bus-width = <4>;
+	altr,dw-mshc-ciu-div = <3>;
+	altr,dw-mshc-sdr-timing = <0 3>;
+};
+
+&eccmgr {
+	sdmmca-ecc@ff8c2c00 {
+		compatible = "altr,socfpga-sdmmc-ecc";
+		reg = <0xff8c2c00 0x400>;
+		altr,ecc-parent = <&mmc>;
+		interrupts = <15 IRQ_TYPE_LEVEL_HIGH>,
+			     <47 IRQ_TYPE_LEVEL_HIGH>,
+			     <16 IRQ_TYPE_LEVEL_HIGH>,
+			     <48 IRQ_TYPE_LEVEL_HIGH>;
+	};
+};
+
+&pcie_0_pcie_a10_hip_avmm {
+	status = "okay";
+};
+
+&arria10_hps_0_bridges {
+	status = "okay";
+};
+
+&sysid_qsys_0 {
+	status = "okay";
+};
+
+&led_pio {
+	status = "okay";
+};
+
+&button_pio {
+	status = "okay";
+};
+
+&dipsw_pio {
+	status = "okay";
+};
+
+&pcie_0_msi_to_gic_gen_0 {
+	status = "okay";
+};
+
+&clk_0 {
+	status = "okay";
+};
+
+&pcie_0_clk_100 {
+	status = "okay";
+};
