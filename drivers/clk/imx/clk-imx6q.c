@@ -875,7 +875,7 @@ static void __init imx6q_clocks_init(struct device_node *ccm_node)
 
 	/* All existing boards with PCIe use LVDS1 */
 	if (IS_ENABLED(CONFIG_PCI_IMX6))
-		imx_clk_set_parent(clk[IMX6QDL_CLK_LVDS1_SEL], clk[IMX6QDL_CLK_SATA_REF]);
+		imx_clk_set_parent(clk[IMX6QDL_CLK_LVDS1_SEL], clk[IMX6QDL_CLK_SATA_REF_100M]);
 
 	/* set eim_slow to 135Mhz */
 	imx_clk_set_rate(clk[IMX6QDL_CLK_EIM_SLOW], 135000000);
