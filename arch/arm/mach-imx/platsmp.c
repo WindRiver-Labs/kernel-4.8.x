@@ -20,11 +20,13 @@
 #include <asm/smp_scu.h>
 #include <asm/mach/map.h>
 
+#include <linux/platform_data/dcfg-ls1021a.h>
 #include "common.h"
 #include "hardware.h"
 
 u32 g_diag_reg;
 static void __iomem *scu_base;
+static void __iomem *dcfg_base;
 
 static struct map_desc scu_io_desc __initdata = {
 	/* .virtual and .pfn are run-time assigned */
@@ -52,6 +54,15 @@ static int imx_boot_secondary(unsigned int cpu, struct task_struct *idle)
 	imx_enable_cpu(cpu, true);
 	return 0;
 }
+
+#ifdef CONFIG_SOC_LS1021A
+#define  LS1021A_SOC_REV1 0x10
+#define	 DCFG_CCSR_SVR 0x0A4
+int is_ls1021a_rev1(void)
+{
+	return LS1021A_SOC_REV1 == (ioread32be(dcfg_base + DCFG_CCSR_SVR) & 0x1f);
+}
+#endif
 
 /*
  * Initialise the CPU possible map early - this describes the CPUs
@@ -110,7 +121,6 @@ static int ls1021a_boot_secondary(unsigned int cpu, struct task_struct *idle)
 static void __init ls1021a_smp_prepare_cpus(unsigned int max_cpus)
 {
 	struct device_node *np;
-	void __iomem *dcfg_base;
 	unsigned long paddr;
 
 	np = of_find_compatible_node(NULL, NULL, "fsl,ls1021a-dcfg");
@@ -120,7 +130,6 @@ static void __init ls1021a_smp_prepare_cpus(unsigned int max_cpus)
 	paddr = virt_to_phys(secondary_startup);
 	writel_relaxed(cpu_to_be32(paddr), dcfg_base + DCFG_CCSR_SCRATCHRW1);
 
-	iounmap(dcfg_base);
 }
 
 const struct smp_operations ls1021a_smp_ops __initconst = {

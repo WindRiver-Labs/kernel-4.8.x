@@ -45,6 +45,7 @@
 #include <linux/crc32.h>
 #include <linux/workqueue.h>
 #include <linux/ethtool.h>
+#include <linux/platform_data/dcfg-ls1021a.h>
 
 struct ethtool_flow_spec_container {
 	struct ethtool_rx_flow_spec fs;
@@ -236,7 +237,11 @@ extern const char gfar_driver_version[];
 #define RQUEUE_EN_ALL		0x000000FF
 
 /* Init to do tx snooping for buffers and descriptors */
+#ifdef CONFIG_SOC_LS1021A
+#define DMACTRL_INIT_SETTINGS   (is_ls1021a_rev1() ? 0x00000003 : 0x000000c3)
+#else
 #define DMACTRL_INIT_SETTINGS   0x000000c3
+#endif
 #define DMACTRL_GRS             0x00000010
 #define DMACTRL_GTS             0x00000008
 #define DMACTRL_LE		0x00008000
@@ -403,7 +408,11 @@ extern const char gfar_driver_version[];
 #define ATTR_BUFSTASH		0x00004000
 
 #define ATTR_SNOOPING		0x000000c0
+#ifdef CONFIG_SOC_LS1021A
+#define ATTR_INIT_SETTINGS      (is_ls1021a_rev1() ? 0 : ATTR_SNOOPING)
+#else
 #define ATTR_INIT_SETTINGS      ATTR_SNOOPING
+#endif
 
 #define ATTRELI_INIT_SETTINGS   0x0
 #define ATTRELI_EL_MASK		0x3fff0000
