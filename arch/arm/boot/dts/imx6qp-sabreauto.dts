@@ -83,6 +83,14 @@
 	status = "disabled";
 };
 
+&reg_sd3_vmmc {
+	status = "okay";
+};
+
+&usdhc3 {
+	vmmc-supply = <&reg_sd3_vmmc>;
+};
+
 &vgen3_reg {
 	regulator-always-on;
 };
