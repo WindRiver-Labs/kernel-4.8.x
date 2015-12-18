@@ -269,6 +269,12 @@ config MDIO_BUS_MUX_BCM_IPROC
 	  child MDIO bus to a parent bus. Buses could be internal as well as
 	  external and selection logic lies inside the same multiplexer.
 
+config FSL_10GBASE_KR
+	tristate "Support for 10GBASE-KR on Freescale XFI interface"
+	depends on OF_MDIO
+	help
+	  This module provides a driver for Freescale XFI's 10GBASE-KR.
+
 config MDIO_BCM_UNIMAC
 	tristate "Broadcom UniMAC MDIO bus controller"
 	depends on HAS_IOMEM
