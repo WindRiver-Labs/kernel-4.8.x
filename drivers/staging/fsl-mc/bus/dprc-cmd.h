@@ -42,7 +42,7 @@
 
 /* Minimal supported DPRC Version */
 #define DPRC_MIN_VER_MAJOR			5
-#define DPRC_MIN_VER_MINOR			1
+#define DPRC_MIN_VER_MINOR			0
 
 /* Command IDs */
 #define DPRC_CMDID_CLOSE			0x800
