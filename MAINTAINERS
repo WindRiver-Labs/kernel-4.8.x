@@ -4945,6 +4945,7 @@ L:	linux-arm-kernel@lists.infradead.org
 S:	Maintained
 F:	Documentation/devicetree/bindings/dma/fsl-qdma.txt
 F:	drivers/dma/fsl-qdma.c
+F:	drivers/dma/dpaa2-qdma/
 
 FREESCALE GPMI NAND DRIVER
 M:	Han Xu <han.xu@nxp.com>
