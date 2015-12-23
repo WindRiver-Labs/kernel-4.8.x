@@ -20,6 +20,7 @@
 
 #define PLAT_PM_SLEEP	20
 #define PLAT_PM_LPM20	30
+#define PLAT_PM_LPM35	40
 
 #define FSL_PM_SLEEP		(1 << 0)
 #define FSL_PM_DEEP_SLEEP	(1 << 1)
@@ -47,5 +48,29 @@ struct fsl_pm_ops {
 extern const struct fsl_pm_ops *qoriq_pm_ops;
 
 int __init fsl_rcpm_init(void);
+
+#ifdef CONFIG_FSL_QORIQ_PM
+int fsl_enter_deepsleep(void);
+int fsl_deepsleep_init(void);
+#else
+static inline int fsl_enter_deepsleep(void) { return -1; }
+static inline int fsl_deepsleep_init(void) { return -1; }
+#endif
+
+void fsl_dp_enter_low(void *priv);
+void fsl_booke_deep_sleep_resume(void);
+
+struct fsl_iomap {
+	void *ccsr_scfg_base;
+	void *ccsr_rcpm_base;
+	void *ccsr_ddr_base;
+	void *ccsr_gpio1_base;
+	void *ccsr_cpc_base;
+	void *dcsr_epu_base;
+	void *dcsr_npc_base;
+	void *dcsr_rcpm_base;
+	void *cpld_base;
+	void *fpga_base;
+};
 
 #endif /* __PPC_FSL_PM_H */
