@@ -4,9 +4,13 @@
 /*
  * This is the "bare minimum".  AIO seems to require this.
  */
+#ifdef CONFIG_SMP
 #if (CONFIG_NR_CPUS > 15)
 /* Prevent overlap between fixmap mapping and CPU vector page for 16th core */
 #define KM_TYPE_NR 15
+#else
+#define KM_TYPE_NR 16
+#endif
 #else
 #define KM_TYPE_NR 16
 #endif
