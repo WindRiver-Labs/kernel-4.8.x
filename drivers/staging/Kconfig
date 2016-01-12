@@ -98,6 +98,8 @@ source "drivers/staging/fsl-mc/Kconfig"
 
 source "drivers/staging/fsl_rman/Kconfig"
 
+source "drivers/staging/fsl_qbman/Kconfig"
+
 source "drivers/staging/wilc1000/Kconfig"
 
 source "drivers/staging/most/Kconfig"
