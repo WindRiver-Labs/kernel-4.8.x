@@ -229,6 +229,9 @@ static void sdhci_init(struct sdhci_host *host, int soft)
 		    SDHCI_INT_TIMEOUT | SDHCI_INT_DATA_END |
 		    SDHCI_INT_RESPONSE;
 
+	if (host->flags & SDHCI_AUTO_CMD12)
+		host->ier |= SDHCI_INT_ACMD12ERR;
+
 	if (host->tuning_mode == SDHCI_TUNING_MODE_2 ||
 	    host->tuning_mode == SDHCI_TUNING_MODE_3)
 		host->ier |= SDHCI_INT_RETUNE;
@@ -2442,7 +2445,8 @@ static void sdhci_cmd_irq(struct sdhci_host *host, u32 intmask, u32 *mask)
 	}
 
 	if (intmask & (SDHCI_INT_TIMEOUT | SDHCI_INT_CRC |
-		       SDHCI_INT_END_BIT | SDHCI_INT_INDEX)) {
+		       SDHCI_INT_END_BIT | SDHCI_INT_INDEX |
+	               SDHCI_INT_ACMD12ERR)) {
 		if (intmask & SDHCI_INT_TIMEOUT)
 			host->cmd->error = -ETIMEDOUT;
 		else
