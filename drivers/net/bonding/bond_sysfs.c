@@ -677,6 +677,22 @@ static ssize_t bonding_show_packets_per_slave(struct device *d,
 static DEVICE_ATTR(packets_per_slave, S_IRUGO | S_IWUSR,
 		   bonding_show_packets_per_slave, bonding_sysfs_store_option);
 
+#ifdef CONFIG_HW_DISTRIBUTION_WITH_OH
+static DEVICE_ATTR(offline_port_xmit_statistics, S_IRUGO,
+		bonding_show_offline_port_xmit_statistics, NULL);
+
+static DEVICE_ATTR(offline_ports, S_IRUGO,
+		bonding_show_offline_ports, NULL);
+
+static DEVICE_ATTR(oh_needed_for_hw_distribution, S_IRUGO | S_IWUSR,
+		bonding_show_oh_needed_for_hw_distribution,
+		bonding_store_oh_needed_for_hw_distribution);
+
+static DEVICE_ATTR(oh_en, S_IRUGO | S_IWUSR,
+		bonding_show_oh_enable,
+		bonding_store_oh_enable);
+#endif
+
 static ssize_t bonding_show_ad_actor_sys_prio(struct device *d,
 					      struct device_attribute *attr,
 					      char *buf)
@@ -756,6 +772,12 @@ static struct attribute *per_bond_attrs[] = {
 	&dev_attr_ad_actor_sys_prio.attr,
 	&dev_attr_ad_actor_system.attr,
 	&dev_attr_ad_user_port_key.attr,
+#ifdef CONFIG_HW_DISTRIBUTION_WITH_OH
+	&dev_attr_offline_ports.attr,
+	&dev_attr_oh_needed_for_hw_distribution.attr,
+	&dev_attr_oh_en.attr,
+	&dev_attr_offline_port_xmit_statistics.attr,
+#endif
 	NULL,
 };
 
