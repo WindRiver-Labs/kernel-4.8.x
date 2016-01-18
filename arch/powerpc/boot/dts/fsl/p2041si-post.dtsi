@@ -431,6 +431,11 @@ crypto: crypto@300000 {
 /include/ "qoriq-qman1.dtsi"
 /include/ "qoriq-bman1.dtsi"
 
+/include/ "qoriq-rman-0.dtsi"
+	rman: rman@1e0000 {
+		fsl,qman-channels-id = <0x62 0x63>;
+	};
+
 /include/ "qoriq-fman-0.dtsi"
 /include/ "qoriq-fman-0-1g-0.dtsi"
 /include/ "qoriq-fman-0-1g-1.dtsi"
