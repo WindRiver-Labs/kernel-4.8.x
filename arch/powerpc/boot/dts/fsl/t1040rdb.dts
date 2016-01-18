@@ -44,6 +44,13 @@
 	};
 
 	soc@ffe000000 {
+		spi@110000 {
+			slic@3 {
+				compatible = "maxim,ds26522";
+				reg = <3>;
+				spi-max-frequency = <2000000>; /* input clock */
+			};
+		};
 		fman@400000 {
 			ethernet@e0000 {
 				fixed-link = <0 1 1000 0 0>;
