@@ -1137,6 +1137,7 @@
 					<&clks IMX7D_CLK_DUMMY>,
 					<&clks IMX7D_USDHC1_ROOT_CLK>;
 				clock-names = "ipg", "ahb", "per";
+				fsl,tuning-start-tap = <20>;
 				bus-width = <4>;
 				status = "disabled";
 			};
@@ -1149,6 +1150,7 @@
 					<&clks IMX7D_CLK_DUMMY>,
 					<&clks IMX7D_USDHC2_ROOT_CLK>;
 				clock-names = "ipg", "ahb", "per";
+				fsl,tuning-start-tap = <20>;
 				bus-width = <4>;
 				status = "disabled";
 			};
@@ -1161,6 +1163,7 @@
 					<&clks IMX7D_CLK_DUMMY>,
 					<&clks IMX7D_USDHC3_ROOT_CLK>;
 				clock-names = "ipg", "ahb", "per";
+				fsl,tuning-start-tap = <20>;
 				bus-width = <4>;
 				status = "disabled";
 			};
