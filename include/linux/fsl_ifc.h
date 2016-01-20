@@ -861,7 +861,8 @@ struct fsl_ifc_ctrl {
 	bool little_endian;
 #ifdef CONFIG_PM_SLEEP
 	/*save regs when system goes to deep sleep*/
-	struct fsl_ifc_regs		*saved_regs;
+	struct fsl_ifc_global		*saved_gregs;
+	struct fsl_ifc_runtime		*saved_rregs;
 #endif
 };
 
