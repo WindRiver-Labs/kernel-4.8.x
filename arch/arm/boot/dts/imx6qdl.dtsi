@@ -953,7 +953,7 @@
 					 <&clks IMX6QDL_CLK_CAAM_ACLK>,
 					 <&clks IMX6QDL_CLK_CAAM_IPG>,
 					 <&clks IMX6QDL_CLK_EIM_SLOW>;
-				clock-names = "mem", "aclk", "ipg", "emi_slow";
+				clock-names = "caam_mem", "caam_aclk", "caam_ipg", "caam_emi_slow";
 
 				sec_jr0: jr0@1000 {
 					compatible = "fsl,sec-v4.0-job-ring";
