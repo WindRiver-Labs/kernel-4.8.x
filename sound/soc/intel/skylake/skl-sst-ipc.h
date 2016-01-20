@@ -159,6 +159,16 @@ struct skl_ipc_d0ix_msg {
 	u8 wake;
 };
 
+struct skl_log_state {
+	u32	enable;
+	u32	priority;
+};
+
+struct skl_log_state_msg {
+	u32	core_mask;
+	struct	skl_log_state logs_core[2];
+};
+
 #define SKL_IPC_BOOT_MSECS		3000
 
 #define SKL_IPC_D3_MASK	0
@@ -207,6 +217,8 @@ int skl_ipc_check_D0i0(struct sst_dsp *dsp, bool state);
 
 int skl_sst_ipc_load_library(struct sst_generic_ipc *ipc,
 			u8 dma_id, u8 table_id, bool wait);
+
+int skl_dsp_enable_logging(struct sst_generic_ipc *ipc, int core, int enable);
 
 void skl_ipc_int_enable(struct sst_dsp *dsp);
 void skl_ipc_op_int_enable(struct sst_dsp *ctx);
