@@ -82,6 +82,10 @@ static enum ppi_nr arch_timer_uses_ppi = VIRT_PPI;
 static bool arch_timer_c3stop;
 static bool arch_timer_mem_use_virtual;
 
+#ifndef arm_arch_timer_reread
+bool arm_arch_timer_reread;
+#endif
+
 static bool evtstrm_enable = IS_ENABLED(CONFIG_ARM_ARCH_TIMER_EVTSTREAM);
 
 static int __init early_evtstrm_cfg(char *buf)
@@ -799,6 +803,10 @@ static int __init arch_timer_of_init(struct device_node *np)
 	arch_timer_detect_rate(NULL, np);
 
 	arch_timer_c3stop = !of_property_read_bool(np, "always-on");
+
+#ifndef arm_arch_timer_reread
+	arm_arch_timer_reread = of_property_read_bool(np, "arm,reread-timer");
+#endif
 
 	/*
 	 * If we cannot rely on firmware initializing the timer registers then
