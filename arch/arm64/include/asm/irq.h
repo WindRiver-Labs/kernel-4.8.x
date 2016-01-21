@@ -11,6 +11,14 @@
 #include <asm-generic/irq.h>
 #include <asm/thread_info.h>
 
+/*
+ * Use this value to indicate lack of interrupt
+ * capability
+ */
+#ifndef NO_IRQ
+#define NO_IRQ	((unsigned int)(-1))
+#endif
+
 struct pt_regs;
 
 DECLARE_PER_CPU(unsigned long [IRQ_STACK_SIZE/sizeof(long)], irq_stack);
@@ -41,6 +49,7 @@ DECLARE_PER_CPU(unsigned long [IRQ_STACK_SIZE/sizeof(long)], irq_stack);
 #define IRQ_STACK_TO_TASK_STACK(ptr) (*((unsigned long *)((ptr) - 0x08)))
 
 extern void set_handle_irq(void (*handle_irq)(struct pt_regs *));
+extern irq_hw_number_t virq_to_hw(unsigned int virq);
 
 static inline int nr_legacy_irqs(void)
 {
