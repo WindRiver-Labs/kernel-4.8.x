@@ -165,8 +165,6 @@ enum usdpaa_portal_type {
 	 usdpaa_portal_bman,
 };
 
-#define QBMAN_ANY_PORTAL_IDX 0xffffffff
-
 struct usdpaa_ioctl_portal_map {
 	/* Input parameter, is a qman or bman portal required. */
 
