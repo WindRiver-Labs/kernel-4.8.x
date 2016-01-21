@@ -66,6 +66,8 @@
 
 #include <linux/fsl_usdpaa.h>
 
+#define QBMAN_ANY_PORTAL_IDX 0xffffffff
+
 /* When copying aligned words or shorts, try to avoid memcpy() */
 #define CONFIG_TRY_BETTER_MEMCPY
 
