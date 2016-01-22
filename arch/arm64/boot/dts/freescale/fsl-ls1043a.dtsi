@@ -226,6 +226,12 @@
 			big-endian;
 		};
 
+		reset: reset@1EE00B0 {
+			compatible = "fsl,ls-reset";
+			reg = <0x0 0x1EE00B0 0x0 0x4>;
+			big-endian;
+		};
+
 		ifc: ifc@1530000 {
 			compatible = "fsl,ifc", "simple-bus";
 			reg = <0x0 0x1530000 0x0 0x10000>;
