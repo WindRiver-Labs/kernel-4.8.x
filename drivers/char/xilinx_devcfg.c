@@ -29,6 +29,9 @@
 #include <linux/types.h>
 #include <linux/uaccess.h>
 
+extern void zynq_slcr_init_preload_fpga(void);
+extern void zynq_slcr_init_postload_fpga(void);
+
 #define DRIVER_NAME "xdevcfg"
 #define XDEVCFG_DEVICES 1
 
@@ -476,6 +479,22 @@ err_clk:
 	return status;
 }
 
+static void xdevcfg_enable_partial(struct xdevcfg_drvdata *drvdata)
+{
+	u32 reg = xdevcfg_readreg(drvdata->base_address + XDCFG_CTRL_OFFSET);
+
+	xdevcfg_writereg(drvdata->base_address + XDCFG_CTRL_OFFSET,
+			 reg | XDCFG_CTRL_PCAP_PR_MASK);
+}
+
+static void xdevcfg_disable_partial(struct xdevcfg_drvdata *drvdata)
+{
+	u32 reg = xdevcfg_readreg(drvdata->base_address + XDCFG_CTRL_OFFSET);
+
+	xdevcfg_writereg(drvdata->base_address + XDCFG_CTRL_OFFSET,
+			 reg & ~XDCFG_CTRL_PCAP_PR_MASK);
+}
+
 /**
  * xdevcfg_open() - The is the driver open function.
  * @inode:	Pointer to the inode structure of this device.
@@ -512,8 +531,10 @@ static int xdevcfg_open(struct inode *inode, struct file *file)
 	 * (xdevcfg_reset_pl function) and also xslcr_init_preload_fpga and
 	 * xslcr_init_postload_fpga functions are not invoked.
 	 */
-	if (!drvdata->is_partial_bitstream)
-		xslcr_init_preload_fpga();
+	if (drvdata->is_partial_bitstream)
+		xdevcfg_enable_partial(drvdata);
+	else
+		zynq_slcr_init_preload_fpga();
 
 	/*
 	 * Only do the reset of the PL for Zynq as it causes problems on the
@@ -545,8 +566,10 @@ static int xdevcfg_release(struct inode *inode, struct file *file)
 {
 	struct xdevcfg_drvdata *drvdata = file->private_data;
 
-	if (!drvdata->is_partial_bitstream)
-		xslcr_init_postload_fpga();
+	if (drvdata->is_partial_bitstream)
+		xdevcfg_disable_partial(drvdata);
+	else
+		zynq_slcr_init_postload_fpga();
 
 	if (drvdata->residue_len)
 		printk("Did not transfer last %d bytes\n",
@@ -1957,7 +1980,6 @@ static int xdevcfg_drv_probe(struct platform_device *pdev)
 	/*
 	 * Set the configuration register with the following options
 	 *  - Reset FPGA
-	 *  - Enable PCAP interface for Partial reconfiguration
 	 *  - Enable the PCAP interface
 	 *  - Set the throughput rate for maximum speed
 	 *  - Set the CPU in user mode
