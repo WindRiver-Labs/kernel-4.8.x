@@ -559,6 +559,8 @@ struct sdhci_ops {
 	void	(*platform_init)(struct sdhci_host *host);
 	void    (*card_event)(struct sdhci_host *host);
 	void	(*voltage_switch)(struct sdhci_host *host);
+	void	(*signal_voltage_switch)(struct sdhci_host *host,
+					 unsigned char signal_voltage);
 	int	(*select_drive_strength)(struct sdhci_host *host,
 					 struct mmc_card *card,
 					 unsigned int max_dtr, int host_drv,
