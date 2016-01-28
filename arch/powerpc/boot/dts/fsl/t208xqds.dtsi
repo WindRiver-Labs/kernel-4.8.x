@@ -274,4 +274,40 @@
 				  0 0x00010000>;
 		};
 	};
+
+	fsl,dpaa {
+		compatible = "fsl,t2080-dpaa", "fsl,dpaa";
+		ethernet@0 {
+			compatible = "fsl,t2080-dpa-ethernet", "fsl,dpa-ethernet";
+			fsl,fman-mac = <&fm1mac1>;
+		};
+		ethernet@1 {
+			compatible = "fsl,t2080-dpa-ethernet", "fsl,dpa-ethernet";
+			fsl,fman-mac = <&fm1mac2>;
+		};
+		ethernet@2 {
+			compatible = "fsl,t2080-dpa-ethernet", "fsl,dpa-ethernet";
+			fsl,fman-mac = <&fm1mac3>;
+		};
+		ethernet@3 {
+			compatible = "fsl,t2080-dpa-ethernet", "fsl,dpa-ethernet";
+			fsl,fman-mac = <&fm1mac4>;
+		};
+		ethernet@4 {
+			compatible = "fsl,t2080-dpa-ethernet", "fsl,dpa-ethernet";
+			fsl,fman-mac = <&fm1mac5>;
+		};
+		ethernet@5 {
+			compatible = "fsl,t2080-dpa-ethernet", "fsl,dpa-ethernet";
+			fsl,fman-mac = <&fm1mac6>;
+		};
+		ethernet@8 {
+			compatible = "fsl,t2080-dpa-ethernet", "fsl,dpa-ethernet";
+			fsl,fman-mac = <&fm1mac9>;
+		};
+		ethernet@9 {
+			compatible = "fsl,t2080-dpa-ethernet", "fsl,dpa-ethernet";
+			fsl,fman-mac = <&fm1mac10>;
+		};
+	};
 };
