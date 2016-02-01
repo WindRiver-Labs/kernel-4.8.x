@@ -1962,14 +1962,12 @@ static int xdevcfg_drv_probe(struct platform_device *pdev)
 	 *  - Enable PCAP interface for Partial reconfiguration
 	 *  - Enable the PCAP interface
 	 *  - Set the throughput rate for maximum speed
-	 *  - Se the CPU in user mode
+	 *  - Set the CPU in user mode
 	 */
 	ctrlreg = xdevcfg_readreg(drvdata->base_address + XDCFG_CTRL_OFFSET);
-	xdevcfg_writereg(drvdata->base_address + XDCFG_CTRL_OFFSET,
-				(XDCFG_CTRL_PCFG_PROG_B_MASK |
-				XDCFG_CTRL_PCAP_PR_MASK |
-				XDCFG_CTRL_PCAP_MODE_MASK |
-				ctrlreg));
++	ctrlreg &= ~XDCFG_CTRL_PCAP_PR_MASK;
++	ctrlreg |= XDCFG_CTRL_PCFG_PROG_B_MASK | XDCFG_CTRL_PCAP_MODE_MASK;
++	xdevcfg_writereg(drvdata->base_address + XDCFG_CTRL_OFFSET, ctrlreg);
 
 	/* Ensure internal PCAP loopback is disabled */
 	ctrlreg = xdevcfg_readreg(drvdata->base_address + XDCFG_MCTRL_OFFSET);
