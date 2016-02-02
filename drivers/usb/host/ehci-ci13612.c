@@ -320,7 +320,7 @@ static int ci13612_ehci_probe(struct platform_device *pdev)
 		iounmap(gpreg_base);
 	}
 
-	retval = usb_add_hcd(hcd, irq, 0);
+	retval = usb_add_hcd(hcd, irq, IRQF_ONESHOT);
 	if (retval == 0) {
 		platform_set_drvdata(pdev, hcd);
 		return retval;
