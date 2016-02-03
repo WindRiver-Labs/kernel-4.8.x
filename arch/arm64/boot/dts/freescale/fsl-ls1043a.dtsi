@@ -695,8 +695,8 @@
 			clocks = <&clockgen 4 0>;
 		};
 
-		gpio1: gpio@2300000 {
-			compatible = "fsl,ls1043a-gpio", "fsl,qoriq-gpio";
+		gpio0: gpio@2300000 {
+			compatible = "fsl,qoriq-gpio";
 			reg = <0x0 0x2300000 0x0 0x10000>;
 			interrupts = <0 66 0x4>;
 			gpio-controller;
@@ -705,8 +705,8 @@
 			#interrupt-cells = <2>;
 		};
 
-		gpio2: gpio@2310000 {
-			compatible = "fsl,ls1043a-gpio", "fsl,qoriq-gpio";
+		gpio1: gpio@2310000 {
+			compatible = "fsl,qoriq-gpio";
 			reg = <0x0 0x2310000 0x0 0x10000>;
 			interrupts = <0 67 0x4>;
 			gpio-controller;
@@ -715,8 +715,8 @@
 			#interrupt-cells = <2>;
 		};
 
-		gpio3: gpio@2320000 {
-			compatible = "fsl,ls1043a-gpio", "fsl,qoriq-gpio";
+		gpio2: gpio@2320000 {
+			compatible = "fsl,qoriq-gpio";
 			reg = <0x0 0x2320000 0x0 0x10000>;
 			interrupts = <0 68 0x4>;
 			gpio-controller;
@@ -725,8 +725,8 @@
 			#interrupt-cells = <2>;
 		};
 
-		gpio4: gpio@2330000 {
-			compatible = "fsl,ls1043a-gpio", "fsl,qoriq-gpio";
+		gpio3: gpio@2330000 {
+			compatible = "fsl,qoriq-gpio";
 			reg = <0x0 0x2330000 0x0 0x10000>;
 			interrupts = <0 134 0x4>;
 			gpio-controller;
