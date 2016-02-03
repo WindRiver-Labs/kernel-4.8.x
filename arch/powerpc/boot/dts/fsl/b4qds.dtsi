@@ -217,44 +217,37 @@
 			phy_type = "ulpi";
 		};
 
-		fman@400000 {
-			ethernet@e0000 {
+		fman0: fman@400000 {
+			fm1mac1: ethernet@e0000 {
 				phy-handle = <&phy_sgmii_10>;
 				phy-connection-type = "sgmii";
 			};
-
-			ethernet@e2000 {
+			fm1mac2: ethernet@e2000 {
 				phy-handle = <&phy_sgmii_11>;
 				phy-connection-type = "sgmii";
 			};
-
-			ethernet@e4000 {
+			fm1mac3: ethernet@e4000 {
 				phy-handle = <&phy_sgmii_1c>;
 				phy-connection-type = "sgmii";
 			};
-
-			ethernet@e6000 {
+			fm1mac4: ethernet@e6000 {
 				phy-handle = <&phy_sgmii_1d>;
 				phy-connection-type = "sgmii";
 			};
-
-			mdio@fc000 {
+			mdio0: mdio@fc000 {
 				phy_sgmii_10: ethernet-phy@10 {
 					reg = <0x10>;
 				};
-
 				phy_sgmii_11: ethernet-phy@11 {
 					reg = <0x11>;
 				};
-
 				phy_sgmii_1c: ethernet-phy@1c {
+					status = "disabled";
 					reg = <0x1c>;
-					status = "disabled";
 				};
-
 				phy_sgmii_1d: ethernet-phy@1d {
-					reg = <0x1d>;
 					status = "disabled";
+					reg = <0x1d>;
 				};
 			};
 		};
@@ -274,7 +267,27 @@
 				  0 0x00010000>;
 		};
 	};
+	fsl,dpaa {
+		compatible = "fsl,dpaa";
+		ethernet@0 {
+			compatible = "fsl,dpa-ethernet";
+			fsl,fman-mac = <&fm1mac1>;
+		};
+		ethernet@1 {
+			compatible = "fsl,dpa-ethernet";
+			fsl,fman-mac = <&fm1mac2>;
+		};
+		ethernet@2 {
+			compatible = "fsl,dpa-ethernet";
+			fsl,fman-mac = <&fm1mac3>;
+		};
+		ethernet@3 {
+			compatible = "fsl,dpa-ethernet";
+			fsl,fman-mac = <&fm1mac4>;
+		};
+	};
 };
 
 /include/ "b4si-post.dtsi"
+/include/ "qoriq-dpaa-res3.dtsi"
 /include/ "qoriq-qman-ceetm0.dtsi"
