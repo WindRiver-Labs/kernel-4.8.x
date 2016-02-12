@@ -247,6 +247,11 @@ source "arch/arm64/Kconfig.platforms"
 
 menu "Bus support"
 
+config HAS_FSL_QBMAN
+        bool "Datapath Acceleration Queue and Buffer management"
+        help
+          Datapath Acceleration Queue and Buffer management
+
 config PCI
 	bool "PCI support"
 	help
