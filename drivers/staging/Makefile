@@ -42,6 +42,7 @@ obj-$(CONFIG_FSL_DPA)           += fsl_qbman/
 obj-$(CONFIG_FSL_DPAA2)		+= fsl-dpaa2/
 obj-$(CONFIG_FSL_PME2)          += fsl_pme2/
 obj-$(CONFIG_FSL_DCE)		+= fsl_dce/
+obj-$(CONFIG_FSL_DPA_OFFLOAD)   += fsl_dpa_offload/
 obj-$(CONFIG_WILC1000)		+= wilc1000/
 obj-$(CONFIG_MOST)		+= most/
 obj-$(CONFIG_ISDN_I4L)		+= i4l/
