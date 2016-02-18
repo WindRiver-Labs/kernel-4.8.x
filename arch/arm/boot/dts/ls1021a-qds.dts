@@ -337,6 +337,10 @@
 	status = "okay";
 };
 
+&sata {
+	status = "okay";
+};
+
 &uart0 {
 	status = "okay";
 };
