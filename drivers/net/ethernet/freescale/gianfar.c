@@ -2707,6 +2707,7 @@ static void gfar_clean_tx_ring(struct gfar_priv_tx_q *tx_queue)
 			struct skb_shared_hwtstamps shhwtstamps;
 			u64 *ns = (u64 *)(((uintptr_t)skb->data + 0x10) &
 					  ~0x7UL);
+			*ns = be64_to_cpu(*ns);
 
 			memset(&shhwtstamps, 0, sizeof(shhwtstamps));
 			shhwtstamps.hwtstamp = ns_to_ktime(be64_to_cpu(*ns));
@@ -3044,6 +3045,7 @@ static void gfar_process_frame(struct net_device *ndev, struct sk_buff *skb)
 	if (priv->hwts_rx_en) {
 		struct skb_shared_hwtstamps *shhwtstamps = skb_hwtstamps(skb);
 		u64 *ns = (u64 *) skb->data;
+		*ns = be64_to_cpu(*ns);
 
 		memset(shhwtstamps, 0, sizeof(*shhwtstamps));
 		shhwtstamps->hwtstamp = ns_to_ktime(be64_to_cpu(*ns));
