@@ -375,6 +375,7 @@
  *		  Otherwise reserved.
  * @ptp_tx_ts_tag: Tag value of 2 step timestamping if timestamping is enabled
  *		   Otherwise reserved.
+ * @tx_skb:	  Transmit skb address
  */
 struct axidma_bd {
 	u32 next;	/* Physical address of next buffer descriptor */
@@ -393,7 +394,8 @@ struct axidma_bd {
 	u32 sw_id_offset;
 	u32 ptp_tx_skb;
 	u32 ptp_tx_ts_tag;
-};
+	phys_addr_t tx_skb;
+} __aligned(128);
 
 /**
  * struct axienet_local - axienet private per device data
