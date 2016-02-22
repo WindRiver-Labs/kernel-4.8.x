@@ -814,14 +814,6 @@ static int axienet_start_xmit(struct sk_buff *skb, struct net_device *ndev)
 		return NETDEV_TX_BUSY;
 	}
 
-	if (lp->tx_bd_ci > lp->tx_bd_tail) {
-		if (!netif_queue_stopped(ndev))
-			netif_stop_queue(ndev);
-		spin_unlock_irqrestore(&lp->tx_lock, flags);
-		return NETDEV_TX_BUSY;
-	}
-	spin_unlock_irqrestore(&lp->tx_lock, flags);
-
 #ifdef CONFIG_XILINX_AXI_EMAC_HWTSTAMP
 	if ((lp->tstamp_config.tx_type == HWTSTAMP_TX_ONESTEP_SYNC) ||
 	    (lp->tstamp_config.tx_type == HWTSTAMP_TX_ON)) {
@@ -835,6 +827,7 @@ static int axienet_start_xmit(struct sk_buff *skb, struct net_device *ndev)
 				dev_err(&ndev->dev, "failed "
 					"to allocate new socket buffer\n");
 				dev_kfree_skb_any(skb);
+				spin_unlock_irqrestore(&lp->tx_lock, flags);
 				return NETDEV_TX_OK;
 			}
 
@@ -906,6 +899,8 @@ static int axienet_start_xmit(struct sk_buff *skb, struct net_device *ndev)
 	axienet_dma_bdout(lp, XAXIDMA_TX_TDESC_OFFSET, tail_p);
 	++lp->tx_bd_tail;
 	lp->tx_bd_tail %= TX_BD_NUM;
+
+	spin_unlock_irqrestore(&lp->tx_lock, flags);
 
 	return NETDEV_TX_OK;
 }
