@@ -372,8 +372,7 @@ static void xtg_access_rams(struct xtg_dev_info *tg, int where,
 
 	switch (flags) {
 	case XTG_WRITE_RAM_ZERO:
-		for (index = 0; count > 0; index++, count -= 4)
-			writel(0x0, tg->regs + where + index * 4);
+		memset_io(tg->regs + where, 0, count);
 		break;
 	case XTG_WRITE_RAM:
 		for (index = 0; count > 0; index++, count -= 4)
