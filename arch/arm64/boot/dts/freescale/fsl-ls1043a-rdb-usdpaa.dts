@@ -8,7 +8,7 @@
  * warranty of any kind, whether express or implied.
  */
 
-/include/ "fsl-ls1043a-rdb.dts"
+#include "fsl-ls1043a-rdb.dts"
 
 / {
 	bp7: buffer-pool@7 {
