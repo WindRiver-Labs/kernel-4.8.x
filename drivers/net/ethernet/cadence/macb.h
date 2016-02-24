@@ -145,6 +145,7 @@
 #define GEM_1588PEERTXNSEC	0x01F4 /* PTP peer event TX timestamp nsecs */
 #define GEM_1588PEERRXSEC	0x01F8 /* PTP peer event RX timestamp secs */
 #define GEM_1588PEERRXNSEC	0x01FC /* PTP peer event RX timestamp nsecs */
+#define GEM_PCSCNTRL		0x0200 /* PCS Control */
 #define GEM_DCFG1		0x0280 /* Design Config 1 */
 #define GEM_DCFG2		0x0284 /* Design Config 2 */
 #define GEM_DCFG3		0x0288 /* Design Config 3 */
@@ -389,6 +390,10 @@
 #define MACB_REV_OFFSET				0
 #define MACB_REV_SIZE				16
 
+/* Bitfields in PCSCNTRL */
+#define GEM_PCSAUTONEG_OFFSET			12
+#define GEM_PCSAUTONEG_SIZE			1
+
 /* Bitfields in DCFG1. */
 #define GEM_IRQCOR_OFFSET			23
 #define GEM_IRQCOR_SIZE				1
@@ -462,6 +467,7 @@
 #define MACB_CAPS_GIGABIT_MODE_AVAILABLE	0x20000000
 #define MACB_CAPS_SG_DISABLED			0x40000000
 #define MACB_CAPS_MACB_IS_GEM			0x80000000
+#define MACB_CAPS_PCS				0x00000040
 
 /* Bit manipulation macros */
 #define MACB_BIT(name)					\
