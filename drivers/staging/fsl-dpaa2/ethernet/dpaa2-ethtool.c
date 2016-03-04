@@ -32,9 +32,6 @@
 #include "dpni.h"	/* DPNI_LINK_OPT_* */
 #include "dpaa2-eth.h"
 
-/* size of DMA memory used to pass configuration to classifier, in bytes */
-#define DPAA2_CLASSIFIER_DMA_SIZE 256
-
 /* To be kept in sync with 'enum dpni_counter' */
 char dpaa2_ethtool_stats[][ETH_GSTRING_LEN] = {
 	"rx frames",
@@ -277,64 +274,14 @@ static void dpaa2_eth_get_ethtool_stats(struct net_device *net_dev,
 #endif
 }
 
-static const struct dpaa2_eth_hash_fields {
-	u64 rxnfc_field;
-	enum net_prot cls_prot;
-	int cls_field;
-	int size;
-} hash_fields[] = {
-	{
-		/* L2 header */
-		.rxnfc_field = RXH_L2DA,
-		.cls_prot = NET_PROT_ETH,
-		.cls_field = NH_FLD_ETH_DA,
-		.size = 6,
-	}, {
-		/* VLAN header */
-		.rxnfc_field = RXH_VLAN,
-		.cls_prot = NET_PROT_VLAN,
-		.cls_field = NH_FLD_VLAN_TCI,
-		.size = 2,
-	}, {
-		/* IP header */
-		.rxnfc_field = RXH_IP_SRC,
-		.cls_prot = NET_PROT_IP,
-		.cls_field = NH_FLD_IP_SRC,
-		.size = 4,
-	}, {
-		.rxnfc_field = RXH_IP_DST,
-		.cls_prot = NET_PROT_IP,
-		.cls_field = NH_FLD_IP_DST,
-		.size = 4,
-	}, {
-		.rxnfc_field = RXH_L3_PROTO,
-		.cls_prot = NET_PROT_IP,
-		.cls_field = NH_FLD_IP_PROTO,
-		.size = 1,
-	}, {
-		/* Using UDP ports, this is functionally equivalent to raw
-		 * byte pairs from L4 header.
-		 */
-		.rxnfc_field = RXH_L4_B_0_1,
-		.cls_prot = NET_PROT_UDP,
-		.cls_field = NH_FLD_UDP_PORT_SRC,
-		.size = 2,
-	}, {
-		.rxnfc_field = RXH_L4_B_2_3,
-		.cls_prot = NET_PROT_UDP,
-		.cls_field = NH_FLD_UDP_PORT_DST,
-		.size = 2,
-	},
-};
-
 static int cls_key_off(struct dpaa2_eth_priv *priv, u64 flag)
 {
 	int i, off = 0;
 
-	for (i = 0; i < ARRAY_SIZE(hash_fields); i++) {
-		if (hash_fields[i].rxnfc_field & flag)
+	for (i = 0; i < priv->num_hash_fields; i++) {
+		if (priv->hash_fields[i].rxnfc_field & flag)
 			return off;
-		off += hash_fields[i].size;
+		off += priv->hash_fields[i].size;
 	}
 
 	return -1;
@@ -344,8 +291,8 @@ static u8 cls_key_size(struct dpaa2_eth_priv *priv)
 {
 	u8 i, size = 0;
 
-	for (i = 0; i < ARRAY_SIZE(hash_fields); i++)
-		size += hash_fields[i].size;
+	for (i = 0; i < priv->num_hash_fields; i++)
+		size += priv->hash_fields[i].size;
 
 	return size;
 }
@@ -363,78 +310,6 @@ void check_fs_support(struct dpaa2_eth_priv *priv)
 			key_size);
 		priv->dpni_attrs.options &= ~DPNI_OPT_DIST_FS;
 	}
-}
-
-/* Set RX hash options */
-int dpaa2_eth_set_hash(struct dpaa2_eth_priv *priv)
-{
-	struct device *dev = priv->net_dev->dev.parent;
-	struct dpkg_profile_cfg cls_cfg;
-	struct dpni_rx_tc_dist_cfg dist_cfg;
-	u8 *dma_mem;
-	int i;
-	int err = 0;
-
-	memset(&cls_cfg, 0, sizeof(cls_cfg));
-
-	for (i = 0; i < ARRAY_SIZE(hash_fields); i++) {
-		struct dpkg_extract *key =
-			&cls_cfg.extracts[cls_cfg.num_extracts];
-
-		if (cls_cfg.num_extracts >= DPKG_MAX_NUM_OF_EXTRACTS) {
-			dev_err(dev, "error adding key extraction rule, too many rules?\n");
-			return -E2BIG;
-		}
-
-		key->type = DPKG_EXTRACT_FROM_HDR;
-		key->extract.from_hdr.prot = hash_fields[i].cls_prot;
-		key->extract.from_hdr.type = DPKG_FULL_FIELD;
-		key->extract.from_hdr.field = hash_fields[i].cls_field;
-		cls_cfg.num_extracts++;
-
-		priv->rx_flow_hash |= hash_fields[i].rxnfc_field;
-	}
-
-	dma_mem = kzalloc(DPAA2_CLASSIFIER_DMA_SIZE, GFP_DMA | GFP_KERNEL);
-	if (!dma_mem)
-		return -ENOMEM;
-
-	err = dpni_prepare_key_cfg(&cls_cfg, dma_mem);
-	if (err) {
-		dev_err(dev, "dpni_prepare_key_cfg error %d", err);
-		return err;
-	}
-
-	memset(&dist_cfg, 0, sizeof(dist_cfg));
-
-	/* Prepare for setting the rx dist */
-	dist_cfg.key_cfg_iova = dma_map_single(dev, dma_mem,
-					       DPAA2_CLASSIFIER_DMA_SIZE,
-					       DMA_TO_DEVICE);
-	if (dma_mapping_error(dev, dist_cfg.key_cfg_iova)) {
-		dev_err(dev, "DMA mapping failed\n");
-		kfree(dma_mem);
-		return -ENOMEM;
-	}
-
-	dist_cfg.dist_size = dpaa2_eth_queue_count(priv);
-	if (dpaa2_eth_fs_enabled(priv)) {
-		dist_cfg.dist_mode = DPNI_DIST_MODE_FS;
-		dist_cfg.fs_cfg.miss_action = DPNI_FS_MISS_HASH;
-	} else {
-		dist_cfg.dist_mode = DPNI_DIST_MODE_HASH;
-	}
-
-	err = dpni_set_rx_tc_dist(priv->mc_io, 0, priv->mc_token, 0, &dist_cfg);
-	dma_unmap_single(dev, dist_cfg.key_cfg_iova,
-			 DPAA2_CLASSIFIER_DMA_SIZE, DMA_TO_DEVICE);
-	kfree(dma_mem);
-	if (err) {
-		dev_err(dev, "dpni_set_rx_tc_dist() error %d\n", err);
-		return err;
-	}
-
-	return 0;
 }
 
 static int prep_cls_rule(struct net_device *net_dev,

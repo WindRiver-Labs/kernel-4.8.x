@@ -285,6 +285,13 @@ struct dpaa2_eth_cls_rule {
 	bool in_use;
 };
 
+struct dpaa2_eth_hash_fields {
+	u64 rxnfc_field;
+	enum net_prot cls_prot;
+	int cls_field;
+	int size;
+};
+
 /* Driver private data */
 struct dpaa2_eth_priv {
 	struct net_device *net_dev;
@@ -329,6 +336,8 @@ struct dpaa2_eth_priv {
 	bool do_link_poll;
 	struct task_struct *poll_thread;
 
+	struct dpaa2_eth_hash_fields *hash_fields;
+	u8 num_hash_fields;
 	/* enabled ethtool hashing bits */
 	u64 rx_flow_hash;
 
@@ -356,9 +365,10 @@ struct dpaa2_eth_priv {
 /* Required by struct dpni_attr::ext_cfg_iova */
 #define DPAA2_EXT_CFG_SIZE	256
 
-extern const struct ethtool_ops dpaa2_ethtool_ops;
+/* size of DMA memory used to pass configuration to classifier, in bytes */
+#define DPAA2_CLASSIFIER_DMA_SIZE 256
 
-int dpaa2_eth_set_hash(struct dpaa2_eth_priv *priv);
+extern const struct ethtool_ops dpaa2_ethtool_ops;
 
 static int dpaa2_eth_queue_count(struct dpaa2_eth_priv *priv)
 {
