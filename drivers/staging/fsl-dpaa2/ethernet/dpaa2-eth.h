@@ -388,6 +388,6 @@ static inline int dpaa2_eth_max_channels(struct dpaa2_eth_priv *priv)
 		     priv->dpni_attrs.max_senders);
 }
 
-void check_fs_support(struct dpaa2_eth_priv *priv);
+void check_cls_support(struct dpaa2_eth_priv *priv);
 
 #endif	/* __DPAA2_H */
