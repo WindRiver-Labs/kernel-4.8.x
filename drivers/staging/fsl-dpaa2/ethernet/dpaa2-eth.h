@@ -358,7 +358,7 @@ struct dpaa2_eth_priv {
 
 extern const struct ethtool_ops dpaa2_ethtool_ops;
 
-int dpaa2_eth_set_hash(struct net_device *net_dev);
+int dpaa2_eth_set_hash(struct dpaa2_eth_priv *priv);
 
 static int dpaa2_eth_queue_count(struct dpaa2_eth_priv *priv)
 {
@@ -378,6 +378,6 @@ static inline int dpaa2_eth_max_channels(struct dpaa2_eth_priv *priv)
 		     priv->dpni_attrs.max_senders);
 }
 
-void check_fs_support(struct net_device *);
+void check_fs_support(struct dpaa2_eth_priv *priv);
 
 #endif	/* __DPAA2_H */

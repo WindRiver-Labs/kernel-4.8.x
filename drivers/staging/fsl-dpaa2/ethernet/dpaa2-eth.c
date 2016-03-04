@@ -2169,13 +2169,13 @@ static int bind_dpni(struct dpaa2_eth_priv *priv)
 		return err;
 	}
 
-	check_fs_support(net_dev);
+	check_fs_support(priv);
 
 	/* have the interface implicitly distribute traffic based on supported
 	 * header fields
 	 */
 	if (dpaa2_eth_hash_enabled(priv)) {
-		err = dpaa2_eth_set_hash(net_dev);
+		err = dpaa2_eth_set_hash(priv);
 		if (err)
 			return err;
 	}
