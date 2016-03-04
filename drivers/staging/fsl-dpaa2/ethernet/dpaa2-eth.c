@@ -2175,7 +2175,7 @@ static int bind_dpni(struct dpaa2_eth_priv *priv)
 	 * header fields
 	 */
 	if (dpaa2_eth_hash_enabled(priv)) {
-		err = dpaa2_eth_set_hash(net_dev, DPAA2_RXH_SUPPORTED);
+		err = dpaa2_eth_set_hash(net_dev);
 		if (err)
 			return err;
 	}

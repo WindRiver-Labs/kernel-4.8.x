@@ -331,7 +331,7 @@ static int cls_is_enabled(struct net_device *net_dev, u64 flag)
 {
 	struct dpaa2_eth_priv *priv = netdev_priv(net_dev);
 
-	return !!(priv->rx_hash_fields & flag);
+	return !!(priv->rx_flow_hash & flag);
 }
 
 static int cls_key_off(struct net_device *net_dev, u64 flag)
@@ -386,39 +386,22 @@ void check_fs_support(struct net_device *net_dev)
 	}
 }
 
-/* Set RX hash options
- * flags is a combination of RXH_ bits
- */
-int dpaa2_eth_set_hash(struct net_device *net_dev, u64 flags)
+/* Set RX hash options */
+int dpaa2_eth_set_hash(struct net_device *net_dev)
 {
 	struct device *dev = net_dev->dev.parent;
 	struct dpaa2_eth_priv *priv = netdev_priv(net_dev);
 	struct dpkg_profile_cfg cls_cfg;
 	struct dpni_rx_tc_dist_cfg dist_cfg;
 	u8 *dma_mem;
-	u64 enabled_flags = 0;
 	int i;
 	int err = 0;
-
-	if (!dpaa2_eth_hash_enabled(priv)) {
-		dev_err(dev, "Hashing support is not enabled\n");
-		return -EOPNOTSUPP;
-	}
-
-	if (flags & ~DPAA2_RXH_SUPPORTED) {
-		/* RXH_DISCARD is not supported */
-		dev_err(dev, "unsupported option selected, supported options are: mvtsdfn\n");
-		return -EOPNOTSUPP;
-	}
 
 	memset(&cls_cfg, 0, sizeof(cls_cfg));
 
 	for (i = 0; i < ARRAY_SIZE(hash_fields); i++) {
 		struct dpkg_extract *key =
 			&cls_cfg.extracts[cls_cfg.num_extracts];
-
-		if (!(flags & hash_fields[i].rxnfc_field))
-			continue;
 
 		if (cls_cfg.num_extracts >= DPKG_MAX_NUM_OF_EXTRACTS) {
 			dev_err(dev, "error adding key extraction rule, too many rules?\n");
@@ -431,7 +414,7 @@ int dpaa2_eth_set_hash(struct net_device *net_dev, u64 flags)
 		key->extract.from_hdr.field = hash_fields[i].cls_field;
 		cls_cfg.num_extracts++;
 
-		enabled_flags |= hash_fields[i].rxnfc_field;
+		priv->rx_flow_hash |= hash_fields[i].rxnfc_field;
 	}
 
 	dma_mem = kzalloc(DPAA2_CLASSIFIER_DMA_SIZE, GFP_DMA | GFP_KERNEL);
@@ -472,8 +455,6 @@ int dpaa2_eth_set_hash(struct net_device *net_dev, u64 flags)
 		dev_err(dev, "dpni_set_rx_tc_dist() error %d\n", err);
 		return err;
 	}
-
-	priv->rx_hash_fields = enabled_flags;
 
 	return 0;
 }
@@ -727,40 +708,12 @@ static int del_cls(struct net_device *net_dev, int location)
 	return 0;
 }
 
-static void clear_cls(struct net_device *net_dev)
-{
-	struct dpaa2_eth_priv *priv = netdev_priv(net_dev);
-	int i, err;
-
-	for (i = 0; i < DPAA2_CLASSIFIER_ENTRY_COUNT; i++) {
-		if (!priv->cls_rule[i].in_use)
-			continue;
-
-		err = del_cls(net_dev, i);
-		if (err)
-			netdev_warn(net_dev,
-				    "err trying to delete classification entry %d\n",
-				    i);
-	}
-}
-
 static int dpaa2_eth_set_rxnfc(struct net_device *net_dev,
 			       struct ethtool_rxnfc *rxnfc)
 {
 	int err = 0;
 
 	switch (rxnfc->cmd) {
-	case ETHTOOL_SRXFH:
-		/* first off clear ALL classification rules, chaging key
-		 * composition will break them anyway
-		 */
-		clear_cls(net_dev);
-		/* we purposely ignore cmd->flow_type for now, because the
-		 * classifier only supports a single set of fields for all
-		 * protocols
-		 */
-		err = dpaa2_eth_set_hash(net_dev, rxnfc->data);
-		break;
 	case ETHTOOL_SRXCLSRLINS:
 		err = add_cls(net_dev, &rxnfc->fs);
 		break;
@@ -785,11 +738,10 @@ static int dpaa2_eth_get_rxnfc(struct net_device *net_dev,
 
 	switch (rxnfc->cmd) {
 	case ETHTOOL_GRXFH:
-		/* we purposely ignore cmd->flow_type for now, because the
-		 * classifier only supports a single set of fields for all
-		 * protocols
+		/* we purposely ignore cmd->flow_type, because the hashing key
+		 * is the same (and fixed) for all protocols
 		 */
-		rxnfc->data = priv->rx_hash_fields;
+		rxnfc->data = priv->rx_flow_hash;
 		break;
 
 	case ETHTOOL_GRXRINGS:
