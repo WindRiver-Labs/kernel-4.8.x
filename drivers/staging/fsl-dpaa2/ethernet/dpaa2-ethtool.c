@@ -297,19 +297,34 @@ static u8 cls_key_size(struct dpaa2_eth_priv *priv)
 	return size;
 }
 
-void check_fs_support(struct dpaa2_eth_priv *priv)
+void check_cls_support(struct dpaa2_eth_priv *priv)
 {
 	u8 key_size = cls_key_size(priv);
 	struct device *dev = priv->net_dev->dev.parent;
 
-	if (priv->dpni_attrs.options & DPNI_OPT_DIST_FS &&
-	    priv->dpni_attrs.max_dist_key_size < key_size) {
-		dev_err(dev,
-			"max_dist_key_size = %d, expected %d.  Steering is disabled\n",
-			priv->dpni_attrs.max_dist_key_size,
-			key_size);
-		priv->dpni_attrs.options &= ~DPNI_OPT_DIST_FS;
+	if (dpaa2_eth_hash_enabled(priv)) {
+		if (priv->dpni_attrs.max_dist_key_size < key_size) {
+			dev_dbg(dev, "max_dist_key_size = %d, expected %d. Hashing and steering are disabled\n",
+				priv->dpni_attrs.max_dist_key_size,
+				key_size);
+			goto disable_cls;
+		}
+		if (priv->num_hash_fields > DPKG_MAX_NUM_OF_EXTRACTS) {
+			dev_dbg(dev, "Too many key fields (max = %d). Hashing and steering are disabled\n",
+				DPKG_MAX_NUM_OF_EXTRACTS);
+			goto disable_cls;
+		}
 	}
+
+	if (dpaa2_eth_fs_enabled(priv) && !dpaa2_eth_hash_enabled(priv)) {
+		dev_dbg(dev, "DPNI_OPT_DIST_HASH option missing. Flow steering is disabled\n");
+		goto disable_cls;
+	}
+
+	return;
+
+disable_cls:
+	priv->dpni_attrs.options &= ~(DPNI_OPT_DIST_FS | DPNI_OPT_DIST_HASH);
 }
 
 static int prep_cls_rule(struct net_device *net_dev,
