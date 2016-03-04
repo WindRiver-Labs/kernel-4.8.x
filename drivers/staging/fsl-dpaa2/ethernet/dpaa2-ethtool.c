@@ -327,7 +327,7 @@ static const struct dpaa2_eth_hash_fields {
 	},
 };
 
-static int cls_key_off(struct net_device *net_dev, u64 flag)
+static int cls_key_off(struct dpaa2_eth_priv *priv, u64 flag)
 {
 	int i, off = 0;
 
@@ -340,7 +340,7 @@ static int cls_key_off(struct net_device *net_dev, u64 flag)
 	return -1;
 }
 
-static u8 cls_key_size(struct net_device *net_dev)
+static u8 cls_key_size(struct dpaa2_eth_priv *priv)
 {
 	u8 i, size = 0;
 
@@ -350,14 +350,14 @@ static u8 cls_key_size(struct net_device *net_dev)
 	return size;
 }
 
-void check_fs_support(struct net_device *net_dev)
+void check_fs_support(struct dpaa2_eth_priv *priv)
 {
-	u8 key_size = cls_key_size(net_dev);
-	struct dpaa2_eth_priv *priv = netdev_priv(net_dev);
+	u8 key_size = cls_key_size(priv);
+	struct device *dev = priv->net_dev->dev.parent;
 
 	if (priv->dpni_attrs.options & DPNI_OPT_DIST_FS &&
 	    priv->dpni_attrs.max_dist_key_size < key_size) {
-		dev_err(&net_dev->dev,
+		dev_err(dev,
 			"max_dist_key_size = %d, expected %d.  Steering is disabled\n",
 			priv->dpni_attrs.max_dist_key_size,
 			key_size);
@@ -366,10 +366,9 @@ void check_fs_support(struct net_device *net_dev)
 }
 
 /* Set RX hash options */
-int dpaa2_eth_set_hash(struct net_device *net_dev)
+int dpaa2_eth_set_hash(struct dpaa2_eth_priv *priv)
 {
-	struct device *dev = net_dev->dev.parent;
-	struct dpaa2_eth_priv *priv = netdev_priv(net_dev);
+	struct device *dev = priv->net_dev->dev.parent;
 	struct dpkg_profile_cfg cls_cfg;
 	struct dpni_rx_tc_dist_cfg dist_cfg;
 	u8 *dma_mem;
@@ -409,10 +408,10 @@ int dpaa2_eth_set_hash(struct net_device *net_dev)
 	memset(&dist_cfg, 0, sizeof(dist_cfg));
 
 	/* Prepare for setting the rx dist */
-	dist_cfg.key_cfg_iova = dma_map_single(net_dev->dev.parent, dma_mem,
+	dist_cfg.key_cfg_iova = dma_map_single(dev, dma_mem,
 					       DPAA2_CLASSIFIER_DMA_SIZE,
 					       DMA_TO_DEVICE);
-	if (dma_mapping_error(net_dev->dev.parent, dist_cfg.key_cfg_iova)) {
+	if (dma_mapping_error(dev, dist_cfg.key_cfg_iova)) {
 		dev_err(dev, "DMA mapping failed\n");
 		kfree(dma_mem);
 		return -ENOMEM;
@@ -427,7 +426,7 @@ int dpaa2_eth_set_hash(struct net_device *net_dev)
 	}
 
 	err = dpni_set_rx_tc_dist(priv->mc_io, 0, priv->mc_token, 0, &dist_cfg);
-	dma_unmap_single(net_dev->dev.parent, dist_cfg.key_cfg_iova,
+	dma_unmap_single(dev, dist_cfg.key_cfg_iova,
 			 DPAA2_CLASSIFIER_DMA_SIZE, DMA_TO_DEVICE);
 	kfree(dma_mem);
 	if (err) {
@@ -442,10 +441,11 @@ static int prep_cls_rule(struct net_device *net_dev,
 			 struct ethtool_rx_flow_spec *fs,
 			 void *key)
 {
+	struct dpaa2_eth_priv *priv = netdev_priv(net_dev);
 	struct ethtool_tcpip4_spec *l4ip4_h, *l4ip4_m;
 	struct ethhdr *eth_h, *eth_m;
 	struct ethtool_flow_ext *ext_h, *ext_m;
-	const u8 key_size = cls_key_size(net_dev);
+	const u8 key_size = cls_key_size(priv);
 	void *msk = key + key_size;
 
 	memset(key, 0, key_size * 2);
@@ -478,29 +478,30 @@ l4ip4:
 		}
 
 		if (l4ip4_m->ip4src) {
-			*(u32 *)(key + cls_key_off(net_dev, RXH_IP_SRC))
+			*(u32 *)(key + cls_key_off(priv, RXH_IP_SRC))
 				= l4ip4_h->ip4src;
-			*(u32 *)(msk + cls_key_off(net_dev, RXH_IP_SRC))
+			*(u32 *)(msk + cls_key_off(priv, RXH_IP_SRC))
 				= l4ip4_m->ip4src;
 		}
+
 		if (l4ip4_m->ip4dst) {
-			*(u32 *)(key + cls_key_off(net_dev, RXH_IP_DST))
+			*(u32 *)(key + cls_key_off(priv, RXH_IP_DST))
 				= l4ip4_h->ip4dst;
-			*(u32 *)(msk + cls_key_off(net_dev, RXH_IP_DST))
+			*(u32 *)(msk + cls_key_off(priv, RXH_IP_DST))
 				= l4ip4_m->ip4dst;
 		}
 
 		if (l4ip4_m->psrc) {
-			*(u32 *)(key + cls_key_off(net_dev, RXH_L4_B_0_1))
+			*(u32 *)(key + cls_key_off(priv, RXH_L4_B_0_1))
 				= l4ip4_h->psrc;
-			*(u32 *)(msk + cls_key_off(net_dev, RXH_L4_B_0_1))
+			*(u32 *)(msk + cls_key_off(priv, RXH_L4_B_0_1))
 				= l4ip4_m->psrc;
 		}
 
 		if (l4ip4_m->pdst) {
-			*(u32 *)(key + cls_key_off(net_dev, RXH_L4_B_2_3))
+			*(u32 *)(key + cls_key_off(priv, RXH_L4_B_2_3))
 				= l4ip4_h->pdst;
-			*(u32 *)(msk + cls_key_off(net_dev, RXH_L4_B_2_3))
+			*(u32 *)(msk + cls_key_off(priv, RXH_L4_B_2_3))
 				= l4ip4_m->pdst;
 		}
 		break;
@@ -520,9 +521,9 @@ l4ip4:
 		}
 
 		if (!is_zero_ether_addr(eth_m->h_dest)) {
-			ether_addr_copy(key + cls_key_off(net_dev, RXH_L2DA),
+			ether_addr_copy(key + cls_key_off(priv, RXH_L2DA),
 					eth_h->h_dest);
-			ether_addr_copy(msk + cls_key_off(net_dev, RXH_L2DA),
+			ether_addr_copy(msk + cls_key_off(priv, RXH_L2DA),
 					eth_m->h_dest);
 		}
 		break;
@@ -542,9 +543,9 @@ l4ip4:
 		ext_m = &fs->m_ext;
 
 		if (!is_zero_ether_addr(ext_m->h_dest)) {
-			ether_addr_copy(key + cls_key_off(net_dev, RXH_L2DA),
+			ether_addr_copy(key + cls_key_off(priv, RXH_L2DA),
 					ext_h->h_dest);
-			ether_addr_copy(msk + cls_key_off(net_dev, RXH_L2DA),
+			ether_addr_copy(msk + cls_key_off(priv, RXH_L2DA),
 					ext_m->h_dest);
 		}
 	}
@@ -556,6 +557,7 @@ static int do_cls(struct net_device *net_dev,
 		  bool add)
 {
 	struct dpaa2_eth_priv *priv = netdev_priv(net_dev);
+	struct device *dev = net_dev->dev.parent;
 	const int rule_cnt = DPAA2_CLASSIFIER_ENTRY_COUNT;
 	struct dpni_rule_cfg rule_cfg;
 	void *dma_mem;
@@ -573,7 +575,7 @@ static int do_cls(struct net_device *net_dev,
 		return -EINVAL;
 
 	memset(&rule_cfg, 0, sizeof(rule_cfg));
-	rule_cfg.key_size = cls_key_size(net_dev);
+	rule_cfg.key_size = cls_key_size(priv);
 
 	/* allocate twice the key size, for the actual key and for mask */
 	dma_mem =  kzalloc(rule_cfg.key_size * 2, GFP_DMA | GFP_KERNEL);
@@ -584,7 +586,7 @@ static int do_cls(struct net_device *net_dev,
 	if (err)
 		goto err_free_mem;
 
-	rule_cfg.key_iova = dma_map_single(net_dev->dev.parent, dma_mem,
+	rule_cfg.key_iova = dma_map_single(dev, dma_mem,
 					   rule_cfg.key_size * 2,
 					   DMA_TO_DEVICE);
 
@@ -613,7 +615,7 @@ static int do_cls(struct net_device *net_dev,
 		err = dpni_remove_fs_entry(priv->mc_io, 0, priv->mc_token, 0,
 					   &rule_cfg);
 
-	dma_unmap_single(net_dev->dev.parent, rule_cfg.key_iova,
+	dma_unmap_single(dev, rule_cfg.key_iova,
 			 rule_cfg.key_size * 2, DMA_TO_DEVICE);
 	if (err) {
 		netdev_err(net_dev, "dpaa2_add_cls() error %d\n", err);
