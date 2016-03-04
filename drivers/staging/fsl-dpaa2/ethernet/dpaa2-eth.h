@@ -330,7 +330,7 @@ struct dpaa2_eth_priv {
 	struct task_struct *poll_thread;
 
 	/* enabled ethtool hashing bits */
-	u64 rx_hash_fields;
+	u64 rx_flow_hash;
 
 #ifdef CONFIG_FSL_DPAA2_ETH_DEBUGFS
 	struct dpaa2_debugfs dbg;
@@ -345,11 +345,6 @@ struct dpaa2_eth_priv {
 	bool ts_rx_en; /* Rx timestamping enabled */
 };
 
-/* default Rx hash options, set during probing */
-#define DPAA2_RXH_SUPPORTED	(RXH_L2DA | RXH_VLAN | RXH_L3_PROTO \
-				| RXH_IP_SRC | RXH_IP_DST | RXH_L4_B_0_1 \
-				| RXH_L4_B_2_3)
-
 #define dpaa2_eth_hash_enabled(priv)	\
 	((priv)->dpni_attrs.options & DPNI_OPT_DIST_HASH)
 
@@ -363,7 +358,7 @@ struct dpaa2_eth_priv {
 
 extern const struct ethtool_ops dpaa2_ethtool_ops;
 
-int dpaa2_eth_set_hash(struct net_device *net_dev, u64 flags);
+int dpaa2_eth_set_hash(struct net_device *net_dev);
 
 static int dpaa2_eth_queue_count(struct dpaa2_eth_priv *priv)
 {
