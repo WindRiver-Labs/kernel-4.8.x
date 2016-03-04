@@ -2209,11 +2209,6 @@ int set_hash(struct dpaa2_eth_priv *priv)
 		struct dpkg_extract *key =
 			&cls_cfg.extracts[cls_cfg.num_extracts];
 
-		if (cls_cfg.num_extracts >= DPKG_MAX_NUM_OF_EXTRACTS) {
-			dev_err(dev, "error adding key extraction rule, too many rules?\n");
-			return -E2BIG;
-		}
-
 		key->type = DPKG_EXTRACT_FROM_HDR;
 		key->extract.from_hdr.prot = priv->hash_fields[i].cls_prot;
 		key->extract.from_hdr.type = DPKG_FULL_FIELD;
@@ -2287,7 +2282,10 @@ static int bind_dpni(struct dpaa2_eth_priv *priv)
 		return err;
 	}
 
-	check_fs_support(priv);
+	/* Verify classification options and disable hashing and/or
+	 * flow steering support in case of invalid configuration values
+	 */
+	check_cls_support(priv);
 
 	/* have the interface implicitly distribute traffic based on
 	 * a static hash key
