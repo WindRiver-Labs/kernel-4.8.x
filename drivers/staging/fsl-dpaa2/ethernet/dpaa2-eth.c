@@ -2147,6 +2147,124 @@ static int setup_rx_err_flow(struct dpaa2_eth_priv *priv,
 }
 #endif
 
+/* default hash key fields */
+static struct dpaa2_eth_hash_fields default_hash_fields[] = {
+	{
+		/* L2 header */
+		.rxnfc_field = RXH_L2DA,
+		.cls_prot = NET_PROT_ETH,
+		.cls_field = NH_FLD_ETH_DA,
+		.size = 6,
+	}, {
+		/* VLAN header */
+		.rxnfc_field = RXH_VLAN,
+		.cls_prot = NET_PROT_VLAN,
+		.cls_field = NH_FLD_VLAN_TCI,
+		.size = 2,
+	}, {
+		/* IP header */
+		.rxnfc_field = RXH_IP_SRC,
+		.cls_prot = NET_PROT_IP,
+		.cls_field = NH_FLD_IP_SRC,
+		.size = 4,
+	}, {
+		.rxnfc_field = RXH_IP_DST,
+		.cls_prot = NET_PROT_IP,
+		.cls_field = NH_FLD_IP_DST,
+		.size = 4,
+	}, {
+		.rxnfc_field = RXH_L3_PROTO,
+		.cls_prot = NET_PROT_IP,
+		.cls_field = NH_FLD_IP_PROTO,
+		.size = 1,
+	}, {
+		/* Using UDP ports, this is functionally equivalent to raw
+		 * byte pairs from L4 header.
+		 */
+		.rxnfc_field = RXH_L4_B_0_1,
+		.cls_prot = NET_PROT_UDP,
+		.cls_field = NH_FLD_UDP_PORT_SRC,
+		.size = 2,
+	}, {
+		.rxnfc_field = RXH_L4_B_2_3,
+		.cls_prot = NET_PROT_UDP,
+		.cls_field = NH_FLD_UDP_PORT_DST,
+		.size = 2,
+	},
+};
+
+/* Set RX hash options */
+int set_hash(struct dpaa2_eth_priv *priv)
+{
+	struct device *dev = priv->net_dev->dev.parent;
+	struct dpkg_profile_cfg cls_cfg;
+	struct dpni_rx_tc_dist_cfg dist_cfg;
+	u8 *dma_mem;
+	int i;
+	int err = 0;
+
+	memset(&cls_cfg, 0, sizeof(cls_cfg));
+
+	for (i = 0; i < priv->num_hash_fields; i++) {
+		struct dpkg_extract *key =
+			&cls_cfg.extracts[cls_cfg.num_extracts];
+
+		if (cls_cfg.num_extracts >= DPKG_MAX_NUM_OF_EXTRACTS) {
+			dev_err(dev, "error adding key extraction rule, too many rules?\n");
+			return -E2BIG;
+		}
+
+		key->type = DPKG_EXTRACT_FROM_HDR;
+		key->extract.from_hdr.prot = priv->hash_fields[i].cls_prot;
+		key->extract.from_hdr.type = DPKG_FULL_FIELD;
+		key->extract.from_hdr.field = priv->hash_fields[i].cls_field;
+		cls_cfg.num_extracts++;
+
+		priv->rx_flow_hash |= priv->hash_fields[i].rxnfc_field;
+	}
+
+	dma_mem = kzalloc(DPAA2_CLASSIFIER_DMA_SIZE, GFP_DMA | GFP_KERNEL);
+	if (!dma_mem)
+		return -ENOMEM;
+
+	err = dpni_prepare_key_cfg(&cls_cfg, dma_mem);
+	if (err) {
+		dev_err(dev, "dpni_prepare_key_cfg error %d", err);
+		return err;
+	}
+
+	memset(&dist_cfg, 0, sizeof(dist_cfg));
+
+	/* Prepare for setting the rx dist */
+	dist_cfg.key_cfg_iova = dma_map_single(dev, dma_mem,
+					       DPAA2_CLASSIFIER_DMA_SIZE,
+					       DMA_TO_DEVICE);
+	if (dma_mapping_error(dev, dist_cfg.key_cfg_iova)) {
+		dev_err(dev, "DMA mapping failed\n");
+		kfree(dma_mem);
+		return -ENOMEM;
+	}
+
+	dist_cfg.dist_size = dpaa2_eth_queue_count(priv);
+	if (dpaa2_eth_fs_enabled(priv)) {
+		dist_cfg.dist_mode = DPNI_DIST_MODE_FS;
+		dist_cfg.fs_cfg.miss_action = DPNI_FS_MISS_HASH;
+	} else {
+		dist_cfg.dist_mode = DPNI_DIST_MODE_HASH;
+	}
+
+	err = dpni_set_rx_tc_dist(priv->mc_io, 0, priv->mc_token, 0, &dist_cfg);
+	dma_unmap_single(dev, dist_cfg.key_cfg_iova,
+			 DPAA2_CLASSIFIER_DMA_SIZE, DMA_TO_DEVICE);
+	kfree(dma_mem);
+	if (err) {
+		dev_err(dev, "dpni_set_rx_tc_dist() error %d\n", err);
+		return err;
+	}
+
+	return 0;
+}
+
 /* Bind the DPNI to its needed objects and resources: buffer pool, DPIOs,
  * frame queues and channels
  */
@@ -2171,13 +2289,17 @@ static int bind_dpni(struct dpaa2_eth_priv *priv)
 
 	check_fs_support(priv);
 
-	/* have the interface implicitly distribute traffic based on supported
-	 * header fields
+	/* have the interface implicitly distribute traffic based on
+	 * a static hash key
 	 */
 	if (dpaa2_eth_hash_enabled(priv)) {
-		err = dpaa2_eth_set_hash(priv);
-		if (err)
+		priv->hash_fields = default_hash_fields;
+		priv->num_hash_fields = ARRAY_SIZE(default_hash_fields);
+		err = set_hash(priv);
+		if (err) {
+			dev_err(dev, "Hashing configuration failed\n");
 			return err;
+		}
 	}
 
 	/* Configure handling of error frames */
