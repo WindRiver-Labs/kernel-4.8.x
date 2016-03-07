@@ -289,6 +289,7 @@ struct dpaa2_eth_hash_fields {
 	u64 rxnfc_field;
 	enum net_prot cls_prot;
 	int cls_field;
+	int offset;
 	int size;
 };
 
@@ -359,6 +360,9 @@ struct dpaa2_eth_priv {
 
 #define dpaa2_eth_fs_enabled(priv)	\
 	((priv)->dpni_attrs.options & DPNI_OPT_DIST_FS)
+
+#define dpaa2_eth_fs_mask_enabled(priv)	\
+	((priv)->dpni_attrs.options & DPNI_OPT_FS_MASK_SUPPORT)
 
 #define DPAA2_CLASSIFIER_ENTRY_COUNT 16
 
