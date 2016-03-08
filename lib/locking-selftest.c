@@ -1004,14 +1004,18 @@ static void dotest(void (*testcase_fn)(void), int expected, int lockclass_mask)
 
 	WARN_ON(irqs_disabled());
 
+#ifdef CONFIG_PREEMPT_RT_FULL
 #ifdef CONFIG_SCHED_DEBUG
 	save_migrate_atomic = p->migrate_disable_atomic;
+#endif
 #endif
 
 	testcase_fn();
 
+#ifdef CONFIG_PREEMPT_RT_FULL
 #ifdef CONFIG_SCHED_DEBUG
 	p->migrate_disable_atomic = save_migrate_atomic;
+#endif
 #endif
 
 	/*
