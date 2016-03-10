@@ -136,6 +136,7 @@
 			     <1 14 0xf08>, /* Physical Non-Secure PPI */
 			     <1 11 0xf08>, /* Virtual PPI */
 			     <1 10 0xf08>; /* Hypervisor PPI */
+		arm,reread-timer;
 	};
 
 	pmu {
