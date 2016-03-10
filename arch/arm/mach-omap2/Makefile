@@ -270,3 +270,4 @@ obj-y					+= common-board-devices.o twl-common.o dss-common.o
 ifneq ($(CONFIG_OMAP_REMOTEPROC),)
 obj-y					+= remoteproc.o
 endif
+obj-$(CONFIG_OMAP_IOMMU)		+= omap-iommu.o
