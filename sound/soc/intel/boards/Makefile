@@ -19,6 +19,7 @@ snd-soc-apli_lhcrb_wm8731-objs := apli_lhcrb_wm8731.o
 snd-soc-apli_lhcrb_aic3107M-objs := apli_lhcrb_aic3107M.o
 snd-soc-apli_lhcrb_aic3107S-objs := apli_lhcrb_aic3107S.o
 snd-soc-cnl-wm8281-objs := cnl_wm8281.o
+snd-soc-cnl_cs42l42-objs := cnl_cs42l42.o
 
 obj-$(CONFIG_SND_SOC_INTEL_HASWELL_MACH) += snd-soc-sst-haswell.o
 obj-$(CONFIG_SND_SOC_INTEL_BYT_RT5640_MACH) += snd-soc-sst-byt-rt5640-mach.o
@@ -41,3 +42,4 @@ obj-$(CONFIG_SND_SOC_INTEL_APLI_LHCRB_WM8731_MACH) += snd-soc-apli_lhcrb_wm8731.
 obj-$(CONFIG_SND_SOC_INTEL_APLI_LHCRB_AIC3107_MACH) += snd-soc-apli_lhcrb_aic3107M.o
 obj-$(CONFIG_SND_SOC_INTEL_APLI_LHCRB_AIC3107_MACH) += snd-soc-apli_lhcrb_aic3107S.o
 obj-$(CONFIG_SND_SOC_INTEL_CNL_WM8281_MACH) += snd-soc-cnl-wm8281.o
+obj-$(CONFIG_SND_SOC_INTEL_CNL_CS42L42_MACH) += snd-soc-cnl_cs42l42.o
