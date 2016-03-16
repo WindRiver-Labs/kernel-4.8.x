@@ -145,4 +145,15 @@
 			local-mac-address = [00 11 22 33 44 55];
 		};
 	};
+	reserved-memory {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+
+		usdpaa_mem: usdpaa_mem {
+			compatible = "fsl,usdpaa-mem";
+			size = <0 0x10000000>;
+			alignment = <0 0x10000000>;
+		};
+	};
 };
