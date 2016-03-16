@@ -90,4 +90,15 @@
 			fsl,fman-oh-port = <&fman0_oh1>;
 		};
 	};
+	reserved-memory {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+
+		usdpaa_mem: usdpaa_mem {
+			compatible = "fsl,usdpaa-mem";
+			size = <0 0x10000000>;
+			alignment = <0 0x10000000>;
+		};
+	};
 };
