@@ -142,6 +142,7 @@
 
 		usdpaa_mem: usdpaa_mem {
 			compatible = "fsl,usdpaa-mem";
+			alloc-ranges = <0 0 0x10000 0>;
 			size = <0 0x10000000>;
 			alignment = <0 0x10000000>;
 		};
