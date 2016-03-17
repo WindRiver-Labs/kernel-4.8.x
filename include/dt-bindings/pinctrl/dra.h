@@ -49,6 +49,7 @@
 #define MUX_VIRTUAL_MODE15	(MODE_SELECT | (0xf << 4))
 
 #define MODE_SELECT		(1 << 8)
+#define MANUAL_MODE		MODE_SELECT
 
 #define PULL_ENA		(0 << 16)
 #define PULL_DIS		(1 << 16)
@@ -66,6 +67,10 @@
 #define PIN_INPUT_SLEW		(INPUT_EN | SLEWCONTROL)
 #define PIN_INPUT_PULLUP	(PULL_ENA | INPUT_EN | PULL_UP)
 #define PIN_INPUT_PULLDOWN	(PULL_ENA | INPUT_EN)
+
+/* DRA7 IODELAY configuration parameters */
+#define A_DELAY(val)		((val) & 0xFFFF)
+#define G_DELAY(val)		(((val) & 0xFFFF) << 16)
 
 /*
  * Macro to allow using the absolute physical address instead of the
