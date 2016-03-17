@@ -650,6 +650,11 @@ static irqreturn_t imx_rxint(int irq, void *dev_id)
 				continue;
 		}
 
+#ifdef CONFIG_CONSOLE_POLL
+		if (sport->port.poll_rx_cb && sport->port.poll_rx_cb(rx & 255))
+			continue;
+#endif
+
 		if (uart_handle_sysrq_char(&sport->port, (unsigned char)rx))
 			continue;
 
