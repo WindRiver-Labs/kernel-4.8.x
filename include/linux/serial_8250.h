@@ -150,6 +150,7 @@ extern int early_serial8250_setup(struct earlycon_device *device,
 extern void serial8250_do_set_termios(struct uart_port *port,
 		struct ktermios *termios, struct ktermios *old);
 extern unsigned int serial8250_do_get_mctrl(struct uart_port *port);
+extern int keystone_serial8250_init(struct uart_port *port);
 extern int serial8250_do_startup(struct uart_port *port);
 extern void serial8250_do_shutdown(struct uart_port *port);
 extern void serial8250_do_pm(struct uart_port *port, unsigned int state,
