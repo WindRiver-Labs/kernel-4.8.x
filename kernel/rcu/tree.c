@@ -849,6 +849,24 @@ void rcu_irq_exit_irqson(void)
 	local_irq_restore(flags);
 }
 
+void raw_rcu_irq_exit(void)
+{
+	unsigned long flags;
+	long long oldval;
+	struct rcu_dynticks *rdtp;
+
+	raw_local_irq_save(flags);
+	rdtp = this_cpu_ptr(&rcu_dynticks);
+	oldval = rdtp->dynticks_nesting;
+	rdtp->dynticks_nesting--;
+	WARN_ON_ONCE(rdtp->dynticks_nesting < 0);
+	if (rdtp->dynticks_nesting)
+		trace_rcu_dyntick(TPS("--="), oldval, rdtp->dynticks_nesting);
+	else
+		rcu_eqs_enter_common(oldval, true);
+	rcu_sysidle_enter(1);
+	raw_local_irq_restore(flags);
+}
 /*
  * rcu_eqs_exit_common - current CPU moving away from extended quiescent state
  *
@@ -985,6 +1003,25 @@ void rcu_irq_enter_irqson(void)
 	local_irq_save(flags);
 	rcu_irq_enter();
 	local_irq_restore(flags);
+}
+
+void raw_rcu_irq_enter(void)
+{
+	unsigned long flags;
+	struct rcu_dynticks *rdtp;
+	long long oldval;
+
+	raw_local_irq_save(flags);
+	rdtp = this_cpu_ptr(&rcu_dynticks);
+	oldval = rdtp->dynticks_nesting;
+	rdtp->dynticks_nesting++;
+	WARN_ON_ONCE(rdtp->dynticks_nesting == 0);
+	if (oldval)
+		trace_rcu_dyntick(TPS("++="), oldval, rdtp->dynticks_nesting);
+	else
+		rcu_eqs_exit_common(oldval, true);
+	rcu_sysidle_exit(1);
+	raw_local_irq_restore(flags);
 }
 
 /**
