@@ -162,8 +162,21 @@ extern void syscall_unregfunc(void);
 				rcu_irq_enter_irqson(),			\
 				rcu_irq_exit_irqson());			\
 	}
+
+#define __DECLARE_TRACE_RCU_RAW(name, proto, args, cond, data_proto, data_args)	\
+	static inline void trace_##name##_rcuidle_raw(proto)		\
+	{								\
+		if (static_key_false(&__tracepoint_##name.key))		\
+			__DO_TRACE(&__tracepoint_##name,		\
+				TP_PROTO(data_proto),			\
+				TP_ARGS(data_args),			\
+				TP_CONDITION(cond),			\
+				raw_rcu_irq_enter(),			\
+				raw_rcu_irq_exit());			\
+	}
 #else
 #define __DECLARE_TRACE_RCU(name, proto, args, cond, data_proto, data_args)
+#define __DECLARE_TRACE_RCU_RAW(name, proto, args, cond, data_proto, data_args)
 #endif
 
 /*
@@ -194,6 +207,8 @@ extern void syscall_unregfunc(void);
 		}							\
 	}								\
 	__DECLARE_TRACE_RCU(name, PARAMS(proto), PARAMS(args),		\
+		PARAMS(cond), PARAMS(data_proto), PARAMS(data_args))	\
+	__DECLARE_TRACE_RCU_RAW(name, PARAMS(proto), PARAMS(args),		\
 		PARAMS(cond), PARAMS(data_proto), PARAMS(data_args))	\
 	static inline int						\
 	register_trace_##name(void (*probe)(data_proto), void *data)	\
