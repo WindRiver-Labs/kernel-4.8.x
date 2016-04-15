@@ -10,6 +10,7 @@
 #if !defined(CONFIG_PREEMPT_OFF_HIST) && !defined(CONFIG_INTERRUPT_OFF_HIST)
 #define trace_preemptirqsoff_hist(a, b)
 #define trace_preemptirqsoff_hist_rcuidle(a, b)
+#define trace_preemptirqsoff_hist_rcuidle_raw(a, b)
 #else
 TRACE_EVENT(preemptirqsoff_hist,
 
