@@ -1859,7 +1859,7 @@ void locking_selftest(void)
 
 	init_shared_classes();
 	debug_locks_silent = !debug_locks_verbose;
-
+#ifndef CONFIG_PREEMPT_RT_FULL
 	DO_TESTCASE_6R("A-A deadlock", AA);
 	DO_TESTCASE_6R("A-B-B-A deadlock", ABBA);
 	DO_TESTCASE_6R("A-B-B-C-C-A deadlock", ABBCCA);
@@ -1868,6 +1868,16 @@ void locking_selftest(void)
 	DO_TESTCASE_6R("A-B-C-D-B-D-D-A deadlock", ABCDBDDA);
 	DO_TESTCASE_6R("A-B-C-D-B-C-D-A deadlock", ABCDBCDA);
 	DO_TESTCASE_6("double unlock", double_unlock);
+#else
+	DO_TESTCASE_6("A-A deadlock", AA);
+	DO_TESTCASE_6("A-B-B-A deadlock", ABBA);
+	DO_TESTCASE_6("A-B-B-C-C-A deadlock", ABBCCA);
+	DO_TESTCASE_6("A-B-C-A-B-C deadlock", ABCABC);
+	DO_TESTCASE_6("A-B-B-C-C-D-D-A deadlock", ABBCCDDA);
+	DO_TESTCASE_6("A-B-C-D-B-D-D-A deadlock", ABCDBDDA);
+	DO_TESTCASE_6("A-B-C-D-B-C-D-A deadlock", ABCDBCDA);
+	DO_TESTCASE_6R("double unlock", double_unlock);
+#endif
 	DO_TESTCASE_6("initialize held", init_held);
 	DO_TESTCASE_6_SUCCESS("bad unlock order", bad_unlock_order);
 
@@ -1881,7 +1891,11 @@ void locking_selftest(void)
 
 	print_testname("recursive read-lock #2");
 	printk("             |");
+#ifndef CONFIG_PREEMPT_RT_FULL
 	dotest(rlock_AA1B, SUCCESS, LOCKTYPE_RWLOCK);
+#else
+	dotest(rlock_AA1B, FAILURE, LOCKTYPE_RWLOCK);
+#endif
 	printk("             |");
 	dotest(rsem_AA1B, FAILURE, LOCKTYPE_RWSEM);
 	printk("\n");
