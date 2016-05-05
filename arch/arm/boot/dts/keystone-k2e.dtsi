@@ -204,6 +204,12 @@
 			clock-names = "fck";
 			bus_freq	= <2500000>;
 		};
+
+		debugss: debugss {
+			compatible = "ti,keystone-debugss";
+			clocks = <&mainpllclk>, <&clkdebugsstrc>, <&gemtraceclk>, <&clktetbtrc>;
+			clock-names = "mainpllclock", "debugssclock", "gemtraceclock", "tetbclock";
+		};
 		/include/ "keystone-k2e-netcp.dtsi"
 	};
 };
