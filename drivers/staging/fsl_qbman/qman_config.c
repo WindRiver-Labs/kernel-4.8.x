@@ -572,7 +572,7 @@ static int __init fsl_qman_init(struct device_node *node)
 		if (!qm_is_initalized(qm, qm_memory_fqd)) {
 			ret = parse_mem_property(node, "fsl,qman-fqd",
 						&fqd_a, &fqd_sz, 1);
-			pr_info("qman-fqd addr 0x%llx size 0x%zx\n", fqd_a, fqd_sz);
+			pr_info("qman-fqd addr %pad size 0x%zx\n", &fqd_a, fqd_sz);
 			BUG_ON(ret);
 		} else /* FQD memory */
 		/* Unfortunately we have to reserve those memory used for Qman
@@ -582,7 +582,7 @@ static int __init fsl_qman_init(struct device_node *node)
 		if (!qm_is_initalized(qm, qm_memory_pfdr)) {
 			ret = parse_mem_property(node, "fsl,qman-pfdr",
 						&pfdr_a, &pfdr_sz, 0);
-			pr_info("qman-pfdr addr 0x%llx size 0x%zx\n", pfdr_a, pfdr_sz);
+			pr_info("qman-pfdr addr %pad size 0x%zx\n", &pfdr_a, pfdr_sz);
 			BUG_ON(ret);
 		} else /* PFDR memory */
 		/* Unfortunately we have to reserve those memory used for Qman
