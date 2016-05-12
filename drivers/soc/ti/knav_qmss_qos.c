@@ -3997,7 +3997,7 @@ int knav_init_qos_range(struct knav_device *kdev, struct device_node *node,
 	info->drop_cfg.seed[1]	  = temp[5];
 	info->drop_cfg.seed[2]	  = temp[6];
 
-	error = of_property_read_u32(node, "tick-per-sec",
+	error = of_property_read_u32(node, "ticks-per-sec",
 				     &info->ticks_per_sec);
 	if (error < 0)
 		info->ticks_per_sec = 10000;
