@@ -453,4 +453,13 @@ config PHY_NS2_PCIE
 	help
 	  Enable this to support the Broadcom Northstar2 PCIe PHY.
 	  If unsure, say N.
+
+config PHY_XILINX_ZYNQMP
+	tristate "Xilinx ZynqMP PHY driver"
+	depends on ARCH_ZYNQMP
+	select GENERIC_PHY
+	help
+	  Enable this to support ZynqMP High Speed Gigabit Transceiver
+	  that is part of ZynqMP SoC.
+
 endmenu
