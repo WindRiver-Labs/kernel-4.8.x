@@ -40,7 +40,6 @@
 #include "../../fsl-mc/include/dpbp-cmd.h"
 #include "../../fsl-mc/include/dpcon.h"
 #include "../../fsl-mc/include/dpcon-cmd.h"
-#include "../../fsl-mc/include/dpmng.h"
 #include "dpni.h"
 #include "dpni-cmd.h"
 
