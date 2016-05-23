@@ -533,9 +533,6 @@ static int dpaa2_mac_probe(struct fsl_mc_device *mc_dev)
 		goto err_close;
 	}
 
-	dev_info_once(dev, "Using DPMAC API %d.%d\n",
-		      priv->attr.version.major, priv->attr.version.minor);
-
 	/* Look up the DPMAC node in the device-tree. */
 	dpmac_node = lookup_node(dev, priv->attr.id);
 	if (!dpmac_node) {
