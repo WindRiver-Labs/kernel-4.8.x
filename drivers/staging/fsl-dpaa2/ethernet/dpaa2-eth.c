@@ -53,11 +53,6 @@ MODULE_LICENSE("Dual BSD/GPL");
 MODULE_AUTHOR("Freescale Semiconductor, Inc");
 MODULE_DESCRIPTION("Freescale DPAA2 Ethernet Driver");
 
-/* Oldest DPAA2 objects version we are compatible with */
-#define DPAA2_SUPPORTED_DPNI_VERSION	6
-#define DPAA2_SUPPORTED_DPBP_VERSION	2
-#define DPAA2_SUPPORTED_DPCON_VERSION	2
-
 static void validate_rx_csum(struct dpaa2_eth_priv *priv,
 			     u32 fd_status,
 			     struct sk_buff *skb)
@@ -1531,47 +1526,6 @@ static void cdan_cb(struct dpaa2_io_notification_ctx *ctx)
 	napi_schedule_irqoff(&ch->napi);
 }
 
-/* Verify that the FLIB API version of various MC objects is supported
- * by our driver
- */
-static int check_obj_version(struct fsl_mc_device *ls_dev, u16 mc_version)
-{
-	char *name = ls_dev->obj_desc.type;
-	struct device *dev = &ls_dev->dev;
-	u16 supported_version, flib_version;
-
-	if (strcmp(name, "dpni") == 0) {
-		flib_version = DPNI_VER_MAJOR;
-		supported_version = DPAA2_SUPPORTED_DPNI_VERSION;
-	} else if (strcmp(name, "dpbp") == 0) {
-		flib_version = DPBP_VER_MAJOR;
-		supported_version = DPAA2_SUPPORTED_DPBP_VERSION;
-	} else if (strcmp(name, "dpcon") == 0) {
-		flib_version = DPCON_VER_MAJOR;
-		supported_version = DPAA2_SUPPORTED_DPCON_VERSION;
-	} else {
-		dev_err(dev, "invalid object type (%s)\n", name);
-		return -EINVAL;
-	}
-
-	/* Check that the FLIB-defined version matches the one reported by MC */
-	if (mc_version != flib_version) {
-		dev_err(dev, "%s FLIB version mismatch: MC reports %d, we have %d\n",
-			name, mc_version, flib_version);
-		return -EINVAL;
-	}
-
-	/* ... and that we actually support it */
-	if (mc_version < supported_version) {
-		dev_err(dev, "Unsupported %s FLIB version (%d)\n",
-			name, mc_version);
-		return -EINVAL;
-	}
-	dev_dbg(dev, "Using %s FLIB version %d\n", name, mc_version);
-
-	return 0;
-}
-
 /* Allocate and configure a DPCON object */
 static struct fsl_mc_device *setup_dpcon(struct dpaa2_eth_priv *priv)
 {
@@ -1599,10 +1553,6 @@ static struct fsl_mc_device *setup_dpcon(struct dpaa2_eth_priv *priv)
 		goto err_get_attr;
 	}
 
-	err = check_obj_version(dpcon, attrs.version.major);
-	if (err)
-		goto err_dpcon_ver;
-
 	err = dpcon_enable(priv->mc_io, 0, dpcon->mc_handle);
 	if (err) {
 		dev_err(dev, "dpcon_enable() failed\n");
@@ -1612,7 +1562,6 @@ static struct fsl_mc_device *setup_dpcon(struct dpaa2_eth_priv *priv)
 	return dpcon;
 
 err_enable:
-err_dpcon_ver:
 err_get_attr:
 	dpcon_close(priv->mc_io, 0, dpcon->mc_handle);
 err_open:
@@ -1892,13 +1841,8 @@ static int setup_dpbp(struct dpaa2_eth_priv *priv)
 		goto err_get_attr;
 	}
 
-	err = check_obj_version(dpbp_dev, priv->dpbp_attrs.version.major);
-	if (err)
-		goto err_dpbp_ver;
-
 	return 0;
 
-err_dpbp_ver:
 err_get_attr:
 	dpbp_disable(priv->mc_io, 0, dpbp_dev->mc_handle);
 err_enable:
@@ -1969,10 +1913,6 @@ static int setup_dpni(struct fsl_mc_device *ls_dev)
 		dev_err(dev, "dpni_get_attributes() failed (err=%d)\n", err);
 		goto err_get_attr;
 	}
-
-	err = check_obj_version(ls_dev, priv->dpni_attrs.version.major);
-	if (err)
-		goto err_dpni_ver;
 
 	memset(&priv->dpni_ext_cfg, 0, sizeof(priv->dpni_ext_cfg));
 	err = dpni_extract_extended_cfg(&priv->dpni_ext_cfg, dma_mem);
@@ -2049,7 +1989,6 @@ err_cls_rule:
 err_data_offset:
 err_buf_layout:
 err_extract:
-err_dpni_ver:
 err_get_attr:
 err_dma_map:
 	kfree(dma_mem);
