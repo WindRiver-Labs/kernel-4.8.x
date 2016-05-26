@@ -30,6 +30,8 @@
 #define SDHCI_ARASAN_VENDOR_REGISTER	0x78
 
 #define VENDOR_ENHANCED_STROBE		BIT(0)
+#define SD_CLK_25_MHZ				25000000
+#define SD_CLK_19_MHZ				19000000
 
 /*
  * On some SoCs the syscon area has a feature where the upper 16-bits of
@@ -168,6 +170,12 @@ static void sdhci_arasan_set_clock(struct sdhci_host *host, unsigned int clock)
 
 	if (clock > MMC_HIGH_52_MAX_DTR && (!IS_ERR(sdhci_arasan->phy)))
 		ctrl_phy = true;
+
+	if ((host->quirks2 & SDHCI_QUIRK2_CLOCK_STANDARD_25_BROKEN) &&
+		(host->version >= SDHCI_SPEC_300)) {
+		if (clock == SD_CLK_25_MHZ)
+			clock = SD_CLK_19_MHZ;
+	}
 
 	if (ctrl_phy) {
 		spin_unlock_irq(&host->lock);
@@ -520,6 +528,10 @@ static int sdhci_arasan_probe(struct platform_device *pdev)
 	ret = sdhci_arasan_register_sdclk(sdhci_arasan, clk_xin, &pdev->dev);
 	if (ret)
 		goto clk_disable_all;
+
+	if (of_device_is_compatible(pdev->dev.of_node, "arasan,sdhci-8.9a")) {
+		host->quirks2 |= SDHCI_QUIRK2_CLOCK_STANDARD_25_BROKEN;
+	}
 
 	ret = mmc_of_parse(host->mmc);
 	if (ret) {
