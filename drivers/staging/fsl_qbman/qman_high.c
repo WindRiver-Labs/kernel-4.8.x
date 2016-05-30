@@ -486,7 +486,7 @@ static inline void qman_stop_dequeues_ex(struct qman_portal *p)
 	PORTAL_IRQ_UNLOCK(p, irqflags);
 }
 
-static int qm_drain_mr(struct qm_portal *p)
+static int qm_drain_mr_fqrni(struct qm_portal *p)
 {
 	const struct qm_mr_entry *msg;
 loop:
@@ -513,6 +513,11 @@ loop:
 		msg = qm_mr_current(p);
 		if (!msg)
 			return 0;
+	}
+	if ((msg->verb & QM_MR_VERB_TYPE_MASK) != QM_MR_VERB_FQRNI) {
+		/* We aren't draining anything but FQRNIs */
+		pr_err("QMan found verb 0x%x in MR\n", msg->verb);
+		return -1;
 	}
 	qm_mr_next(p);
 	qm_mr_cci_consume(p, 1);
@@ -735,7 +740,7 @@ struct qman_portal *qman_create_portal(
 	while (qm_dqrr_current(__p) != NULL)
 		qm_drain_dqrr(__p);
 	/* drain all mr message */
-	qm_drain_mr(__p);
+	qm_drain_mr_fqrni(__p);
 	/* Success */
 	portal->config = config;
 	qm_isr_disable_write(__p, 0);
