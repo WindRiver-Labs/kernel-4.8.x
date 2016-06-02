@@ -74,7 +74,7 @@ struct tcp_log {
 };
 
 static struct {
-	spinlock_t	lock;
+	raw_spinlock_t	lock;
 	wait_queue_head_t wait;
 	ktime_t		start;
 	u32		lastcwnd;
@@ -116,8 +116,7 @@ static void jtcp_rcv_established(struct sock *sk, struct sk_buff *skb,
 	     ntohs(inet->inet_sport) == port ||
 	     (fwmark > 0 && skb->mark == fwmark)) &&
 	    (full || tp->snd_cwnd != tcp_probe.lastcwnd)) {
-
-		spin_lock(&tcp_probe.lock);
+		raw_spin_lock(&tcp_probe.lock);
 		/* If log fills, just silently drop */
 		if (tcp_probe_avail() > 1) {
 			struct tcp_log *p = tcp_probe.log + tcp_probe.head;
@@ -157,9 +156,9 @@ static void jtcp_rcv_established(struct sock *sk, struct sk_buff *skb,
 			tcp_probe.head = (tcp_probe.head + 1) & (bufsize - 1);
 		}
 		tcp_probe.lastcwnd = tp->snd_cwnd;
-		spin_unlock(&tcp_probe.lock);
+		wake_up_locked(&tcp_probe.wait);
+		raw_spin_unlock(&tcp_probe.lock);
 
-		wake_up(&tcp_probe.wait);
 	}
 
 	jprobe_return();
@@ -175,10 +174,10 @@ static struct jprobe tcp_jprobe = {
 static int tcpprobe_open(struct inode *inode, struct file *file)
 {
 	/* Reset (empty) log */
-	spin_lock_bh(&tcp_probe.lock);
+	raw_spin_lock_bh(&tcp_probe.lock);
 	tcp_probe.head = tcp_probe.tail = 0;
 	tcp_probe.start = ktime_get();
-	spin_unlock_bh(&tcp_probe.lock);
+	raw_spin_unlock_bh(&tcp_probe.lock);
 
 	return 0;
 }
@@ -211,16 +210,17 @@ static ssize_t tcpprobe_read(struct file *file, char __user *buf,
 		char tbuf[256];
 		int width;
 
+		raw_spin_lock_bh(&tcp_probe.lock);
 		/* Wait for data in buffer */
-		error = wait_event_interruptible(tcp_probe.wait,
+		error = wait_event_interruptible_locked(tcp_probe.wait,
 						 tcp_probe_used() > 0);
-		if (error)
+		if (error) {
+			raw_spin_unlock_bh(&tcp_probe.lock);
 			break;
-
-		spin_lock_bh(&tcp_probe.lock);
+		}
 		if (tcp_probe.head == tcp_probe.tail) {
 			/* multiple readers race? */
-			spin_unlock_bh(&tcp_probe.lock);
+			raw_spin_unlock_bh(&tcp_probe.lock);
 			continue;
 		}
 
@@ -229,7 +229,6 @@ static ssize_t tcpprobe_read(struct file *file, char __user *buf,
 		if (cnt + width < len)
 			tcp_probe.tail = (tcp_probe.tail + 1) & (bufsize - 1);
 
-		spin_unlock_bh(&tcp_probe.lock);
 
 		/* if record greater than space available
 		   return partial buffer (so far) */
@@ -263,7 +262,7 @@ static __init int tcpprobe_init(void)
 				 jtcp_rcv_established) == 0);
 
 	init_waitqueue_head(&tcp_probe.wait);
-	spin_lock_init(&tcp_probe.lock);
+	raw_spin_lock_init(&tcp_probe.lock);
 
 	if (bufsize == 0)
 		return -EINVAL;
