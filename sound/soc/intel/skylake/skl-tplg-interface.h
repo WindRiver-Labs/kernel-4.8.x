@@ -31,6 +31,8 @@
 #define MAX_IN_QUEUE 8
 #define MAX_OUT_QUEUE 8
 
+#define SDW_MAX_MASTERS 4
+
 #define SKL_UUID_STR_SZ 40
 /* Event types goes here */
 /* Reserve event type 0 for no event handlers */
@@ -229,6 +231,11 @@ struct skl_dfw_module {
 	struct skl_dfw_module_pin in_pin[MAX_IN_QUEUE];
 	struct skl_dfw_module_pin out_pin[MAX_OUT_QUEUE];
 	struct skl_dfw_module_caps caps;
+} __packed;
+
+struct skl_dfw_sdw_aggdata {
+	u32 alh_stream_num;
+	u32 channel_mask;
 } __packed;
 
 struct skl_dfw_algo_data {
