@@ -106,4 +106,7 @@ static inline void knav_dma_get_words(u32 *words, int num_words, u32 *desc)
 #define knav_queue_get_count(q)	knav_queue_device_control(q, \
 				KNAV_QUEUE_GET_COUNT, (unsigned long)NULL)
 
+#define knav_queue_flush(q)	knav_queue_device_control(q,		\
+				KNAV_QUEUE_FLUSH, (unsigned long)NULL)
+
 #endif /* __SOC_TI_KEYSTONE_NAVIGATOR_HELPERS_H__ */
