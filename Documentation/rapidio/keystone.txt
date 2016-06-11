@@ -1,0 +1,181 @@
+RapidIO subsystem mport driver for Texas Instruments KeyStone devices.
+======================================================================
+
+The KeyStone mport driver provides the following functionalities:
+
+ - Maintenance read and write operations.
+ - Direct I/O operation support (NREAD, NWRITE_R, NWRITE, SWRITE).
+ - Inbound and outbound doorbell support.
+ - MP with both type 11 (message) and type 9 (Data Streaming) packets.
+ - Support for multiple mailboxes with dedicated messaging channels.
+ - Support of MP transmit error queues.
+ - Inbound maintenance port-writes management.
+ - Multi-port support.
+ - Support for hardware packet forwarding.
+ - Software DMA engine interface for Direct I/O.
+ - Support software error recovery mechanism (for aligning AckIds).
+ - Reset symbol handling support.
+ - Capability to rescan port status through sysfs.
+ - SerDes management with optional PRBS training capability.
+ - Implementing all currently defined RapidIO mport callback functions.
+
+All related DTS bindings are documented into the
+Documentation/devicetree/bindings/rapidio/keystone-srio.txt file.
+
+Direct I/O:
+
+ The DirectI/O and maintenance packet LSU can be specified in DTS using
+ the lsu = < DIO_LSU MAINT_LSU >; entry in DTS.
+
+ If not specified in DTS, LSU #0 is used by default.
+
+Message Passing:
+
+ For inbound messages the driver uses destination ID matching to forward
+ messages into the corresponding message queue.
+ Messaging callbacks are implemented to be fully compatible with RIONET driver.
+
+ The mport driver supports type 9 (Data Streaming) packets in addition to type
+ 11 (Message). In order to fit existing Linux rapidio message API the stream Ids
+ are mapped to mbox Ids.
+ Any inbound messages can be received with either type 9 or type 11 packets for
+ a given stream/mbox Id. COS is not used today.
+
+ The keystone mport driver supports up to 4 mailboxes for both Tx/Rx.
+ The different mailboxes must be configured through the board DTS file.
+
+ Each mailbox can be used for either type 11 or type 9 packets.
+ By default type 11 is used but if specifying the 'stream_id'
+ value in the DTS file type 9 is used instead and the corresponding
+ mailbox is mapped to the 'stream_id' stream id (note that this
+ mapping must be identical on all RapidIO nodes).
+
+ The RXU mapping resources range can be specified through DTS.
+ This can be used to exclude from Linux driver the RXU mapping resources
+ used by the DSP side.
+
+ Each mailbox has its own dedicated MP transmit channel.
+
+Packet Forwarding:
+
+ In order to use it, a 'pkt-forward' table must be added into the board DTS.
+ The format is the following:
+
+ pkt-forward = <0xffff 0xffff 0 /* dev_id_low dev_id_high port */
+                0xffff 0xffff 0
+                0xffff 0xffff 0
+                0xffff 0xffff 0
+                0xffff 0xffff 0
+                0xffff 0xffff 0
+                0xffff 0xffff 0
+                0xffff 0xffff 0>;
+
+ It consists in 8 entries, each entry starts with the lower DeviceID
+ boundary, then the upper DeviceID boundary and the output port to route
+ packets whose DestID falls within the described range.
+
+ For example, '0x3 0x3 1' will forward incoming packets with
+ DestID 0x3 to port 1.
+
+ All the 8 entries must be referenced with the 3 required values.
+
+Ports to lanes mapping:
+
+ The 'ports' entry in DTS is a bit field related to the lane
+ assignment.
+ For example if an user wants to use mode 3 with two ports,
+ 'ports' must be set to 0x5 (ports 0 and 2 mapped on lanes A and C).
+
+ Also the mode 1 and 2 were switched in the current TI SRIO documentation:
+ - mode 1 is port 0 in 2x, port 2 and 3 in 1x
+ - mode 2 is port 0 and 1 in 1x, port 2 in 2x
+
+Error recovery:
+
+ Error recovery needs to known the remote ports of the link partner for each
+ local port. If the remote ports is different from the local
+ one, the driver need to know this mapping.
+
+ This can be performed by either specifying the remote ports in the DTS using
+ an optional remote port definition.
+
+ DTS syntax is the following:
+   ports-remote = <0 1 2 3>;  /* remote link partner port numbers */
+
+ Otherwise if not specified, the remote ports will be detected at startup using
+ the peer Switch Port Information CAR register if available (meaning that the
+ link partner implements such register).
+
+ The ackid alignment process needs to writes to the registers of the defined
+ remote port (link partner).
+
+ There is an 'error_recovery' option for not using error recovery and use port
+ reset instead.
+
+ Because the recovery mechanism may not work with all kind of link
+ partners such as RapidIO CPS switches or some FPGA end-points, we can disable
+ the error recovery with this driver module option.
+ Instead a reset symbol is sent to the corresponding port and the whole RapidIO
+ controller is reset.
+
+ By default error recovery is enabled in the driver. Use the
+ 'keystone_rio_mport.error_recovery=0' kernel command line option to
+ disable it.
+
+Reset symbol handling:
+
+ RapidIO peripheral is reinitialized when reset control symbol is received.
+ SerDes lanes are disabled in interrupt context to trigger loss of link on
+ link partner ASAP.
+ Afterwards RapidIO peripheral and SerDes are shutdown then initialized again.
+
+Rescan port status through sysfs:
+
+ This feature allows to rescan SRIO ports from userspace after port
+ timeout to check if new RapidIO links can been established.
+
+ A 'ports' file is exported through sysfs at the SRIO controller
+ device level (/sys/devices/soc.2/2900000.rapidio/ports).
+ Reading this file provides the mask of the SRIO ports where link(s)
+ are currently established and tested.
+ Writing a new mask to this file will start again the link status
+ check procedure on these ports and eventually register the new
+ detected Linux mports.
+
+ example: echo '0xf' > /sys/devices/soc.2/2900000.rapidio/ports
+ will rescan ports 0,1,2 and 3.
+
+ Only the ports that are defined in the DTS ('ports' property) and
+ not already up can be scanned again. Also ports cannot be disabled
+ by clearing corresponding bits in the 'ports' file.
+
+ This does not replace the enumeration/discovery procedure at the
+ RapidIO logical level through the /sys/bus/rapidio/scan file.
+
+SerDes management:
+
+ All SerDes related functions are in a separate driver which exports
+ methods for both K1 and K2 through a keystone_serdes_ops structure.
+
+ SerDes Tx coefficients can be tuned through optional configurable
+ c1, c2, cm, attenuator and regulator voltage parameters. SerDes Rx
+ coefficients can be tuned as well (att/boost).
+ SerDes Tx/Rx coefficients can be changed by both DTS or using sysfs
+ entries (in the 'serdes' directory).
+
+ The driver provides the capability to perform an optional calibration of SerDes
+ Rx coefficients with PRBS training between two link partners.
+
+ It provides sysfs entries for initiating SerDes calibration
+ ('calibrate') and starting/stopping the SRIO controller ('start').
+ Writing a non-zero value in these files will start the service, writing a
+ zero will stop it.
+ Calibration can only be performed when SRIO controller has not been started.
+
+ The mport driver also provides module options to control the calibration
+ ('serdes_calibration', default 0) and the port enabling at boot time
+ ('enable_ports', default 1).
+
+ The SerDes driver implements the SerDes Tx termination workaround which
+ reads lane 0 termination and then applies to all lanes for consistent
+ impedance calibration.

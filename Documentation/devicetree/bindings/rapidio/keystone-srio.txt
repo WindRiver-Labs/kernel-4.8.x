@@ -1,0 +1,269 @@
+This document describes the device tree bindings associated with the KeyStone
+Serial RapidIO driver support.
+
+Required properties
+-------------------
+
+#address-cells
+#size-cells:      Should be '1' if the device has sub-nodes with 'reg' property.
+reg:              Address and length of the register set for the SRIO subsystem
+		  on the SOC.
+reg-names:        Indicates the name of the various register ranges defined with
+		  the "reg" property above. There are three mandatory ranges of
+		  registers:
+		   - RapidIO registers ("rio")
+		   - boot configuration registers (for JTAGID and K1 SerDes
+                     setup) ("boot_config")
+		   - SerDes configuration registers ("serdes")
+clocks:           Clock IDs array as required by the controller.
+clock-names:      Names of clocks corresponding to IDs in the clock property.
+compatible:       Should be "ti,keystone-rapidio".
+interrupts:       The two IRQ definitions for:
+		   - RIO special interrupts (doorbells, errors, port-writes in,
+		   ...)
+                   - LSU completions
+
+Optional properties
+-------------------
+
+dma-coherent:     Indicates if DirectIO operations support hw cache-coherency.
+		  On KeyStone platforms it is recommended to set this property
+		  when running on ARM cores.
+keystone2-serdes: Indicates that the driver needs to use KeyStone 2 SerDes
+		  initialization. If not specified, it will be KeyStone 1
+		  initialization instead.
+baudrate:         This the lane baudrate configuration number (from 0 to 3).
+		  If not specified the baudrate configuration 3 will be used
+                  (5 Gbps).
+path-mode:        This is the SerDes lanes to ports configuration number (from 0
+                  to 4). If not specified the mode 0 will be used (4 ports in
+                  1x).
+port-register-timeout:
+		  This is the delay in seconds for waiting the port registration
+                  at startup. if not specified a default 30 seconds value will
+                  be used.
+ports:            This is the bitfield of RapidIO port(s) to probe at startup.
+		  If not specified, no port will be used.
+ports-remote:     Allows to explicitly specify the remote port number (of the
+                  link partner) for each local port. There is one value per port
+                  for the 4 ports.
+		  If not specified, the remote ports will be detected at startup
+                  using the peer Switch Port Information CAR register if
+                  available (meaning that the link partner implements such
+                  register).
+		  The remote ports are needed for the software error recovery
+                  process.
+dev-id-size:      RapidIO common transport system size:
+                   0 - Small size, 8-bit deviceID fields, 256 devices.
+                   1 - Large size, 16-bit deviceID fields, 65536 devices.
+		  If not specified 0 (8-bit) value will be used.
+lsu:              Start and end indexes of the LSU range that will be used for
+                  DirectIO transfers and maintenance requests. Using multiple
+                  LSUs allows to allocate one for maintenance packets and
+                  different LSUs for each DMA channels used for DirectI/O
+                  transfers increasing the parallelism capabilities.
+                  If not specified LSU 0 will be used for all kind of transfers.
+num-dio-channels  Number of virtual DMA channels available for DirectI/O
+                  transfers. Note that one is always reserved for doorbells
+                  purpose. Default is 8 if not specified.
+rxu-map-range:    Define the range (start and end values) of RXU mapping entries
+                  that will be used for MP receive. Range must start from 0 and
+                  end up to 63. If not specified the full range will be used by
+		  Linux(0 to 63).
+num-mboxes:       Number of receive mailboxes used for MP. If not specified,
+                  only one mailbox will be used.
+pkt-forward:      This allows to define the routing table for hardware packet
+		  forwarding. There are 8 entries in the table. Each entry
+                  starts with the lower DeviceID boundary, then the upper
+                  DeviceID boundary and the output port to route packets whose
+                  DestID falls within the described range.
+		  For example, '0x3 0x3 1' will forward incoming packets with
+		  DestID 0x3 to port 1.
+		  All the 8 entries must be referenced with the 3 values.
+
+SerDes optional properties
+--------------------------
+
+These properties are used to tune the KeyStone 2 SerDes hardware parameters and
+coefficients. For more information please refer to KeyStone II Architecture
+Serializer/Deserializer (SerDes) User Guide (SPRUHO3) available on www.ti.com.
+
+serdes-1lsb:      Allows to set the TX driver 1 lsb pre emphasis setting for
+                  KeyStone 2 SerDes. There is one value per lane. Default value
+		  is 0.
+serdes-c1:        Allows to override value of TX driver C1 coefficient for
+		  KeyStone 2 SerDes. There is one value per lane. Default value
+		  if not specified is 6 for 3.125Gbps and 4 for other baudrates.
+serdes-c2:        Allows to override value of TX driver C2 coefficient for
+		  KeyStone 2 SerDes. There is one value per lane. Default value
+		  is 0 if not specified.
+serdes-cm:	  Allows to override value of TX driver CM coefficient for
+		  KeyStone 2 SerDes. There is one value per lane. Default value
+		  is 0.
+serdes-att:       Allows to set attenuator setting of TX driver for KeyStone 2
+		  SerDes. There is one value per lane. Default value is 12 if
+		  not specified.
+serdes-vreg:      Allows to set regulator voltage setting for TX driver for
+		  KeyStone 2 SerDes. There is one value per lane. Default value
+		  is 4 if not specified.
+serdes-vdreg:     Allows to set lane regulator output voltage setting for TX
+		  driver for KeyStone 2. Default value is 1 (VNOM) if not
+		  specified.
+serdes-rx-att-start:
+                  Allows to set attenuator start value of RX driver for Keystone
+		  2 SerDes. There is one value per lane. Default value is 3.
+serdes-rx-boost-start:
+                  Allows to set attenuator start value of RX driver for Keystone
+		  2 SerDes. There is one value per lane. Default value is 3.
+serdes-rx-att:    Allows to set attenuator static value of RX driver for
+		  Keystone 2 SerDes. If set to -1, dynamic calibration is used
+		  instead. There is one value per lane. Default value is -1.
+serdes-rx-boost:  Allows to set attenuator start value of RX driver for Keystone
+		  2 SerDes. If set to -1, dynamic calibration is used instead.
+                  There is one value per lane. Default value is -1.
+
+Sub-nodes
+---------
+
+Each mailbox (according to num-mboxes) must be added as subnodes "mbox-%d" with
+%d the mailbox number (from 0 to n).
+This sub-node has the following properties:
+
+rx-channel:       The packet DMA channel associated to this receive mailbox.
+		  This property is mandatory and must refer to a specified
+		  'navigator-dma-names' DMA client resource like specified in
+		  the Documentation/devicetree/bindings/soc/ti/
+		  keystone-navigator-dma.txt file
+rx-pool:	  This mandatory property defines the pool of descriptors that
+		  will be used for the receive mailbox. The first parameter is
+		  the size of descriptor, the second is the region Id where to
+		  get descriptors for receive DMA.
+rx-queue:         This property defines the hw queue Id used for receive.
+		  If not specified a QPEND queue will be allocated by the
+		  kernel.
+rx-queue-depth:   This can be at present a maximum of 4 queues per packet DMA
+		  channel. We can specify here the number of descriptors for
+		  each queue.
+		  If not specified only one queue of depth of 128 will be used.
+rx-buffer-size:   For each receive queue, we can specify the buffer size.
+		  Default is 4096 bytes if not specified.
+tx-channel:       This is the packet DMA channel name associated with this
+		  mailbox for transmit. This property is mandatory and works
+		  like the rx-channel property.
+tx-queue:         This mandatory property defines the hw transmit queue Id.
+		  This must be set in accordance to the Packet DMA channel
+		  used in transmit. Check the KeyStone SRIO hw documentation
+		  for more information.
+tx-completion-queue:
+	          This property defines the hw queue Id used for transmit
+		  completion. If not specified a QPEND queue will be allocated
+		  by the  kernel.
+tx-garbage-queue:
+	          This property defines the hw queue Id used for transmit
+		  errors. If not specified a QPEND queue will be allocated
+		  by the  kernel.
+tx-queue-depth:   Number of descriptors for the transmit queue. Default is 128
+                  descriptors if not specified
+stream-id:        If specified, the mailbox will be mapped to the indicated
+		  stream ID and packet type 9 will be used instead of packet
+                  type 11.
+
+Example
+-------
+
+knav_dmas: knav_dmas@0 {
+
+        ...
+
+	dma_srio: dma_srio@0 {
+		  reg = <0x2901000 0x020>,
+		        <0x2901400 0x200>,
+			<0x2901800 0x200>,
+			<0x2901c00 0x200>,
+			<0x2902000 0x280>;
+		  reg-names = "global", "txchan", "rxchan",
+                              "txsched", "rxflow";
+        };
+
+	...
+
+};
+
+rapidio: rapidio@2900000 {
+	compatible = "ti,keystone-rapidio";
+	#address-cells = <1>;
+	#size-cells = <1>;
+	reg = <0x2900000 0x40000        /* rio regs */
+	       0x2620000 0x1000         /* boot config regs */
+               0x232c000 0x2000>;       /* serdes config regs */
+	reg-names = "rio", "boot_config", "serdes";
+	clocks = <&clksrio>;
+	clock-names = "clk_srio";
+	dma-coherent;
+
+	ti,navigator-dmas = <&dma_srio 18>, /* phandle channel_id */
+			    <&dma_srio 19>,
+			    <&dma_srio 0>,
+			    <&dma_srio 1>;
+	ti,navigator-dma-names = "riorx0", "riorx1", "riotx0", "riotx1";
+
+	keystone2-serdes;
+
+	baudrate  = <3>;              /* 5 Gbps */
+	path-mode = <4>;              /* 1 port in 4x */
+	port-register-timeout = <30>; /* 30 seconds */
+
+	lsu = <0 0>;            /* available LSU range (start end) */
+	num-dio-channels = <8>; /* number of DIO DMA channels */
+
+	ports = <0x1>;      /* bitfield of port(s) to probe */
+	ports-remote = <0 1 2 3>; /* remote ports:
+			           * local port 0 is connected to peer port 0,
+				   * local port 1 is connected to peer port 1,
+				   * ...
+				   */
+
+	dev-id-size = <0>;  /* RapidIO common transport system
+			     * size.
+			     * 0 - Small size. 8-bit deviceID
+			     *     fields. 256 devices.
+			     * 1 - Large size, 16-bit deviceID
+			     *     fields. 65536 devices.
+			     */
+
+	interrupts = <0 152 0xf01
+                      0 153 0xf01>; /* RIO and LSU IRQs */
+
+	rxu-map-range = <0 15>; /* use only the 16 first RXU mapping entries */
+	num-mboxes = <2>;
+
+	mbox-0 {
+	        rx-channel = "riorx0";
+		rx-pool = <128 15>; /* size region_id */
+                rx-queue-depth  = <256 0 0 0>;
+                rx-buffer-size  = <4096 0 0 0>;
+		rx-queue = <8714>;
+                /*stream-id = <0>;*/
+		tx-channel = "riotx0";
+		tx-pool = <128 15>;
+		tx-queue-depth = <256>;
+		tx-queue = <672>; /* hw transmit queue for channel/flow 0 */
+		tx-completion-queue = <8716>;
+		tx-garbage-queue = <8717>;
+        };
+
+        mbox-1 {
+	        rx-channel = "riorx1";
+		rx-pool = <128 15>;
+                rx-queue-depth  = <256 0 0 0>;
+                rx-buffer-size  = <4096 0 0 0>;
+		rx-queue = <8715>;
+                /*stream-id = <1>;*/
+		tx-channel = "riotx1";
+		tx-pool = <128 15>;
+		tx-queue-depth = <256>;
+		tx-queue = <673>;  /* hw transmit queue for channel/flow 1 */
+	        tx-completion-queue = <8718>;
+		tx-garbage-queue = <8719>;
+        };
+};
