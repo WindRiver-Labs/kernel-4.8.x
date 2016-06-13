@@ -286,7 +286,7 @@ static void xgpio_save_regs(struct of_mm_gpio_chip *mm_gc)
 }
 
 /**
- * xgpio_xlate - Set initial values of GPIO pins
+ * xgpio_xlate - Translate gpio_spec to the GPIO number and flags
  * @gc: Pointer to gpio_chip device structure.
  * @gpiospec:  gpio specifier as found in the device tree
  * @flags: A flags pointer based on binding
@@ -474,8 +474,6 @@ static int xgpio_irq_setup(struct device_node *np, struct xgpio_instance *chip)
 		return 0;
 	}
 
-	chip->mmchip.gc.of_xlate = xgpio_xlate;
-	chip->mmchip.gc.of_gpio_n_cells = 2;
 	chip->mmchip.gc.to_irq = xgpio_to_irq;
 
 	chip->irq_base = irq_alloc_descs(-1, 0, chip->mmchip.gc.ngpio, 0);
@@ -585,6 +583,8 @@ static int xgpio_probe(struct platform_device *pdev)
 
 	chip->mmchip.gc.ngpio = chip->gpio_width[0] + chip->gpio_width[1];
 	chip->mmchip.gc.parent = &pdev->dev;
+	chip->mmchip.gc.of_xlate = xgpio_xlate;
+	chip->mmchip.gc.of_gpio_n_cells = 2;
 	chip->mmchip.gc.direction_input = xgpio_dir_in;
 	chip->mmchip.gc.direction_output = xgpio_dir_out;
 	chip->mmchip.gc.get = xgpio_get;
