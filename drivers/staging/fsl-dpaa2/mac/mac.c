@@ -121,7 +121,7 @@ static void dpaa2_mac_link_changed(struct net_device *netdev)
 		phy_print_status(phydev);
 	}
 
-	/* We must call into the MC firmware at all times, because we don't know
+	/* We must interrogate MC at all times, because we don't know
 	 * when and whether a potential DPNI may have read the link state.
 	 */
 	err = dpmac_set_link_state(priv->mc_dev->mc_io, 0,
