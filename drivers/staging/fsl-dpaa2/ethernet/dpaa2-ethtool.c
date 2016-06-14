@@ -133,7 +133,7 @@ static int dpaa2_eth_set_settings(struct net_device *net_dev,
 
 	netdev_dbg(net_dev, "Setting link parameters...");
 
-	/* Due to a temporary firmware limitation, the DPNI must be down
+	/* Due to a temporary MC limitation, the DPNI must be down
 	 * in order to be able to change link settings. Taking steps to let
 	 * the user know that.
 	 */
@@ -192,7 +192,7 @@ static int dpaa2_eth_get_sset_count(struct net_device *net_dev, int sset)
 	}
 }
 
-/** Fill in hardware counters, as returned by the MC firmware.
+/** Fill in hardware counters, as returned by MC.
  */
 static void dpaa2_eth_get_ethtool_stats(struct net_device *net_dev,
 					struct ethtool_stats *stats,
