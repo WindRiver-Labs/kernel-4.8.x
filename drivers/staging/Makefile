@@ -49,3 +49,4 @@ obj-$(CONFIG_ISDN_I4L)		+= i4l/
 obj-$(CONFIG_KS7010)		+= ks7010/
 obj-$(CONFIG_LTTNG)			+= lttng/
 obj-$(CONFIG_NETATOP)		+= netatop/
+obj-$(CONFIG_FSL_PPFE)		+= fsl_ppfe/
