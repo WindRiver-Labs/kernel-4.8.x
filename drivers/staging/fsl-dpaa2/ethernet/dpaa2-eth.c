@@ -1378,7 +1378,7 @@ static void dpaa2_eth_set_rx_mode(struct net_device *net_dev)
 		 * in promisc mode, in order to avoid frame loss while we
 		 * progressively add entries to the table.
 		 * We don't know whether we had been in promisc already, and
-		 * making an MC call to find it is expensive; so set uc promisc
+		 * making an MC call to find out is expensive; so set uc promisc
 		 * nonetheless.
 		 */
 		err = dpni_set_unicast_promisc(mc_io, 0, mc_token, 1);
