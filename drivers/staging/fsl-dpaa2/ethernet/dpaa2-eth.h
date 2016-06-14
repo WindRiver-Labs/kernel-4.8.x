@@ -53,8 +53,8 @@
  */
 #define DPAA2_ETH_MAX_SG_ENTRIES	((64 * 1024) / DPAA2_ETH_RX_BUF_SIZE)
 
-/* Maximum acceptable MTU value. It is in direct relation with the MC-enforced
- * Max Frame Length (currently 10k).
+/* Maximum acceptable MTU value. It is in direct relation with the hardware
+ * enforced Max Frame Length (currently 10k).
  */
 #define DPAA2_ETH_MFL			(10 * 1024)
 #define DPAA2_ETH_MAX_MTU		(DPAA2_ETH_MFL - VLAN_ETH_HLEN)
