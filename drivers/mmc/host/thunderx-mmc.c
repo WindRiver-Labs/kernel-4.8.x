@@ -595,8 +595,7 @@ static void thunder_mmc_request(struct mmc_host *mmc, struct mmc_request *mrq)
 static int thunder_mmc_reset_gpio(struct thunder_mmc_slot *slot)
 {
 	union mio_emm_modex emm_modex;
-	void __iomem	*gpio_base;
-	u64 gpio_bit_cfg8;
+	int ret;
 
 	/* Errata-26703 */
 	/* Reset the eMMC */
@@ -609,16 +608,23 @@ static int thunder_mmc_reset_gpio(struct thunder_mmc_slot *slot)
 
 	mdelay(200);
 
-	gpio_base = ioremap(0x803000000000, 0x1000);
-	write_csr(slot->host->base + MIO_EMM_CFG, 0 );
-	gpio_bit_cfg8 =	read_csr(gpio_base + 0x400 + 8 * 8);
-	gpio_bit_cfg8 |= 0x1 ;
-	write_csr(gpio_base + 0x400 + 8 * 8, gpio_bit_cfg8);
-	mdelay(1);
-	write_csr(gpio_base +0x10, 1 << 8);
-	mdelay(200);
-	write_csr(gpio_base +0x8, 1 << 8);
-	mdelay(2);
+	if (slot->pwr_gpio >= 0) {
+		ret = gpio_request(slot->pwr_gpio, "mmc_power");
+		if (ret) {
+			dev_err(&slot->host->pdev->dev,
+				"Could not request mmc_power GPIO %d\n",
+				slot->pwr_gpio);
+			return ret;
+		}
+
+		/* Set GPIO_BIT_CFG(8)[PIN_SEL] = GPIO_SW */
+		gpio_direction_output(slot->pwr_gpio, 0);
+		mdelay(1);
+		gpio_set_value_cansleep(slot->pwr_gpio, slot->pwr_gpio_low);
+		mdelay(200);
+		gpio_set_value_cansleep(slot->pwr_gpio, !slot->pwr_gpio_low);
+		mdelay(2);
+	}
 
 	// Enable bus
 	slot->host->emm_cfg |= 1ull << slot->bus_id;
@@ -626,7 +632,6 @@ static int thunder_mmc_reset_gpio(struct thunder_mmc_slot *slot)
 	pr_debug("%s: MIO_EMM_CFG(w) %llx slot %d\n",
 			__FUNCTION__,slot->host->emm_cfg,slot->bus_id);
 	slot->cached_switch = 0;
-	iounmap(gpio_base);
 	return 0;
 }
 
@@ -1042,7 +1047,7 @@ static int thunder_mmc_probe(struct pci_dev *pdev, const struct pci_device_id *i
 		ro_low = 0;
 		cd_gpio = -ENOSYS;
 		cd_low = 0;
-		pwr_gpio = -ENOSYS;
+		pwr_gpio = 8;
 		pwr_low = 0;
 		pr_debug("%s: init slot for Slot=%d ,freq=%d, bwidth=%d \n",
 				__FUNCTION__, slot,max_freq,bus_width);
