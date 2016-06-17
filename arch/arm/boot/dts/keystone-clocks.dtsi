@@ -252,6 +252,16 @@ clocks {
 		domain-id = <3>;
 	};
 
+	clksrio: clksrio {
+		#clock-cells = <0>;
+		compatible = "ti,keystone,psc-clock";
+		clocks = <&chipclk1rstiso13>;
+		clock-output-names = "srio";
+		reg = <0x0235002c 0xb00>, <0x02350010 0x400>;
+		reg-names = "control", "domain";
+		domain-id = <4>;
+	};
+
 	clksr: clksr {
 		#clock-cells = <0>;
 		compatible = "ti,keystone,psc-clock";
