@@ -319,5 +319,6 @@
 			clock-names = "mainpllclock", "armpllclock", "debugssclock", "gemtraceclock", "tetbclock";
 		};
 		/include/ "keystone-k2hk-netcp.dtsi"
+		/include/ "keystone-k2hk-srio.dtsi"
 	};
 };

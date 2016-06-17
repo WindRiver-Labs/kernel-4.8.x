@@ -145,6 +145,10 @@ qmss: qmss@2a40000 {
 				statistics-profiles	= <0 48>;
 				qalloc-by-id;
 			};
+			rio-tx {
+				qrange = <672 2>;
+				qalloc-by-id;
+			};
 		};
 		accumulator {
 			acc-low-0 {
@@ -165,6 +169,11 @@ qmss: qmss@2a40000 {
 			id = <12>;
 			region-spec = <11264 128>;	/* num_desc desc_size */
 			link-index = <0x4000>;
+		};
+		region-15 {
+			id = <15>;
+			region-spec = <1024 128>;	/* num_desc desc_size */
+			link-index = <0x8000>;
 		};
 	};
 
@@ -227,6 +236,16 @@ knav_dmas: knav_dmas@0 {
 			<0x2fa1800 0x200>,
 			<0x2fa1c00 0x200>,
 			<0x2fa2000 0x400>;
+		reg-names = "global", "txchan", "rxchan",
+				"txsched", "rxflow";
+	};
+
+	dma_srio: dma_srio@0 {
+		reg = <0x2901000 0x020>,
+			<0x2901400 0x200>,
+			<0x2901800 0x200>,
+			<0x2901c00 0x200>,
+			<0x2902000 0x280>;
 		reg-names = "global", "txchan", "rxchan",
 				"txsched", "rxflow";
 	};
