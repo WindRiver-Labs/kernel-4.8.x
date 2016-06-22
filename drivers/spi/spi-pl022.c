@@ -2284,7 +2284,7 @@ static int pl022_probe(struct amba_device *adev, const struct amba_id *id)
 	load_ssp_default_config(pl022);
 
 	status = devm_request_irq(dev, adev->irq[0], pl022_interrupt_handler,
-				  0, "pl022", pl022);
+				  IRQF_ONESHOT, "pl022", pl022);
 	if (status < 0) {
 		dev_err(&adev->dev, "probe - cannot get IRQ (%d)\n", status);
 		goto err_no_irq;
