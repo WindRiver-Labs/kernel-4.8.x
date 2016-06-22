@@ -360,6 +360,10 @@
 	status = "ok";
 };
 
+&udc_dwc {
+	status = "ok";
+};
+
 &usb3_phy0 {
 	status = "ok";
 };
