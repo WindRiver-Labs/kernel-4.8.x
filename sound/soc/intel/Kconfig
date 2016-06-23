@@ -249,3 +249,15 @@ config SND_SOC_INTEL_SKL_NAU88L25_MAX98357A_MACH
 	  create an alsa sound card for NAU88L25 + MAX98357A.
 	  Say Y if you have such a device.
 	  If unsure select "N".
+
+config SND_SOC_INTEL_APLI_LHCRB_DUMMY_MACH
+    tristate "ASoC Audio driver for APLI LHCRB Dummy Codec"
+    depends on X86_INTEL_LPSS && I2C
+    select SND_SOC_INTEL_SST
+    select SND_SOC_INTEL_SKYLAKE
+    default n
+    help
+      This adds support for ASoC machine driver for  Intel(R)
+      Apollo Lake-I Leaf Hill Customer reference board platform.
+      Say Y if you have such a device
+      If unsure select "N".
