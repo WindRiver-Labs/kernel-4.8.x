@@ -50,11 +50,18 @@
 #define LS1043A_PORT_PHY2	0x28184d1f
 #define LS1043A_PORT_PHY3	0x0e081509
 
+/* for ls1012a */
+#define LS1012A_PORT_PHY2	0x28184d1b
+#define LS1012A_PORT_PHY3	0x0e081906
+#define LS1012A_PORT_PHY4	0x064a0813
+#define LS1012A_PORT_PHY5	0x3ffc96a4
+
 enum ahci_qoriq_type {
 	AHCI_LS1021A,
 	AHCI_LS1043A,
 	AHCI_LS1046A,
 	AHCI_LS2080A,
+	AHCI_LS1012A,
 };
 
 struct ahci_qoriq_priv {
@@ -69,6 +76,7 @@ static const struct of_device_id ahci_qoriq_of_match[] = {
 	{ .compatible = "fsl,ls1043a-ahci", .data = (void *)AHCI_LS1043A},
 	{ .compatible = "fsl,ls1046a-ahci", .data = (void *)AHCI_LS1046A},
 	{ .compatible = "fsl,ls2080a-ahci", .data = (void *)AHCI_LS2080A},
+	{ .compatible = "fsl,ls1012a-ahci", .data = (void *)AHCI_LS1012A},
 	{},
 };
 MODULE_DEVICE_TABLE(of, ahci_qoriq_of_match);
@@ -193,6 +201,15 @@ static int ahci_qoriq_phy_init(struct ahci_host_priv *hpriv)
 
 	case AHCI_LS2080A:
 		writel(AHCI_PORT_PHY_1_CFG, reg_base + PORT_PHY1);
+		writel(AHCI_PORT_TRANS_CFG, reg_base + PORT_TRANS);
+		break;
+
+	case AHCI_LS1012A:
+		writel(AHCI_PORT_PHY_1_CFG, reg_base + PORT_PHY1);
+		writel(LS1012A_PORT_PHY2, reg_base + PORT_PHY2);
+		writel(LS1012A_PORT_PHY3, reg_base + PORT_PHY3);
+		writel(LS1012A_PORT_PHY4, reg_base + PORT_PHY4);
+		writel(LS1012A_PORT_PHY5, reg_base + PORT_PHY5);
 		writel(AHCI_PORT_TRANS_CFG, reg_base + PORT_TRANS);
 		break;
 	}
