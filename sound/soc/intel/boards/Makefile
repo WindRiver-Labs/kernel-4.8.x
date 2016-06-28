@@ -20,6 +20,7 @@ snd-soc-apli_lhcrb_aic3107M-objs := apli_lhcrb_aic3107M.o
 snd-soc-apli_lhcrb_aic3107S-objs := apli_lhcrb_aic3107S.o
 snd-soc-cnl-wm8281-objs := cnl_wm8281.o
 snd-soc-cnl_cs42l42-objs := cnl_cs42l42.o
+snd-soc-cnl_rt700-objs := cnl_rt700.o
 snd-soc-cnl_svfpga-objs := cnl_svfpga.o
 
 obj-$(CONFIG_SND_SOC_INTEL_HASWELL_MACH) += snd-soc-sst-haswell.o
@@ -44,4 +45,5 @@ obj-$(CONFIG_SND_SOC_INTEL_APLI_LHCRB_AIC3107_MACH) += snd-soc-apli_lhcrb_aic310
 obj-$(CONFIG_SND_SOC_INTEL_APLI_LHCRB_AIC3107_MACH) += snd-soc-apli_lhcrb_aic3107S.o
 obj-$(CONFIG_SND_SOC_INTEL_CNL_WM8281_MACH) += snd-soc-cnl-wm8281.o
 obj-$(CONFIG_SND_SOC_INTEL_CNL_CS42L42_MACH) += snd-soc-cnl_cs42l42.o
+obj-$(CONFIG_SND_SOC_INTEL_CNL_RT700_MACH) += snd-soc-cnl_rt700.o
 obj-$(CONFIG_SND_SOC_INTEL_CNL_SVFPGA_MACH) += snd-soc-cnl_svfpga.o
