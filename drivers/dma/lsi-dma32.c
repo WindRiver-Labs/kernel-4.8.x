@@ -656,7 +656,7 @@ static int setup_channel(struct gpdma_channel *dmac, struct device_node *child)
 	/* Find the IRQ line, if it exists in the device tree */
 	dmac->irq = irq_of_parse_and_map(child, 0);
 	dev_dbg(engine->dev, "channel %d, irq %d\n", dmac->id, dmac->irq);
-	rc = devm_request_irq(engine->dev, dmac->irq, gpdma_isr, 0,
+	rc = devm_request_irq(engine->dev, dmac->irq, gpdma_isr, IRQF_ONESHOT,
 			      "lsi-dma", dmac);
 	if (rc) {
 		dev_err(engine->dev, "failed to request_irq, error = %d\n", rc);
