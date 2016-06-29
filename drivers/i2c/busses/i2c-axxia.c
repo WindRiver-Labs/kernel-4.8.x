@@ -633,7 +633,7 @@ axxia_i2c_probe(struct platform_device *pdev)
 	}
 
 	if (idev->irq >= 0) {
-		ret = devm_request_irq(&pdev->dev, idev->irq, axxia_i2c_isr, 0,
+		ret = devm_request_irq(&pdev->dev, idev->irq, axxia_i2c_isr, IRQF_ONESHOT,
 				       pdev->name, idev);
 		if (ret) {
 			dev_err(&pdev->dev, "can't claim irq %d\n", idev->irq);
