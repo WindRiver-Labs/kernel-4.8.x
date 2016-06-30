@@ -414,6 +414,14 @@ config DEBUG_OBJECTS
 	  kernel to track the life time of various objects and validate
 	  the operations on those objects.
 
+config ODEBUG_POOL_SIZE
+        int "debug_objects pool size (1024-8192)"
+        range 1024 8192
+        default "1024"
+        depends on DEBUG_OBJECTS
+        help
+          Debug_objects pool size
+
 config DEBUG_OBJECTS_SELFTEST
 	bool "Debug objects selftest"
 	depends on DEBUG_OBJECTS
