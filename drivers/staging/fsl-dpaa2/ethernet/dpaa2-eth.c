@@ -363,6 +363,25 @@ static int consume_frames(struct dpaa2_eth_channel *ch)
 	return cleaned;
 }
 
+/* Configure the egress frame annotation for timestamp update */
+static void enable_tx_tstamp(struct dpaa2_fd *fd, void *hwa_start)
+{
+	struct dpaa2_faead *faead;
+	u32 ctrl;
+	u32 frc;
+
+	/* Mark the egress frame annotation area as valid */
+	frc = dpaa2_fd_get_frc(fd);
+	dpaa2_fd_set_frc(fd, frc | DPAA2_FD_FRC_FAEADV);
+
+	/* enable UPD (update prepanded data) bit in FAEAD field of
+	 * hardware frame annotation area
+	 */
+	ctrl = DPAA2_FAEAD_A2V | DPAA2_FAEAD_UPDV | DPAA2_FAEAD_UPD;
+	faead = hwa_start + DPAA2_FAEAD_OFFSET;
+	faead->ctrl = cpu_to_le32(ctrl);
+}
+
 /* Create a frame descriptor based on a fragmented skb */
 static int build_sg_fd(struct dpaa2_eth_priv *priv,
 		       struct sk_buff *skb,
@@ -370,6 +389,7 @@ static int build_sg_fd(struct dpaa2_eth_priv *priv,
 {
 	struct device *dev = priv->net_dev->dev.parent;
 	void *sgt_buf = NULL;
+	void *hwa;
 	dma_addr_t addr;
 	int nr_frags = skb_shinfo(skb)->nr_frags;
 	struct dpaa2_sg_entry *sgt;
@@ -415,7 +435,8 @@ static int build_sg_fd(struct dpaa2_eth_priv *priv,
 	 * on TX confirmation. We are clearing FAS (Frame Annotation Status)
 	 * field here.
 	 */
-	memset(sgt_buf + priv->buf_layout.private_data_size, 0, 8);
+	hwa = sgt_buf + priv->buf_layout.private_data_size;
+	memset(hwa, 0, 8);
 
 	sgt = (struct dpaa2_sg_entry *)(sgt_buf + priv->tx_data_offset);
 
@@ -460,6 +481,9 @@ static int build_sg_fd(struct dpaa2_eth_priv *priv,
 	fd->simple.ctrl = DPAA2_FD_CTRL_ASAL | DPAA2_FD_CTRL_PTA |
 			  DPAA2_FD_CTRL_PTV1;
 
+	if (priv->ts_tx_en && skb_shinfo(skb)->tx_flags & SKBTX_HW_TSTAMP)
+		enable_tx_tstamp(fd, hwa);
+
 	return 0;
 
 dma_map_single_failed:
@@ -480,6 +504,7 @@ static int build_single_fd(struct dpaa2_eth_priv *priv,
 	u8 *buffer_start;
 	struct sk_buff **skbh;
 	dma_addr_t addr;
+	void *hwa;
 
 	buffer_start = PTR_ALIGN(skb->data - priv->tx_data_offset -
 				 DPAA2_ETH_TX_BUF_ALIGN,
@@ -488,9 +513,10 @@ static int build_single_fd(struct dpaa2_eth_priv *priv,
 	/* PTA from egress side is passed as is to the confirmation side so
 	 * we need to clear some fields here in order to find consistent values
 	 * on TX confirmation. We are clearing FAS (Frame Annotation Status)
-	 * field here.
+	 * field here
 	 */
-	memset(buffer_start + priv->buf_layout.private_data_size, 0, 8);
+	hwa = buffer_start + priv->buf_layout.private_data_size;
+	memset(hwa, 0, 8);
 
 	/* Store a backpointer to the skb at the beginning of the buffer
 	 * (in the private data area) such that we can release it
@@ -512,6 +538,9 @@ static int build_single_fd(struct dpaa2_eth_priv *priv,
 
 	fd->simple.ctrl = DPAA2_FD_CTRL_ASAL | DPAA2_FD_CTRL_PTA |
 			  DPAA2_FD_CTRL_PTV1;
+
+	if (priv->ts_tx_en && skb_shinfo(skb)->tx_flags & SKBTX_HW_TSTAMP)
+		enable_tx_tstamp(fd, hwa);
 
 	return 0;
 }

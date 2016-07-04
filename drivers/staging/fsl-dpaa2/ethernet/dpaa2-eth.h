@@ -138,6 +138,18 @@ struct dpaa2_fas {
 	__le32 status;
 } __packed;
 
+/* Frame annotation egress action descriptor */
+#define DPAA2_FAEAD_OFFSET		0x58
+
+struct dpaa2_faead {
+	__le32 conf_fqid;
+	__le32 ctrl;
+};
+
+#define DPAA2_FAEAD_A2V			0x20000000
+#define DPAA2_FAEAD_UPDV		0x00001000
+#define DPAA2_FAEAD_UPD			0x00000010
+
 /* Error and status bits in the frame annotation status word */
 /* Debug frame, otherwise supposed to be discarded */
 #define DPAA2_FAS_DISC			0x80000000
