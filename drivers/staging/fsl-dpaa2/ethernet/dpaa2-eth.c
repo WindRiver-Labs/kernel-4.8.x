@@ -262,7 +262,7 @@ static void dpaa2_eth_rx(struct dpaa2_eth_priv *priv,
 				  priv->buf_layout.private_data_size +
 				  sizeof(struct dpaa2_fas));
 
-		*ns = DPAA2_PTP_NOMINAL_FREQ_PERIOD_NS * (*ns);
+		*ns = DPAA2_PTP_NOMINAL_FREQ_PERIOD_NS * le64_to_cpup(ns);
 		memset(shhwtstamps, 0, sizeof(*shhwtstamps));
 		shhwtstamps->hwtstamp = ns_to_ktime(*ns);
 	}
@@ -609,7 +609,7 @@ static void free_tx_fd(const struct dpaa2_eth_priv *priv,
 		ns = (u64 *)((void *)skbh +
 			priv->buf_layout.private_data_size +
 			sizeof(struct dpaa2_fas));
-		*ns = DPAA2_PTP_NOMINAL_FREQ_PERIOD_NS * (*ns);
+		*ns = DPAA2_PTP_NOMINAL_FREQ_PERIOD_NS * le64_to_cpup(ns);
 		shhwtstamps.hwtstamp = ns_to_ktime(*ns);
 		skb_tstamp_tx(skb, &shhwtstamps);
 	}
