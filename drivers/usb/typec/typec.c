@@ -259,7 +259,7 @@ typec_altmode_active_store(struct device *dev, struct device_attribute *attr,
 	if (!port->cap->activate_mode)
 		return -EOPNOTSUPP;
 
-	ret = kstrtobool(buf, &activate);
+	ret = strtobool(buf, &activate);
 	if (ret)
 		return ret;
 
