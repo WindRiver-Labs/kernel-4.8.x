@@ -933,3 +933,4 @@ MODULE_AUTHOR("Daniel Drubin <daniel.drubin@intel.com>");
 MODULE_AUTHOR("Srinivas Pandruvada <srinivas.pandruvada@linux.intel.com>");
 
 MODULE_LICENSE("GPL");
+MODULE_ALIAS("ishtp:*");
