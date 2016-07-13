@@ -303,13 +303,34 @@ static int ishtp_cl_device_reset(struct ishtp_cl_device *device)
 	return ret;
 }
 
+static ssize_t modalias_show(struct device *dev, struct device_attribute *a,
+	char *buf)
+{
+	int len;
+	len = snprintf(buf, PAGE_SIZE, "ishtp:%s\n", dev_name(dev));
+	return (len >= PAGE_SIZE) ? (PAGE_SIZE - 1) : len;
+}
+
+static struct device_attribute ishtp_cl_dev_attrs[] = {
+	__ATTR_RO(modalias),
+	__ATTR_NULL,
+};
+
+static int ishtp_cl_uevent(struct device *dev, struct kobj_uevent_env *env)
+{
+	if (add_uevent_var(env, "MODALIAS=ishtp:%s", dev_name(dev)))
+		return -ENOMEM;
+	return 0;
+}
 
 static struct bus_type ishtp_cl_bus_type = {
 	.name		= "ishtp",
+	.dev_attrs	= ishtp_cl_dev_attrs,
 	.probe		= ishtp_cl_device_probe,
 	.remove		= ishtp_cl_device_remove,
 	.suspend	= ishtp_cl_device_suspend,
 	.resume		= ishtp_cl_device_resume,
+	.uevent		= ishtp_cl_uevent,
 };
 
 static void ishtp_cl_dev_release(struct device *dev)
