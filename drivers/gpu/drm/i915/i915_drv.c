@@ -1348,7 +1348,7 @@ void i915_driver_unload(struct drm_device *dev)
 	i915_destroy_error_state(dev);
 
 	/* Flush any outstanding unpin_work. */
-	flush_workqueue(dev_priv->wq);
+	drain_workqueue(dev_priv->wq);
 
 	intel_guc_fini(dev);
 	i915_gem_fini(dev);
@@ -1462,8 +1462,6 @@ static int i915_drm_suspend(struct drm_device *dev)
 	}
 
 	intel_guc_suspend(dev);
-
-	intel_suspend_gt_powersave(dev_priv);
 
 	intel_display_suspend(dev);
 
@@ -1657,6 +1655,7 @@ static int i915_drm_resume(struct drm_device *dev)
 
 	intel_opregion_notify_adapter(dev_priv, PCI_D0);
 
+	intel_autoenable_gt_powersave(dev_priv);
 	drm_kms_helper_poll_enable(dev);
 
 	enable_rpm_wakeref_asserts(dev_priv);
@@ -1783,8 +1782,6 @@ int i915_reset(struct drm_i915_private *dev_priv)
 	unsigned reset_counter;
 	int ret;
 
-	intel_reset_gt_powersave(dev_priv);
-
 	mutex_lock(&dev->struct_mutex);
 
 	/* Clear any previous failed attempts at recovery. Time to try again. */
@@ -1840,8 +1837,7 @@ int i915_reset(struct drm_i915_private *dev_priv)
 	 * previous concerns that it doesn't respond well to some forms
 	 * of re-init after reset.
 	 */
-	if (INTEL_INFO(dev)->gen > 5)
-		intel_enable_gt_powersave(dev_priv);
+	intel_autoenable_gt_powersave(dev_priv);
 
 	return 0;
 
@@ -2467,7 +2463,6 @@ static int intel_runtime_resume(struct device *device)
 	 * we can do is to hope that things will still work (and disable RPM).
 	 */
 	i915_gem_init_swizzling(dev);
-	gen6_update_ring_freq(dev_priv);
 
 	intel_runtime_pm_enable_interrupts(dev_priv);
 
