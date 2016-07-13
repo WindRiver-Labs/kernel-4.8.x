@@ -2842,13 +2842,10 @@ static void intel_ring_default_vfuncs(struct drm_i915_private *dev_priv,
 	intel_ring_init_semaphores(dev_priv, engine);
 }
 
-int intel_init_render_ring_buffer(struct drm_device *dev)
+int intel_init_render_ring_buffer(struct intel_engine_cs *engine)
 {
-	struct drm_i915_private *dev_priv = to_i915(dev);
-	struct intel_engine_cs *engine;
+	struct drm_i915_private *dev_priv = engine->i915;
 	int ret;
-
-	engine = intel_engine_setup(dev_priv, RCS);
 
 	intel_ring_default_vfuncs(dev_priv, engine);
 
@@ -2883,7 +2880,7 @@ int intel_init_render_ring_buffer(struct drm_device *dev)
 	engine->init_hw = init_render_ring;
 	engine->cleanup = render_ring_cleanup;
 
-	ret = intel_init_ring_buffer(dev, engine);
+	ret = intel_init_ring_buffer(&dev_priv->drm, engine);
 	if (ret)
 		return ret;
 
@@ -2900,12 +2897,9 @@ int intel_init_render_ring_buffer(struct drm_device *dev)
 	return 0;
 }
 
-int intel_init_bsd_ring_buffer(struct drm_device *dev)
+int intel_init_bsd_ring_buffer(struct intel_engine_cs *engine)
 {
-	struct drm_i915_private *dev_priv = to_i915(dev);
-	struct intel_engine_cs *engine;
-
-	engine = intel_engine_setup(dev_priv, VCS);
+	struct drm_i915_private *dev_priv = engine->i915;
 
 	intel_ring_default_vfuncs(dev_priv, engine);
 
@@ -2928,18 +2922,15 @@ int intel_init_bsd_ring_buffer(struct drm_device *dev)
 			engine->irq_enable_mask = I915_BSD_USER_INTERRUPT;
 	}
 
-	return intel_init_ring_buffer(dev, engine);
+	return intel_init_ring_buffer(&dev_priv->drm, engine);
 }
 
 /**
  * Initialize the second BSD ring (eg. Broadwell GT3, Skylake GT3)
  */
-int intel_init_bsd2_ring_buffer(struct drm_device *dev)
+int intel_init_bsd2_ring_buffer(struct intel_engine_cs *engine)
 {
-	struct drm_i915_private *dev_priv = to_i915(dev);
-	struct intel_engine_cs *engine;
-
-	engine = intel_engine_setup(dev_priv, VCS2);
+	struct drm_i915_private *dev_priv = engine->i915;
 
 	intel_ring_default_vfuncs(dev_priv, engine);
 
@@ -2947,15 +2938,12 @@ int intel_init_bsd2_ring_buffer(struct drm_device *dev)
 	engine->irq_enable_mask =
 			GT_RENDER_USER_INTERRUPT << GEN8_VCS2_IRQ_SHIFT;
 
-	return intel_init_ring_buffer(dev, engine);
+	return intel_init_ring_buffer(&dev_priv->drm, engine);
 }
 
-int intel_init_blt_ring_buffer(struct drm_device *dev)
+int intel_init_blt_ring_buffer(struct intel_engine_cs *engine)
 {
-	struct drm_i915_private *dev_priv = to_i915(dev);
-	struct intel_engine_cs *engine;
-
-	engine = intel_engine_setup(dev_priv, BCS);
+	struct drm_i915_private *dev_priv = engine->i915;
 
 	intel_ring_default_vfuncs(dev_priv, engine);
 
@@ -2966,15 +2954,12 @@ int intel_init_blt_ring_buffer(struct drm_device *dev)
 	else
 		engine->irq_enable_mask = GT_BLT_USER_INTERRUPT;
 
-	return intel_init_ring_buffer(dev, engine);
+	return intel_init_ring_buffer(&dev_priv->drm, engine);
 }
 
-int intel_init_vebox_ring_buffer(struct drm_device *dev)
+int intel_init_vebox_ring_buffer(struct intel_engine_cs *engine)
 {
-	struct drm_i915_private *dev_priv = to_i915(dev);
-	struct intel_engine_cs *engine;
-
-	engine = intel_engine_setup(dev_priv, VECS);
+	struct drm_i915_private *dev_priv = engine->i915;
 
 	intel_ring_default_vfuncs(dev_priv, engine);
 
@@ -2989,7 +2974,7 @@ int intel_init_vebox_ring_buffer(struct drm_device *dev)
 		engine->irq_disable = hsw_vebox_irq_disable;
 	}
 
-	return intel_init_ring_buffer(dev, engine);
+	return intel_init_ring_buffer(&dev_priv->drm, engine);
 }
 
 int
