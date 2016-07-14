@@ -507,8 +507,10 @@ void ishtp_hbm_dispatch(struct ishtp_device *dev,
 	struct hbm_client_connect_request *disconnect_req;
 	struct hbm_props_response *props_res;
 	struct hbm_host_enum_response *enum_res;
+#if 0
 	struct ishtp_msg_hdr ishtp_hdr;
 	struct dma_alloc_notify	dma_alloc_notify;
+#endif
 	struct dma_xfer_hbm	*dma_xfer;
 
 	ishtp_msg = hdr;
@@ -589,7 +591,7 @@ void ishtp_hbm_dispatch(struct ishtp_device *dev,
 
 		if (dev->dev_state != ISHTP_DEV_ENABLED)
 			break;
-
+#if 0
 		ishtp_cl_alloc_dma_buf(dev);
 		if (dev->ishtp_host_dma_rx_buf) {
 			const size_t len = sizeof(dma_alloc_notify);
@@ -604,7 +606,7 @@ void ishtp_hbm_dispatch(struct ishtp_device *dev,
 			ishtp_write_message(dev, &ishtp_hdr,
 				(unsigned char *)&dma_alloc_notify);
 		}
-
+#endif
 		break;
 
 	case HOST_ENUM_RES_CMD:
