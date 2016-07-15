@@ -1195,7 +1195,7 @@ static t_Error InitFmPcdDev(t_LnxWrpFmDev *p_LnxWrpFmDev)
 			FqAlloc(p_LnxWrpFmDev,
 				0,
 				QMAN_FQ_FLAG_NO_ENQUEUE,
-				p_LnxWrpFmDev->hcCh, 7);
+				p_LnxWrpFmDev->hcCh, 1);
 		if (!p_LnxWrpFmDev->hc_tx_conf_fq)
 			RETURN_ERROR(MAJOR, E_NULL_POINTER,
 				     ("Frame queue allocation failed..."));
@@ -1204,7 +1204,7 @@ static t_Error InitFmPcdDev(t_LnxWrpFmDev *p_LnxWrpFmDev)
 			FqAlloc(p_LnxWrpFmDev,
 				0,
 				QMAN_FQ_FLAG_NO_ENQUEUE,
-				p_LnxWrpFmDev->hcCh, 7);
+				p_LnxWrpFmDev->hcCh, 2);
 		if (!p_LnxWrpFmDev->hc_tx_err_fq)
 			RETURN_ERROR(MAJOR, E_NULL_POINTER,
 				     ("Frame queue allocation failed..."));
