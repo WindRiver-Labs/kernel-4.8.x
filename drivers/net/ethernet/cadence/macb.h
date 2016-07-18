@@ -853,6 +853,7 @@ struct macb {
 	unsigned int		jumbo_max_len;
 
 	u32			wol;
+	struct tasklet_struct   hresp_err_tasklet;
 };
 
 static inline bool macb_is_gem(struct macb *bp)
