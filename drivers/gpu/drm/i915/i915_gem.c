@@ -410,7 +410,7 @@ i915_gem_create(struct drm_file *file,
 
 	ret = drm_gem_handle_create(file, &obj->base, &handle);
 	/* drop reference from allocate - handle holds it now */
-	drm_gem_object_unreference_unlocked(&obj->base);
+	i915_gem_object_put_unlocked(obj);
 	if (ret)
 		return ret;
 
@@ -1607,7 +1607,7 @@ i915_gem_mmap_ioctl(struct drm_device *dev, void *data,
 	 * pages from.
 	 */
 	if (!obj->base.filp) {
-		drm_gem_object_unreference_unlocked(&obj->base);
+		i915_gem_object_put_unlocked(obj);
 		return -EINVAL;
 	}
 
@@ -1619,7 +1619,7 @@ i915_gem_mmap_ioctl(struct drm_device *dev, void *data,
 		struct vm_area_struct *vma;
 
 		if (down_write_killable(&mm->mmap_sem)) {
-			drm_gem_object_unreference_unlocked(&obj->base);
+			i915_gem_object_put_unlocked(obj);
 			return -EINTR;
 		}
 		vma = find_vma(mm, addr);
@@ -1633,7 +1633,7 @@ i915_gem_mmap_ioctl(struct drm_device *dev, void *data,
 		/* This may race, but that's ok, it only gets set */
 		WRITE_ONCE(obj->has_wc_mmap, true);
 	}
-	drm_gem_object_unreference_unlocked(&obj->base);
+	i915_gem_object_put_unlocked(obj);
 	if (IS_ERR((void *)addr))
 		return addr;
 
@@ -3619,7 +3619,7 @@ int i915_gem_get_caching_ioctl(struct drm_device *dev, void *data,
 		break;
 	}
 
-	drm_gem_object_unreference_unlocked(&obj->base);
+	i915_gem_object_put_unlocked(obj);
 	return 0;
 }
 
