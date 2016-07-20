@@ -2490,6 +2490,12 @@ static void i915_gem_reset_engine_cleanup(struct intel_engine_cs *engine)
 		i915_gem_object_retire__read(obj, engine->id);
 	}
 
+	/* Mark all pending requests as complete so that any concurrent
+	 * (lockless) lookup doesn't try and wait upon the request as we
+	 * reset it.
+	 */
+	intel_ring_init_seqno(engine, engine->last_submitted_seqno);
+
 	/*
 	 * Clear the execlists queue up before freeing the requests, as those
 	 * are the ones that keep the context and ringbuffer backing objects
@@ -2531,8 +2537,6 @@ static void i915_gem_reset_engine_cleanup(struct intel_engine_cs *engine)
 		buffer->last_retired_head = buffer->tail;
 		intel_ring_update_space(buffer);
 	}
-
-	intel_ring_init_seqno(engine, engine->last_submitted_seqno);
 
 	engine->i915->gt.active_engines &= ~intel_engine_flag(engine);
 }
