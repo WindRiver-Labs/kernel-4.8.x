@@ -413,3 +413,125 @@ netcpx: netcpx@2f00000 {
 	...
 
 };
+
+TI Keystone 10gbe SerDes PHY
+============================
+
+For 10gbe, there is an option of using an 10gbe MCU firmware.
+When the firmware is enabled, the individual lanes can be configured
+with the following in a mcu-firmware sub-node under the 10gbe SerDes
+node:
+
+lane:		Lane number.
+		- 0 -> Lane 0 (default)
+		- 1 -> Lane 1
+rate:		Link rate:
+		- 0 -> 1G/10G (default)
+		- 1 -> Force 1G
+		- 2 -> Force 10G
+autonegotiate:	Set to enable link rate autonegotiation when rate == 1G/10G.
+		- 0 -> disabled (default)
+		- 1 -> enabled
+tx_pause:	Enable TX pause frame generation.
+		- 0 -> disabled (default)
+		- 1 -> enabled
+rx_pause:	Enable RX pause frame generation.
+		- 0 -> disabled (default)
+		- 1 -> enabled
+10g_train:	Enable 10G link training.
+		- 0 -> disabled (default)
+		- 1 -> enabled
+fec:		Enable Forward Error Correction.
+		- 0 -> disabled (default)
+		- 1 -> enabled
+
+When 10gbe MCU firmware is used, the regular SerDes lane
+bindings should be disabled. 10gbe MCU firmware and regular
+SerDes lane bindings are mutually exclusive. See "Example:
+for Enabling K2E 10-GBE MCU Firmware" below.
+
+
+Example for Keystone K2E 10-GBE MCU Firmware Bindings:
+------------------------------------------------------
+
+xgbe_serdes: phy@231e000 {
+
+	status		= "disabled";
+
+	...
+
+	xserdes_lane0: lane@0 {
+		status		= "disabled";
+		#phy-cells	= <0>;
+		reg		= <0>;
+		control-rate	= <0>; /* full */
+		rx-start	= <7 5>;
+		rx-force	= <1 1>;
+		tx-coeff	= <2 0 0 12 4>; /* c1 c2 cm att vreg */
+	};
+	xserdes_lane1: lane@1 {
+		status		= "disabled";
+		#phy-cells	= <0>;
+		reg		= <1>;
+		control-rate	= <0>; /* full */
+		rx-start	= <7 5>;
+		rx-force	= <1 1>;
+		tx-coeff	= <2 0 0 12 4>; /* c1 c2 cm att vreg */
+	};
+
+	mcu-firmware {
+		status = "disabled";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		lane@0 {
+			status = "disabled";
+			reg = <0>;
+			rate = <0>; /* 0 = default
+				       1 = 1g
+				       2 = 10g */
+			autonegotiate;
+			/*tx_pause;*/
+			/*rx_pause;*/
+			10g_train;
+			/*fec;*/
+		};
+		lane@1 {
+			status = "disabled";
+			reg = <1>;
+			rate = <0>; /* 0 = default
+				       1 = 1g
+				       2 = 10g */
+			autonegotiate;
+			/*tx_pause;*/
+			/*rx_pause;*/
+			10g_train;
+			/*fec;*/
+		};
+	};
+};
+
+Example for Enabling K2E 10-GBE MCU Firmware:
+---------------------------------------------
+
+&xgbe_serdes {
+	status		= "ok";
+
+	xserdes_lane0: lane@0 {
+		status		= "disabled";
+	};
+	xserdes_lane1: lane@1 {
+		status		= "disabled";
+	};
+
+	mcu-firmware {
+		status = "ok";
+
+		lane@0 {
+			status = "ok";
+		};
+
+		lane@1 {
+			status = "ok";
+		};
+	};
+};
