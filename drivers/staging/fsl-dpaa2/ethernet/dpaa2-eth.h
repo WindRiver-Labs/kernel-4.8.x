@@ -178,6 +178,12 @@ struct dpaa2_faead {
 #define DPAA2_FAEAD_UPDV		0x00001000
 #define DPAA2_FAEAD_UPD			0x00000010
 
+/* Frame annotation status word is located in the first 8 bytes
+ * of the buffer's hardware annotation area
+ */
+#define DPAA2_FAS_OFFSET		0
+#define DPAA2_FAS_SIZE			(sizeof(struct dpaa2_fas))
+
 /* Error and status bits in the frame annotation status word */
 /* Debug frame, otherwise supposed to be discarded */
 #define DPAA2_FAS_DISC			0x80000000
@@ -231,6 +237,13 @@ struct dpaa2_faead {
 
 /* Time in milliseconds between link state updates */
 #define DPAA2_ETH_LINK_STATE_REFRESH	1000
+
+/* Number of times to retry a frame enqueue before giving up.
+ * Value determined empirically, in order to minimize the number
+ * of frames dropped on Tx
+ */
+#define DPAA2_ETH_ENQUEUE_RETRIES      10
+
 
 /* Driver statistics, other than those in struct rtnl_link_stats64.
  * These are usually collected per-CPU and aggregated by ethtool.
@@ -405,18 +418,9 @@ struct dpaa2_eth_priv {
 
 extern const struct ethtool_ops dpaa2_ethtool_ops;
 
-static int dpaa2_eth_queue_count(struct dpaa2_eth_priv *priv)
+static inline int dpaa2_eth_queue_count(struct dpaa2_eth_priv *priv)
 {
 	return priv->dpni_attrs.num_queues;
-}
-
-static inline int dpaa2_eth_max_channels(struct dpaa2_eth_priv *priv)
-{
-	/* Ideally, we want a number of channels large enough
-	 * to accommodate both the Rx distribution size
-	 * and the max number of Tx confirmation queues
-	 */
-	return dpaa2_eth_queue_count(priv);
 }
 
 void check_cls_support(struct dpaa2_eth_priv *priv);
