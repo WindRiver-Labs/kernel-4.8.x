@@ -1021,17 +1021,16 @@ struct cnl_bra_operation cnl_sdw_bra_ops = {
 	.bra_platform_xfer = cnl_sdw_bra_xfer,
 };
 
-
-static int skl_get_dsp_ops(int pci_id)
+const struct skl_dsp_ops *skl_get_dsp_ops(int pci_id)
 {
 	int i;
 
 	for (i = 0; i < ARRAY_SIZE(dsp_ops); i++) {
 		if (dsp_ops[i].id == pci_id)
-			return i;
+			return &dsp_ops[i];
 	}
 
-	return -EINVAL;
+	return NULL;
 }
 
 int skl_init_dsp(struct skl *skl)
@@ -1041,7 +1040,8 @@ int skl_init_dsp(struct skl *skl)
 	struct hdac_bus *bus = ebus_to_hbus(ebus);
 	struct skl_dsp_loader_ops loader_ops;
 	int irq = bus->irq;
-	int ret, index;
+	const struct skl_dsp_ops *ops;
+	int ret;
 
 	/* enable ppcap interrupt */
 	snd_hdac_ext_bus_ppcap_enable(&skl->ebus, true);
@@ -1054,13 +1054,14 @@ int skl_init_dsp(struct skl *skl)
 		return -ENXIO;
 	}
 
-	index  = skl_get_dsp_ops(skl->pci->device);
-	if (index  < 0)
-		return -EINVAL;
+	ops = skl_get_dsp_ops(skl->pci->device);
+	if (!ops)
+		return -EIO;
 
-	loader_ops = dsp_ops[index].loader_ops();
-	ret = dsp_ops[index].init(bus->dev, mmio_base, irq,
-			skl->fw_name, loader_ops, &skl->skl_sst);
+	loader_ops = ops->loader_ops();
+	ret = ops->init(bus->dev, mmio_base, irq,
+				skl->fw_name, loader_ops,
+				&skl->skl_sst);
 
 	if (ret < 0)
 		return ret;
@@ -1077,11 +1078,16 @@ int skl_free_dsp(struct skl *skl)
 	struct hdac_ext_bus *ebus = &skl->ebus;
 	struct hdac_bus *bus = ebus_to_hbus(ebus);
 	struct skl_sst *ctx = skl->skl_sst;
+	const struct skl_dsp_ops *ops;
 
 	/* disable  ppcap interrupt */
 	snd_hdac_ext_bus_ppcap_int_enable(&skl->ebus, false);
 
-	ctx->dsp_ops->cleanup(bus->dev, ctx);
+	ops = skl_get_dsp_ops(skl->pci->device);
+	if (!ops)
+		return -EIO;
+
+	ops->cleanup(bus->dev, ctx);
 
 	if (ctx->dsp->addr.lpe)
 		iounmap(ctx->dsp->addr.lpe);
