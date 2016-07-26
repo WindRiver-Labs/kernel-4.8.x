@@ -199,7 +199,7 @@ static void dpaa2_eth_get_ethtool_stats(struct net_device *net_dev,
 					u64 *data)
 {
 	int i = 0; /* Current index in the data array */
-	int j, k, err;
+	int j = 0, k, err;
 	union dpni_statistics dpni_stats;
 
 #ifdef CONFIG_FSL_QBMAN_DEBUG
@@ -260,6 +260,7 @@ static void dpaa2_eth_get_ethtool_stats(struct net_device *net_dev,
 		for (j = 0; j < sizeof(*extras) / sizeof(__u64); j++)
 			*((__u64 *)data + i + j) += *((__u64 *)extras + j);
 	}
+
 	i += j;
 
 	/* We may be using fewer DPIOs than actual CPUs */
