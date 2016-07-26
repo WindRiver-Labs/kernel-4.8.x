@@ -97,6 +97,9 @@ struct skl_sst {
 	void (*update_d0i3c)(struct device *dev, bool enable);
 
 	struct skl_d0i3_data d0i3;
+
+	/* tplg manifest */
+	struct skl_dfw_manifest manifest;
 };
 
 struct skl_ipc_init_instance_msg {
