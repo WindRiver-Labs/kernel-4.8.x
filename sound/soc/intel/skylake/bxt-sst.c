@@ -548,6 +548,19 @@ int bxt_sst_dsp_init(struct device *dev, void __iomem *mmio_base, int irq,
 	init_waitqueue_head(&skl->boot_wait);
 	INIT_DELAYED_WORK(&skl->d0i3.work, bxt_set_dsp_D0i3);
 	skl->d0i3.state = SKL_DSP_D0I3_NONE;
+	skl->is_first_boot = true;
+
+	if (dsp)
+		*dsp = skl;
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(bxt_sst_dsp_init);
+
+int bxt_sst_init_fw(struct device *dev, struct skl_sst *ctx)
+{
+	int ret;
+	struct sst_dsp *sst = ctx->dsp;
 
 	ret = sst->fw_ops.load_fw(sst);
 	if (ret < 0) {
@@ -557,13 +570,11 @@ int bxt_sst_dsp_init(struct device *dev, void __iomem *mmio_base, int irq,
 
 	skl_dsp_init_core_state(sst);
 
-	if (dsp)
-		*dsp = skl;
+	ctx->is_first_boot = false;
 
 	return 0;
 }
-EXPORT_SYMBOL_GPL(bxt_sst_dsp_init);
-
+EXPORT_SYMBOL_GPL(bxt_sst_init_fw);
 
 void bxt_sst_dsp_cleanup(struct device *dev, struct skl_sst *ctx)
 {
