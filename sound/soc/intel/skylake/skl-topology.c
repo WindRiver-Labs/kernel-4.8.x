@@ -2451,11 +2451,34 @@ static int skl_tplg_get_manifest_data(struct snd_soc_tplg_manifest *manifest,
 	return 0;
 }
 
+static int skl_manifest_load(struct snd_soc_component *cmpnt,
+				struct snd_soc_tplg_manifest *manifest)
+{
+	struct skl_dfw_manifest *minfo;
+	struct hdac_ext_bus *ebus = snd_soc_component_get_drvdata(cmpnt);
+	struct hdac_bus *bus = ebus_to_hbus(ebus);
+	struct skl *skl = ebus_to_skl(ebus);
+	int ret = 0;
+
+	minfo = &skl->skl_sst->manifest;
+
+	skl_tplg_get_manifest_data(manifest, bus->dev, minfo);
+
+	if (minfo->lib_count > HDA_MAX_LIB) {
+		dev_err(bus->dev, "Exceeding max Library count. Got:%d\n",
+					minfo->lib_count);
+		ret = -EINVAL;
+	}
+
+	return ret;
+}
+
 static struct snd_soc_tplg_ops skl_tplg_ops  = {
 	.widget_load = skl_tplg_widget_load,
 	.control_load = skl_tplg_control_load,
 	.bytes_ext_ops = skl_tlv_ops,
 	.bytes_ext_ops_count = ARRAY_SIZE(skl_tlv_ops),
+	.manifest = skl_manifest_load,
 };
 
 /*
