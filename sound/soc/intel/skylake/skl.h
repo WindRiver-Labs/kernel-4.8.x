@@ -161,4 +161,5 @@ void skl_debug_init_module(struct skl_debug *d,
 
 #endif
 
+const struct skl_dsp_ops *skl_get_dsp_ops(int pci_id);
 #endif /* __SOUND_SOC_SKL_H */
