@@ -2233,6 +2233,7 @@ int set_hash(struct dpaa2_eth_priv *priv)
 	err = dpni_prepare_key_cfg(&cls_cfg, dma_mem);
 	if (err) {
 		dev_err(dev, "dpni_prepare_key_cfg() failed (%d)", err);
+		kfree(dma_mem);
 		return err;
 	}
 
@@ -2518,7 +2519,7 @@ static irqreturn_t dpni_irq0_handler(int irq_num, void *arg)
 static irqreturn_t dpni_irq0_handler_thread(int irq_num, void *arg)
 {
 	u8 irq_index = DPNI_IRQ_INDEX;
-	u32 status, clear = 0;
+	u32 status = 0, clear = 0;
 	struct device *dev = (struct device *)arg;
 	struct fsl_mc_device *dpni_dev = to_fsl_mc_device(dev);
 	struct net_device *net_dev = dev_get_drvdata(dev);
