@@ -189,7 +189,7 @@ static void ish_remove(struct pci_dev *pdev)
 	struct ishtp_device *ishtp_dev = pci_get_drvdata(pdev);
 	struct ish_hw *hw = to_ish_hw(ishtp_dev);
 
-	ishtp_bus_remove_all_clients(ishtp_dev);
+	ishtp_bus_remove_all_clients(ishtp_dev, false);
 	ish_device_disable(ishtp_dev);
 
 	free_irq(pdev->irq, ishtp_dev);
