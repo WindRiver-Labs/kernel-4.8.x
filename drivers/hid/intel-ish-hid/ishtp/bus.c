@@ -667,12 +667,15 @@ int	ishtp_cl_device_bind(struct ishtp_cl *cl)
  * ishtp_bus_remove_all_clients() - Remove all clients
  *
  * @ishtp_dev:		ishtp device
+ * @warm_reset:	A reset flag due to FW reset caused by errors or S3 suspend
  *
  * This is part of reset/remove flow. This function the main processing
  * only targets error processing, if the FW has forced reset or
- * error to remove connected clients.
+ * error to remove connected clients. When warm reset, the client devices will
+ * not be removed.
  */
-void	ishtp_bus_remove_all_clients(struct ishtp_device *ishtp_dev)
+void	ishtp_bus_remove_all_clients(struct ishtp_device *ishtp_dev,
+				     bool warm_reset)
 {
 	struct ishtp_cl_device	*cl_device, *n;
 	struct ishtp_cl	*cl;
@@ -711,7 +714,7 @@ void	ishtp_bus_remove_all_clients(struct ishtp_device *ishtp_dev)
 	spin_lock_irqsave(&ishtp_dev->device_list_lock, flags);
 	list_for_each_entry_safe(cl_device, n, &ishtp_dev->device_list,
 				 device_link) {
-		if (cl_device->reference_count)
+		if (warm_reset && cl_device->reference_count)
 			continue;
 
 		list_del(&cl_device->device_link);
@@ -751,7 +754,7 @@ int	ishtp_reset_handler(struct ishtp_device *dev)
 	spin_unlock_irqrestore(&dev->rd_msg_spinlock, flags);
 
 	/* Handle ISH FW reset against upper layers */
-	ishtp_bus_remove_all_clients(dev);
+	ishtp_bus_remove_all_clients(dev, true);
 
 	return	0;
 }
