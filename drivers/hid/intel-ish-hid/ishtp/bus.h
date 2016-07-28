@@ -48,7 +48,7 @@ struct ishtp_cl_device {
 	struct list_head	device_link;
 	struct work_struct	event_work;
 	void			*driver_data;
-	bool			reference_count;
+	int			reference_count;
 	void (*event_cb)(struct ishtp_cl_device *device);
 };
 
@@ -88,7 +88,8 @@ int	ishtp_write_message(struct ishtp_device *dev,
 			    unsigned char *buf);
 
 /* Exported functions */
-void	ishtp_bus_remove_all_clients(struct ishtp_device *ishtp_dev);
+void	ishtp_bus_remove_all_clients(struct ishtp_device *ishtp_dev,
+				     bool warm_reset);
 
 void	ishtp_recv(struct ishtp_device *dev);
 int	ishtp_reset_handler(struct ishtp_device *dev);
