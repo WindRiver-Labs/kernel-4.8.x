@@ -309,17 +309,28 @@ static void dpaa2_eth_rx_err(struct dpaa2_eth_priv *priv,
 	struct rtnl_link_stats64 *percpu_stats;
 	struct dpaa2_fas *fas;
 	u32 status = 0;
+	bool check_fas_errors = false;
 
 	dma_unmap_single(dev, addr, DPAA2_ETH_RX_BUF_SIZE, DMA_FROM_DEVICE);
 	vaddr = phys_to_virt(addr);
 
-	if (fd->simple.frc & DPAA2_FD_FRC_FASV) {
+	/* check frame errors in the FD field */
+	if (fd->simple.ctrl & DPAA2_FD_RX_ERR_MASK) {
+		check_fas_errors = !!(fd->simple.ctrl & DPAA2_FD_CTRL_FAERR) &&
+			!!(fd->simple.frc & DPAA2_FD_FRC_FASV);
+		if (net_ratelimit())
+			netdev_dbg(priv->net_dev, "Rx frame FD err: %x08\n",
+				fd->simple.ctrl & DPAA2_FD_RX_ERR_MASK);
+	}
+
+	/* check frame errors in the FAS field */
+	if (check_fas_errors) {
 		fas = (struct dpaa2_fas *)
 			(vaddr + priv->buf_layout.private_data_size);
 		status = le32_to_cpu(fas->status);
 		if (net_ratelimit())
-			netdev_warn(priv->net_dev, "Rx frame error: 0x%08x\n",
-				    status & DPAA2_ETH_RX_ERR_MASK);
+			netdev_dbg(priv->net_dev, "Rx frame FAS err: 0x%08x\n",
+				    status & DPAA2_FAS_RX_ERR_MASK);
 	}
 	free_rx_fd(priv, fd, vaddr);
 
@@ -636,7 +647,7 @@ static void free_tx_fd(const struct dpaa2_eth_priv *priv,
 	 * buffer but before we free it. The caller function is responsible
 	 * for checking the status value.
 	 */
-	if (status && (fd->simple.frc & DPAA2_FD_FRC_FASV)) {
+	if (status) {
 		fas = (struct dpaa2_fas *)
 			((void *)skbh + priv->buf_layout.private_data_size);
 		*status = le32_to_cpu(fas->status);
@@ -747,6 +758,8 @@ static void dpaa2_eth_tx_conf(struct dpaa2_eth_priv *priv,
 	struct rtnl_link_stats64 *percpu_stats;
 	struct dpaa2_eth_drv_stats *percpu_extras;
 	u32 status = 0;
+	bool errors = !!(fd->simple.ctrl & DPAA2_FD_TX_ERR_MASK);
+	bool check_fas_errors = false;
 
 	/* Tracing point */
 	trace_dpaa2_tx_conf_fd(priv->net_dev, fd);
@@ -755,13 +768,28 @@ static void dpaa2_eth_tx_conf(struct dpaa2_eth_priv *priv,
 	percpu_extras->tx_conf_frames++;
 	percpu_extras->tx_conf_bytes += dpaa2_fd_get_len(fd);
 
-	free_tx_fd(priv, fd, &status);
-
-	if (unlikely(status & DPAA2_ETH_TXCONF_ERR_MASK)) {
-		percpu_stats = this_cpu_ptr(priv->percpu_stats);
-		/* Tx-conf logically pertains to the egress path. */
-		percpu_stats->tx_errors++;
+	/* check frame errors in the FD field */
+	if (unlikely(errors)) {
+		check_fas_errors = !!(fd->simple.ctrl & DPAA2_FD_CTRL_FAERR) &&
+			!!(fd->simple.frc & DPAA2_FD_FRC_FASV);
+		if (net_ratelimit())
+			netdev_dbg(priv->net_dev, "Tx frame FD err: %x08\n",
+				fd->simple.ctrl & DPAA2_FD_TX_ERR_MASK);
 	}
+
+	free_tx_fd(priv, fd, check_fas_errors ? &status : NULL);
+
+	/* if there are no errors, we're done */
+	if (likely(!errors))
+		return;
+
+	percpu_stats = this_cpu_ptr(priv->percpu_stats);
+	/* Tx-conf logically pertains to the egress path. */
+	percpu_stats->tx_errors++;
+
+	if (net_ratelimit())
+		netdev_dbg(priv->net_dev, "Tx frame FAS err: %x08\n",
+			status & DPAA2_FAS_TX_ERR_MASK);
 }
 
 static int set_rx_csum(struct dpaa2_eth_priv *priv, bool enable)
@@ -2310,7 +2338,7 @@ static int bind_dpni(struct dpaa2_eth_priv *priv)
 	}
 
 	/* Configure handling of error frames */
-	err_cfg.errors = DPAA2_ETH_RX_ERR_MASK;
+	err_cfg.errors = DPAA2_FAS_RX_ERR_MASK;
 	err_cfg.set_frame_annotation = 1;
 #ifdef CONFIG_FSL_DPAA2_ETH_USE_ERR_QUEUE
 	err_cfg.error_action = DPNI_ERROR_ACTION_SEND_TO_ERROR_QUEUE;
