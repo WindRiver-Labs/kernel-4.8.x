@@ -236,6 +236,17 @@ static int pa_core_get_dt_bindings(struct pa_core_device *core_dev,
 		}
 	}
 
+	/* By default, BC & MC traffic at Ethernet Ingress port is routed to
+	 * Linux through pre-classification feature in PA firmware. Previously
+	 * Linux had explicit LUT1-0 rule to route them which is unnecessary
+	 * when pre-classification is enabled. But For some reason if this is
+	 * not desirable, user can add a DT property, disable-pre-classify, to
+	 * disable pre-classification feature in firmware.
+	 */
+	core_dev->disable_pre_classify = false;
+	if (of_property_read_bool(node, "disable-pre-classify"))
+		core_dev->disable_pre_classify = true;
+
 	ret = pa_core_parse_lut_range(core_dev, node, true);
 	if (ret)
 		return ret;
@@ -1000,6 +1011,7 @@ int pa_core_close(void *intf_priv,
 	struct pa_core_device *core_dev = pa_intf->core_dev;
 	struct netcp_intf *netcp_priv = netdev_priv(ndev);
 	struct pa_hw *hw = core_dev->hw;
+	int ret;
 
 	netcp_unregister_txhook(netcp_priv, PA_TXHOOK_ORDER,
 				pa_core_tx_hook, pa_intf);
@@ -1009,8 +1021,15 @@ int pa_core_close(void *intf_priv,
 		netcp_unregister_rxhook(netcp_priv, PA_RXHOOK_ORDER,
 					pa_core_rx_hook, pa_intf);
 
-	/* De-Configure the streaming switch */
 	mutex_lock(&hw->module_lock);
+	if (!core_dev->disable_pre_classify) {
+		ret = hw->config_ingress_port_def_route(pa_intf, false);
+		if (ret)
+			dev_err(core_dev->dev, "%s failed for port: %d\n",
+				__func__, pa_intf->eth_port);
+	}
+
+	/* De-Configure the streaming switch */
 	hw->set_streaming_switch(core_dev,
 				 pa_intf->eth_port,
 				 pa_intf->saved_ss_state);
@@ -1022,6 +1041,13 @@ int pa_core_close(void *intf_priv,
 		if (core_dev->netif_features & NETIF_F_RXCSUM) {
 			pa_del_ip_proto(core_dev, IPPROTO_TCP);
 			pa_del_ip_proto(core_dev, IPPROTO_UDP);
+		}
+
+		if (!core_dev->disable_pre_classify) {
+			ret = hw->config_pre_classify(core_dev, false);
+			if (ret)
+				dev_err(core_dev->dev, "%s failed  port: %d\n",
+					__func__, pa_intf->eth_port);
 		}
 		if (hw->cleanup)
 			hw->cleanup(core_dev);
@@ -1069,6 +1095,16 @@ int pa_core_open(void *intf_priv,
 						 PA_INVALID_PORT);
 			}
 
+			/* Enable global pre-classify feature in PA firmware
+			 * once
+			 */
+			if (!core_dev->disable_pre_classify) {
+				ret =
+				hw->config_pre_classify(core_dev, true);
+				if (ret)
+					goto fail;
+			}
+
 			/* make IP LUT entries invalid */
 			for (i = 0; i < core_dev->ip_lut_size; i++) {
 				if (!core_dev->ip_lut[i].valid)
@@ -1086,6 +1122,16 @@ int pa_core_open(void *intf_priv,
 			if (ret)
 				goto fail;
 		}
+	}
+
+	/* Configure pre-classify rule for the interface so that all BC and MC
+	 * packets at emac ingress port will get forwarded to the Linux network
+	 * interface rx-queue. This free up LUTs for application use.
+	 */
+	if (!core_dev->disable_pre_classify) {
+		ret = hw->config_ingress_port_def_route(pa_intf, true);
+		if (ret)
+			goto fail;
 	}
 
 	pa_intf->saved_ss_state =
@@ -1204,6 +1250,16 @@ static void *pa_core_init(struct netcp_device *netcp_device,
 	*error = pa_core_get_dt_bindings(core_dev, node);
 	if (*error < 0)
 		goto cleanup;
+
+	/* if pre-classify feature is enabled, corresponding functions should
+	 * be defined. So check for it.
+	 */
+	if (!core_dev->disable_pre_classify &&
+	    (!hw->config_pre_classify ||
+	     !hw->config_ingress_port_def_route)) {
+		*error = -ENODEV;
+		goto cleanup;
+	}
 
 	*error = hw->map_resources(core_dev, node);
 	if (*error < 0)
@@ -1476,7 +1532,7 @@ static void pa_core_load_firmware(void __iomem *dest,
 #define PA_CORE_MAX_LUT_ENTRY		3
 static inline int pa_lut_entry_count(enum netcp_addr_type type)
 {
-	return (type == ADDR_DEV || type == ADDR_UCAST || type == ADDR_ANY) ?
+	return (type == ADDR_DEV || type == ADDR_UCAST) ?
 		PA_CORE_MAX_LUT_ENTRY : 1;
 }
 
@@ -1494,6 +1550,19 @@ int pa_core_add_addr(void *intf_priv, struct netcp_addr *naddr)
 	dev_dbg(core_dev->dev, "pa_add_addr, port %d\n", pa_intf->eth_port);
 	if (!core_dev->inuse_if_count)
 		return -ENXIO;
+
+	if (!core_dev->disable_pre_classify &&
+	    (naddr->type == ADDR_BCAST ||
+	     naddr->type == ADDR_MCAST)) {
+		/* The pre-classify rule at PASS does forward BC, MC packets
+		 * to host. So nothing to do here
+		 */
+		dev_dbg(core_dev->dev,
+			"pa_add_addr, addr type %s, skipping for port %d\n",
+			naddr->type == ADDR_BCAST ? "bcast" : "mcast",
+			pa_intf->eth_port);
+		return 0;
+	}
 
 	spin_lock_irqsave(&core_dev->lock, flag);
 	for (idx = 0; idx < count; idx++) {
