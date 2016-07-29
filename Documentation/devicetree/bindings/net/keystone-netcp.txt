@@ -508,7 +508,14 @@ Optional properties:-
 		rx-channel:	rx channel name for ethernet interface when PA
 				is in the rx path for data. Uses a different
 				flow id when PA is added to the rx path.
-- disable-hw-timestamp:	Disable hw timestamp feature.
+- disable-hw-timestamp:		Disable hw timestamp feature.
+- disable-pre-classify:		By default, PA firmware does pre-classify
+				Broadcast and multicast packet at ingress
+				and route them to Linux network interface
+				rx-queue. To disable this feature in PA
+				firmware, add this DT property. In this case,
+				explicit BC & MC rules will be added to
+				LUT1-0 to achieve the same.
 
 Example:
 

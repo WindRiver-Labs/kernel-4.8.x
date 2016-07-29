@@ -114,6 +114,10 @@ struct pa_hw {
 	int	(*config_exception_route)(struct pa_core_device *core_dev);
 	int	(*add_ip_proto)(struct pa_core_device *core_dev, int index,
 				u8 proto, int rule);
+	int	(*config_pre_classify)(struct pa_core_device *core_dev,
+				       bool enable);
+	int	(*config_ingress_port_def_route)(struct pa_intf *pa_intfi,
+						 bool enable);
 	u32	(*set_streaming_switch)(struct pa_core_device *core_dev,
 					int port, u32 new_value);
 	u32	(*get_streaming_switch)(struct pa_core_device *core_dev,
@@ -188,6 +192,7 @@ struct pa_core_device {
 	const struct firmware **fw;
 	struct pa_hw *hw;
 	netdev_features_t netif_features;
+	bool disable_pre_classify;
 };
 
 int pa_core_release(void *intf_priv);

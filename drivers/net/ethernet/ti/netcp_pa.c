@@ -191,6 +191,12 @@ static inline void swizfcmd(struct pa_frm_command *fcmd)
 	fcmd->reply_queue = cpu_to_be16(fcmd->reply_queue);
 }
 
+static inline void swiz_command_config(struct pa_frm_command_config_pa *cfg)
+{
+	cfg->pkt_ctrl.ctrl_bit_map = cpu_to_be16(cfg->pkt_ctrl.ctrl_bit_map);
+	cfg->pkt_ctrl.valid_bit_map = cpu_to_be16(cfg->pkt_ctrl.valid_bit_map);
+}
+
 static inline void swizal1(struct pa_frm_cmd_add_lut1 *al1)
 {
 	if (al1->type == PAFRM_COM_ADD_LUT1_STANDARD) {
@@ -653,19 +659,19 @@ static void pa_rx_packet_handler(void *param)
 		swizfcmd(fcmd);
 
 		if (fcmd->command_result != PAFRM_COMMAND_RESULT_SUCCESS) {
-			dev_dbg(core_dev->dev, "Command Result = 0x%x\n",
+			dev_err(core_dev->dev, "Command Result = 0x%x\n",
 				fcmd->command_result);
-			dev_dbg(core_dev->dev, "Command = 0x%x\n",
+			dev_err(core_dev->dev, "Command = 0x%x\n",
 				fcmd->command);
-			dev_dbg(core_dev->dev, "Magic = 0x%x\n", fcmd->magic);
-			dev_dbg(core_dev->dev, "Com ID = 0x%x\n", fcmd->com_id);
-			dev_dbg(core_dev->dev, "ret Context = 0x%x\n",
+			dev_err(core_dev->dev, "Magic = 0x%x\n", fcmd->magic);
+			dev_err(core_dev->dev, "Com ID = 0x%x\n", fcmd->com_id);
+			dev_err(core_dev->dev, "ret Context = 0x%x\n",
 				fcmd->ret_context);
-			dev_dbg(core_dev->dev, "Flow ID = 0x%x\n",
+			dev_err(core_dev->dev, "Flow ID = 0x%x\n",
 				fcmd->flow_id);
-			dev_dbg(core_dev->dev, "reply Queue = 0x%x\n",
+			dev_err(core_dev->dev, "reply Queue = 0x%x\n",
 				fcmd->reply_queue);
-			dev_dbg(core_dev->dev, "reply dest = 0x%x\n",
+			dev_err(core_dev->dev, "reply dest = 0x%x\n",
 				fcmd->reply_dest);
 		}
 		dev_dbg(core_dev->dev, "command response complete\n");
@@ -676,8 +682,8 @@ static void pa_rx_packet_handler(void *param)
 		break;
 
 	default:
-		dev_warn(core_dev->dev,
-			 "%s: bad response context, got 0x%08x\n",
+		dev_err(core_dev->dev,
+			"%s: bad response context, got 0x%08x\n",
 			 __func__, p_info->epib[1]);
 		break;
 	}
@@ -685,7 +691,7 @@ static void pa_rx_packet_handler(void *param)
 
 static void
 pa_format_cmd_hdr(struct pa_device *pa_dev,
-		  struct pa_frm_command *fcmd, u8 cmd, u16 cmd_id, u32 ctx)
+		  struct pa_frm_command *fcmd, u8 cmd, u16 cmd_id)
 {
 	struct pa_core_device *core_dev = &pa_dev->core_dev;
 
@@ -693,7 +699,7 @@ pa_format_cmd_hdr(struct pa_device *pa_dev,
 	fcmd->command = cmd;
 	fcmd->magic = PAFRM_CONFIG_COMMAND_SEC_BYTE;
 	fcmd->com_id = cpu_to_be16(cmd_id);
-	fcmd->ret_context = cpu_to_be32(ctx);
+	fcmd->ret_context = cpu_to_be32(PA_CONTEXT_CONFIG);
 	fcmd->flow_id = core_dev->cmd_flow_num;
 	fcmd->reply_queue = cpu_to_be16(core_dev->cmd_queue_num);
 	fcmd->reply_dest = PAFRM_DEST_PKTDMA;
@@ -705,7 +711,6 @@ static int pa_add_ip_proto(struct pa_core_device *core_dev, int index,
 	struct pa_device *pa_dev = to_pa(core_dev);
 	struct pa_route_info route_info, fail_info;
 	struct pa_frm_cmd_add_lut1 *al1;
-	u32 context = PA_CONTEXT_CONFIG;
 	struct pa_frm_command *fcmd;
 	unsigned flow_num, q_num;
 	struct pa_packet *tx;
@@ -761,7 +766,7 @@ static int pa_add_ip_proto(struct pa_core_device *core_dev, int index,
 	al1 = (struct pa_frm_cmd_add_lut1 *)&fcmd->cmd;
 	memset(al1, 0, sizeof(*al1));
 	pa_format_cmd_hdr(pa_dev, fcmd, PAFRM_CONFIG_COMMAND_ADDREP_LUT1,
-			  PA_COMID_L3, context);
+			  PA_COMID_L3);
 
 	al1->index = index;
 	al1->type = PAFRM_COM_ADD_LUT1_STANDARD;
@@ -801,7 +806,6 @@ static int pa_config_exception_route(struct pa_core_device *core_dev)
 	struct pa_device *pa_dev = to_pa(core_dev);
 	struct pa_route_info eroutes[EROUTE_N_MAX];
 	struct pa_frm_command_sys_config_pa *cpa;
-	u32 context = PA_CONTEXT_CONFIG;
 	struct pa_frm_command *fcmd;
 	struct pa_packet *tx;
 	int i, size, ret;
@@ -822,8 +826,7 @@ static int pa_config_exception_route(struct pa_core_device *core_dev)
 	fcmd = tx->data;
 	cpa = (struct pa_frm_command_sys_config_pa *)&fcmd->cmd;
 	memset(cpa, 0, sizeof(*cpa));
-	pa_format_cmd_hdr(pa_dev, fcmd, PAFRM_CONFIG_COMMAND_SYS_CONFIG,
-			  0, context);
+	pa_format_cmd_hdr(pa_dev, fcmd, PAFRM_CONFIG_COMMAND_SYS_CONFIG, 0);
 	cpa->cfg_code = PAFRM_SYSTEM_CONFIG_CODE_EROUTE;
 
 	for (i = 0; i < EROUTE_N_MAX; i++) {
@@ -979,6 +982,122 @@ fail:
 	return ret;
 }
 
+static int pa_config_pre_classify(struct pa_core_device *core_dev,
+				  bool enable)
+{
+	struct	pa_frm_packet_ctrl_config *packet_ctrl_cfg;
+	struct pa_device *pa_dev = to_pa(core_dev);
+	struct pa_frm_command_config_pa *pa_cfg;
+	struct pa_frm_command *fcmd;
+	struct pa_packet *tx;
+	int size;
+
+	size = (sizeof(struct pa_frm_command) +
+		sizeof(struct pa_frm_command_config_pa) + 4);
+	tx = core_ops->alloc_packet(core_dev, size, PA_CLUSTER_0);
+	if (!tx) {
+		dev_err(core_dev->dev,
+			"%s: could not allocate cmd tx packet\n",
+			__func__);
+		return -ENOMEM;
+	}
+
+	fcmd = tx->data;
+	pa_format_cmd_hdr(pa_dev, fcmd, PAFRM_CONFIG_COMMAND_CONFIG_PA, 0);
+
+	pa_cfg = (struct pa_frm_command_config_pa *)&fcmd->cmd;
+	memset(pa_cfg, 0, sizeof(*pa_cfg));
+	pa_cfg->valid_flag = PAFRM_COMMAND_CONFIG_VALID_PKT_CTRL;
+
+	packet_ctrl_cfg = &pa_cfg->pkt_ctrl;
+	packet_ctrl_cfg->valid_bit_map =
+		PA_PKT_CTRL_EMAC_IF_INGRESS_DEFAULT_ROUTE;
+	packet_ctrl_cfg->ctrl_bit_map = enable ?
+		PA_PKT_CTRL_EMAC_IF_INGRESS_DEFAULT_ROUTE : 0;
+
+	swiz_command_config(pa_cfg);
+	tx->psdata[0] = BIT(31);
+
+	return core_ops->submit_packet(tx, PA_CLUSTER_0);
+}
+
+static int
+pa_config_ingress_port_def_route(struct pa_intf *pa_intf,
+				 bool enable)
+{
+	struct pa_core_device *core_dev = pa_intf->core_dev;
+	struct pa_frm_def_route_info *port_route_cfg;
+	struct pa_device *pa_dev = to_pa(core_dev);
+	struct pa_frm_def_route_cfg *def_route_cfg;
+	struct pa_frm_command_sys_config_pa *cpa;
+	struct pa_frm_forward_host *fwd_host;
+	struct pa_frm_command *fcmd;
+	struct pa_packet *tx;
+	int size;
+
+	size = (sizeof(struct pa_frm_command) +
+		sizeof(struct pa_frm_command_sys_config_pa) + 4);
+
+	tx = core_ops->alloc_packet(core_dev, size, PA_CLUSTER_1);
+	if (!tx) {
+		dev_err(core_dev->dev,
+			"%s: could not allocate cmd tx packet\n",
+			__func__);
+		return -ENOMEM;
+	}
+
+	fcmd = tx->data;
+	pa_format_cmd_hdr(pa_dev, fcmd, PAFRM_CONFIG_COMMAND_SYS_CONFIG, 0);
+
+	cpa = (struct pa_frm_command_sys_config_pa *)&fcmd->cmd;
+	memset(cpa, 0, sizeof(*cpa));
+	cpa->cfg_code = PAFRM_SYSTEM_CONFIG_CODE_DEFAULT_ROUTE;
+	def_route_cfg = &cpa->u.def_route_cfg;
+	def_route_cfg->num_ports = 1;
+
+	/* we use one port at a time. So use entry at index 0 */
+	port_route_cfg = &def_route_cfg->route_cfg[0];
+	port_route_cfg->port = pa_intf->eth_port - 1;
+	port_route_cfg->ctrl_bit_map =
+		PA_EMAC_IF_DEF_ROUTE_MC_ENABLE |
+		PA_EMAC_IF_DEF_ROUTE_MC_PRE_CLASSIFY_ENABLE |
+		PA_EMAC_IF_DEF_ROUTE_BC_ENABLE |
+		PA_EMAC_IF_DEF_ROUTE_BC_PRE_CLASSIFY_ENABLE;
+
+	/* populate default route information for multicast packet */
+	port_route_cfg->def_route[DROUTE_MULTICAST].forward_type =
+		enable ? PAFRM_FORWARD_TYPE_HOST : PAFRM_FORWARD_TYPE_DISCARD;
+	port_route_cfg->def_route[DROUTE_MULTICAST].flow_id =
+		pa_intf->data_flow_num;
+	port_route_cfg->def_route[DROUTE_MULTICAST].queue =
+		pa_intf->data_queue_num;
+
+	fwd_host = &port_route_cfg->def_route[DROUTE_MULTICAST].u.host;
+	fwd_host->context = PA_CONTEXT_CONFIG;
+	fwd_host->ps_flags = (pa_intf->eth_port & GENMASK(3, 0))
+				<< PAFRM_ETH_PS_FLAGS_PORT_SHIFT;
+
+	/* populate default route information for broadcast packet */
+	port_route_cfg->def_route[DROUTE_BROADCAST].forward_type =
+		enable ? PAFRM_FORWARD_TYPE_HOST : PAFRM_FORWARD_TYPE_DISCARD;
+	port_route_cfg->def_route[DROUTE_BROADCAST].flow_id =
+		pa_intf->data_flow_num;
+	port_route_cfg->def_route[DROUTE_BROADCAST].queue =
+		pa_intf->data_queue_num;
+
+	fwd_host = &port_route_cfg->def_route[DROUTE_BROADCAST].u.host;
+	fwd_host->context = PA_CONTEXT_CONFIG;
+	/* TODO check if mask is 0xf or 0x7 */
+	fwd_host->ps_flags = (pa_intf->eth_port & GENMASK(3, 0))
+				<< PAFRM_ETH_PS_FLAGS_PORT_SHIFT;
+	swiz_fwd(&port_route_cfg->def_route[DROUTE_MULTICAST]);
+	swiz_fwd(&port_route_cfg->def_route[DROUTE_BROADCAST]);
+
+	tx->psdata[0] = BIT(31);
+
+	return core_ops->submit_packet(tx, PA_CLUSTER_0);
+}
+
 static int pa_fmtcmd_tx_csum(struct netcp_packet *p_info)
 {
 	struct sk_buff *skb = p_info->skb;
@@ -1007,7 +1126,7 @@ static int pa_fmtcmd_tx_csum(struct netcp_packet *p_info)
 
 static int pa_fmtcmd_next_route(struct netcp_packet *p_info, int eth_port)
 {
-	u8 ps_flags = (eth_port & GENMASK(2, 0))
+	u8 ps_flags = (eth_port & GENMASK(3, 0))
 				<< PAFRM_ETH_PS_FLAGS_PORT_SHIFT;
 
 	struct paho_next_route *nr;
@@ -1330,6 +1449,8 @@ static struct pa_hw netcp_pa_hw = {
 	.rx_packet_handler = pa_rx_packet_handler,
 	.add_mac_rule = pa_add_mac_rule,
 	.config_exception_route = pa_config_exception_route,
+	.config_ingress_port_def_route = pa_config_ingress_port_def_route,
+	.config_pre_classify = pa_config_pre_classify,
 	.set_streaming_switch = pa_set_streaming_switch,
 	.get_streaming_switch = pa_get_streaming_switch,
 	.cleanup = pa_tstamp_purge_pending,
