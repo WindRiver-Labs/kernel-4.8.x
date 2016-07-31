@@ -522,6 +522,14 @@ static int wcove_typec_probe(struct platform_device *pdev)
 	wcove->dev = &pdev->dev;
 	wcove->regmap = pmic->regmap;
 
+	/* PD receive packet handler */
+	wcove->pd_port_num = pd_sink_register_port(&profile,
+				wcove_typec_pd_tx_pkt_handler, wcove);
+	if (wcove->pd_port_num) {
+		pr_err("Register pd sink port failed\n");
+		return -EIO;
+	}
+
 	ret = regmap_irq_get_virq(pmic->irq_chip_data_level2,
 				  platform_get_irq(pdev, 0));
 	if (ret < 0)
@@ -532,14 +540,6 @@ static int wcove_typec_probe(struct platform_device *pdev)
 					"wcove_typec", wcove);
 	if (ret)
 		return ret;
-
-	/* PD receive packet handler */
-	wcove->pd_port_num = pd_sink_register_port(&profile,
-				wcove_typec_pd_tx_pkt_handler, wcove);
-	if (wcove->pd_port_num) {
-		pr_err("Register pd sink port failed\n");
-		return -EIO;
-	}
 
 	if (!acpi_check_dsm(ACPI_HANDLE(&pdev->dev), &guid, 0, 0x1f)) {
 		dev_err(&pdev->dev, "Missing _DSM functions\n");
