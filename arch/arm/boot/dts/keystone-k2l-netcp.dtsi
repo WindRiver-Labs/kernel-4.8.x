@@ -404,7 +404,7 @@ netcp: netcp@26000000 {
 			rx-cmd-rsp-chan		= "pa-cmd-rsp";
 			rx-cmd-rsp-queue-depth	= <128 32 0 0>;
 			rx-cmd-rsp-buffer-size	= <128 512 0 0>;
-
+			disable-pre-classify;
 			/* rx channels get overridden for the interface
 			 * when PA is enabled
 			 */
