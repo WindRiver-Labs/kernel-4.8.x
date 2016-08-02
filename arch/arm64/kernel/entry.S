@@ -695,7 +695,8 @@ ret_fast_syscall:
 	ldr	x1, [tsk, #TI_FLAGS]		// re-check for syscall tracing
 	and	x2, x1, #_TIF_SYSCALL_WORK
 	cbnz	x2, ret_fast_syscall_trace
-	and	x2, x1, #_TIF_WORK_MASK
+	mov     x2, #_TIF_WORK_MASK
+	and     x2, x1, x2
 	cbnz	x2, work_pending
 	enable_step_tsk x1, x2
 	kernel_exit 0
@@ -725,7 +726,8 @@ work_resched:
 ret_to_user:
 	disable_irq				// disable interrupts
 	ldr	x1, [tsk, #TI_FLAGS]
-	and	x2, x1, #_TIF_WORK_MASK
+	mov     x2, #_TIF_WORK_MASK
+	and     x2, x1, x2
 	cbnz	x2, work_pending
 	enable_step_tsk x1, x2
 	kernel_exit 0

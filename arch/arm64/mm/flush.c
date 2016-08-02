@@ -54,6 +54,12 @@ static void flush_ptrace_access(struct vm_area_struct *vma, struct page *page,
 		sync_icache_aliases(kaddr, len);
 }
 
+void flush_uprobe_xol_access(struct page *page, unsigned long uaddr,
+		void *kaddr, unsigned long len)
+{
+	sync_icache_aliases(kaddr, len);
+}
+
 /*
  * Copy user data from/to a page which is mapped into a different processes
  * address space.  Really, we want to allow our "user space" model to handle
