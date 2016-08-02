@@ -58,14 +58,6 @@ void intel_ring_update_space(struct intel_ring *ring)
 					 ring->tail, ring->size);
 }
 
-static void __intel_engine_submit(struct intel_engine_cs *engine)
-{
-	struct intel_ring *ring = engine->buffer;
-
-	ring->tail &= ring->size - 1;
-	engine->write_tail(engine, ring->tail);
-}
-
 static int
 gen2_render_ring_flush(struct drm_i915_gem_request *req, u32 mode)
 {
@@ -412,13 +404,6 @@ gen8_render_ring_flush(struct drm_i915_gem_request *req, u32 mode)
 	return gen8_emit_pipe_control(req, flags, scratch_addr);
 }
 
-static void ring_write_tail(struct intel_engine_cs *engine,
-			    u32 value)
-{
-	struct drm_i915_private *dev_priv = engine->i915;
-	I915_WRITE_TAIL(engine, value);
-}
-
 u64 intel_engine_get_active_head(struct intel_engine_cs *engine)
 {
 	struct drm_i915_private *dev_priv = engine->i915;
@@ -532,7 +517,7 @@ static bool stop_ring(struct intel_engine_cs *engine)
 
 	I915_WRITE_CTL(engine, 0);
 	I915_WRITE_HEAD(engine, 0);
-	engine->write_tail(engine, 0);
+	I915_WRITE_TAIL(engine, 0);
 
 	if (!IS_GEN2(dev_priv)) {
 		(void)I915_READ_CTL(engine);
@@ -1461,7 +1446,10 @@ gen6_add_request(struct drm_i915_gem_request *req)
 	intel_ring_emit(ring, I915_GEM_HWS_INDEX << MI_STORE_DWORD_INDEX_SHIFT);
 	intel_ring_emit(ring, req->fence.seqno);
 	intel_ring_emit(ring, MI_USER_INTERRUPT);
-	__intel_engine_submit(engine);
+	intel_ring_advance(ring);
+
+	req->tail = ring->tail;
+	engine->submit_request(req);
 
 	return 0;
 }
@@ -1491,7 +1479,9 @@ gen8_render_add_request(struct drm_i915_gem_request *req)
 	intel_ring_emit(ring, 0);
 	intel_ring_emit(ring, MI_USER_INTERRUPT);
 	intel_ring_emit(ring, MI_NOOP);
-	__intel_engine_submit(engine);
+
+	req->tail = ring->tail;
+	engine->submit_request(req);
 
 	return 0;
 }
@@ -1708,9 +1698,19 @@ i9xx_add_request(struct drm_i915_gem_request *req)
 	intel_ring_emit(ring, I915_GEM_HWS_INDEX << MI_STORE_DWORD_INDEX_SHIFT);
 	intel_ring_emit(ring, req->fence.seqno);
 	intel_ring_emit(ring, MI_USER_INTERRUPT);
-	__intel_engine_submit(req->engine);
+	intel_ring_advance(ring);
+
+	req->tail = ring->tail;
+	req->engine->submit_request(req);
 
 	return 0;
+}
+
+static void i9xx_submit_request(struct drm_i915_gem_request *request)
+{
+	struct drm_i915_private *dev_priv = request->i915;
+
+	I915_WRITE_TAIL(request->engine, request->tail);
 }
 
 static void
@@ -2471,10 +2471,9 @@ void intel_engine_init_seqno(struct intel_engine_cs *engine, u32 seqno)
 	rcu_read_unlock();
 }
 
-static void gen6_bsd_ring_write_tail(struct intel_engine_cs *engine,
-				     u32 value)
+static void gen6_bsd_submit_request(struct drm_i915_gem_request *request)
 {
-	struct drm_i915_private *dev_priv = engine->i915;
+	struct drm_i915_private *dev_priv = request->i915;
 
 	intel_uncore_forcewake_get(dev_priv, FORCEWAKE_ALL);
 
@@ -2498,8 +2497,8 @@ static void gen6_bsd_ring_write_tail(struct intel_engine_cs *engine,
 		DRM_ERROR("timed out waiting for the BSD ring to wake up\n");
 
 	/* Now that the ring is fully powered up, update the tail */
-	I915_WRITE_FW(RING_TAIL(engine->mmio_base), value);
-	POSTING_READ_FW(RING_TAIL(engine->mmio_base));
+	I915_WRITE_FW(RING_TAIL(request->engine->mmio_base), request->tail);
+	POSTING_READ_FW(RING_TAIL(request->engine->mmio_base));
 
 	/* Let the ring send IDLE messages to the GT again,
 	 * and so let it sleep to conserve power when idle.
@@ -2803,7 +2802,7 @@ static void intel_ring_default_vfuncs(struct drm_i915_private *dev_priv,
 				      struct intel_engine_cs *engine)
 {
 	engine->init_hw = init_ring_common;
-	engine->write_tail = ring_write_tail;
+	engine->submit_request = i9xx_submit_request;
 
 	engine->add_request = i9xx_add_request;
 	if (INTEL_GEN(dev_priv) >= 6)
@@ -2887,7 +2886,7 @@ int intel_init_bsd_ring_buffer(struct intel_engine_cs *engine)
 	if (INTEL_GEN(dev_priv) >= 6) {
 		/* gen6 bsd needs a special wa for tail updates */
 		if (IS_GEN6(dev_priv))
-			engine->write_tail = gen6_bsd_ring_write_tail;
+			engine->submit_request = gen6_bsd_submit_request;
 		engine->emit_flush = gen6_bsd_ring_flush;
 		if (INTEL_GEN(dev_priv) < 8)
 			engine->irq_enable_mask = GT_BSD_USER_INTERRUPT;
