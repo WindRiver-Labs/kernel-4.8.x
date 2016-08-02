@@ -35,4 +35,8 @@ struct arch_specific_insn {
 };
 #endif
 
+#ifdef CONFIG_UPROBES
+typedef u32 uprobe_opcode_t;
+#endif
+
 #endif
