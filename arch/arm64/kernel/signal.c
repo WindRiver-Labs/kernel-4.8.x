@@ -402,6 +402,9 @@ static void do_signal(struct pt_regs *regs)
 asmlinkage void do_notify_resume(struct pt_regs *regs,
 				 unsigned int thread_flags)
 {
+	if (thread_flags & _TIF_UPROBE)
+		uprobe_notify_resume(regs);
+
 	if (thread_flags & _TIF_SIGPENDING)
 		do_signal(regs);
 
@@ -412,5 +415,4 @@ asmlinkage void do_notify_resume(struct pt_regs *regs,
 
 	if (thread_flags & _TIF_FOREIGN_FPSTATE)
 		fpsimd_restore_current_state();
-
 }
