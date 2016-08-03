@@ -132,6 +132,7 @@ struct pa_hw {
 	int num_pdsps;
 	int ingress_l2_cluster_id;
 	int ingress_l3_cluster_id;
+	int post_cluster_id;
 	int egress_cluster_id;
 	int streaming_pdsp;
 	/* To protect against concurrent accesses */

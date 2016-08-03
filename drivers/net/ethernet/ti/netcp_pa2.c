@@ -641,27 +641,27 @@ static void pa2_rx_packet_handler(void *param)
 		swizfcmd(fcmd);
 
 		if (fcmd->command_result != PA2FRM_COMMAND_RESULT_SUCCESS) {
-			dev_dbg(core_dev->dev, "Command Result = 0x%x\n",
+			dev_err(core_dev->dev, "Command Result = 0x%x\n",
 				fcmd->command_result);
-			dev_dbg(core_dev->dev, "Command = 0x%x\n",
+			dev_err(core_dev->dev, "Command = 0x%x\n",
 				fcmd->command);
-			dev_dbg(core_dev->dev, "Magic = 0x%x\n", fcmd->magic);
-			dev_dbg(core_dev->dev, "Com ID = 0x%x\n", fcmd->com_id);
-			dev_dbg(core_dev->dev, "ret Context = 0x%x\n",
+			dev_err(core_dev->dev, "Magic = 0x%x\n", fcmd->magic);
+			dev_err(core_dev->dev, "Com ID = 0x%x\n", fcmd->com_id);
+			dev_err(core_dev->dev, "ret Context = 0x%x\n",
 				fcmd->ret_context);
-			dev_dbg(core_dev->dev, "Flow ID = 0x%x\n",
+			dev_err(core_dev->dev, "Flow ID = 0x%x\n",
 				fcmd->flow_id);
-			dev_dbg(core_dev->dev, "reply Queue = 0x%x\n",
+			dev_err(core_dev->dev, "reply Queue = 0x%x\n",
 				fcmd->reply_queue);
-			dev_dbg(core_dev->dev, "reply dest = 0x%x\n",
+			dev_err(core_dev->dev, "reply dest = 0x%x\n",
 				fcmd->reply_dest);
 		}
 		dev_dbg(core_dev->dev, "command response complete\n");
 		break;
 
 	default:
-		dev_warn(core_dev->dev, "bad response context, got 0x%08x\n",
-			 p_info->epib[1]);
+		dev_err(core_dev->dev, "bad response context, got 0x%08x\n",
+			p_info->epib[1]);
 		break;
 	}
 }
@@ -1038,6 +1038,138 @@ static int pa2_add_mac_rule(struct pa_intf *pa_intf, int index,
 	return core_ops->submit_packet(tx, PA2_CLUSTER_0);
 }
 
+static inline void swiz_command_config(struct pa2_frm_command_config_pa *cfg)
+{
+	cfg->pkt_ctrl.ctrl_bit_map = cpu_to_be16(cfg->pkt_ctrl.ctrl_bit_map);
+	cfg->pkt_ctrl.valid_bit_map = cpu_to_be16(cfg->pkt_ctrl.valid_bit_map);
+	cfg->valid_flag = cpu_to_be16(cfg->valid_flag);
+}
+
+static int pa2_config_pre_classify(struct pa_core_device *core_dev,
+				   bool enable)
+{
+	struct pa_frm_packet_ctrl_config *packet_ctrl_cfg;
+	struct pa2_frm_command_config_pa *pa_cfg;
+	struct pa2_frm_command *fcmd;
+	struct pa_packet *tx;
+	int size;
+
+	size = (sizeof(struct pa2_frm_command) +
+		sizeof(struct pa2_frm_command_config_pa) - sizeof(u32));
+	tx = core_ops->alloc_packet(core_dev, size, PA2_CLUSTER_5);
+	if (!tx) {
+		dev_err(core_dev->dev,
+			"%s: could not allocate cmd tx packet\n",
+			__func__);
+		return -ENOMEM;
+	}
+
+	fcmd = pa2_format_fcmd_hdr((void *)tx->data,
+				   core_dev,
+				   PA2FRM_CONFIG_COMMAND_CONFIG_PA,
+				   0,
+				   0,
+				   size);
+	pa_cfg = (struct pa2_frm_command_config_pa *)&fcmd->cmd;
+	memset(pa_cfg, 0, sizeof(*pa_cfg));
+	pa_cfg->valid_flag = PAFRM_COMMAND_CONFIG_VALID_PKT_CTRL;
+
+	packet_ctrl_cfg = &pa_cfg->pkt_ctrl;
+	packet_ctrl_cfg->valid_bit_map =
+		PA_PKT_CTRL_EMAC_IF_INGRESS_DEFAULT_ROUTE;
+	packet_ctrl_cfg->ctrl_bit_map = enable ?
+		PA_PKT_CTRL_EMAC_IF_INGRESS_DEFAULT_ROUTE : 0;
+
+	swizfcmd(fcmd);
+	swiz_command_config(pa_cfg);
+	tx->psdata[0] = BIT(31);
+
+	return core_ops->submit_packet(tx, PA2_CLUSTER_5);
+}
+
+static int
+pa2_config_ingress_port_def_route(struct pa_intf *pa_intf,
+				  bool enable)
+{
+	struct pa_core_device *core_dev = pa_intf->core_dev;
+	struct pa_frm_def_route_info *port_route_cfg;
+	struct pa2_frm_def_route_cfg *def_route_cfg;
+	struct pa2_frm_command_sys_config_pa *cpa;
+	struct pa_frm_forward_host *fwd_host;
+	struct pa2_frm_command *fcmd;
+	struct pa_packet *tx;
+	int size;
+
+	/* There is a overlap of 1 32 bit word between struct pa2_frm_command
+	 * and pa2_frm_command_sys_config_pa. So subtract that from size
+	 */
+	size = (sizeof(struct pa2_frm_command) +
+		sizeof(struct pa2_frm_command_sys_config_pa) - sizeof(u32));
+
+	tx = core_ops->alloc_packet(core_dev, size, PA2_CLUSTER_5);
+	if (!tx) {
+		dev_err(core_dev->dev,
+			"%s: could not allocate cmd tx packet\n",
+			__func__);
+		return -ENOMEM;
+	}
+
+	fcmd = pa2_format_fcmd_hdr((void *)tx->data,
+				   core_dev,
+				   PA2FRM_CONFIG_COMMAND_CMD_SYS_CONFIG,
+				   0,
+				   0,
+				   size);
+	cpa = (struct pa2_frm_command_sys_config_pa *)&fcmd->cmd;
+	memset(cpa, 0, sizeof(*cpa));
+	cpa->cfg_code = PAFRM_SYSTEM_CONFIG_CODE_DEFAULT_ROUTE;
+	def_route_cfg = &cpa->u.def_route_cfg;
+	def_route_cfg->num_ports = 1;
+
+	/* we use one port at a time. So use entry at index 0 */
+	port_route_cfg = &def_route_cfg->route_cfg[0];
+	port_route_cfg->port = pa_intf->eth_port - 1;
+	port_route_cfg->ctrl_bit_map =
+		PA_EMAC_IF_DEF_ROUTE_MC_ENABLE |
+		PA_EMAC_IF_DEF_ROUTE_MC_PRE_CLASSIFY_ENABLE |
+		PA_EMAC_IF_DEF_ROUTE_BC_ENABLE |
+		PA_EMAC_IF_DEF_ROUTE_BC_PRE_CLASSIFY_ENABLE;
+
+	/* populate default route information for multicast packet */
+	port_route_cfg->def_route[DROUTE_MULTICAST].forward_type =
+		enable ? PA2FRM_FORWARD_TYPE_HOST : PA2FRM_FORWARD_TYPE_DISCARD;
+	port_route_cfg->def_route[DROUTE_MULTICAST].flow_id =
+		pa_intf->data_flow_num;
+	port_route_cfg->def_route[DROUTE_MULTICAST].queue =
+		pa_intf->data_queue_num;
+
+	fwd_host = &port_route_cfg->def_route[DROUTE_MULTICAST].u.host;
+	fwd_host->context = PA2_CONTEXT_CONFIG;
+	fwd_host->ps_flags = (pa_intf->eth_port & GENMASK(4, 0))
+				<< PA2FRM_ETH_PS_FLAGS_PORT_SHIFT;
+
+	/* populate default route information for broadcast packet */
+	port_route_cfg->def_route[DROUTE_BROADCAST].forward_type =
+		enable ? PA2FRM_FORWARD_TYPE_HOST : PA2FRM_FORWARD_TYPE_DISCARD;
+	port_route_cfg->def_route[DROUTE_BROADCAST].flow_id =
+		pa_intf->data_flow_num;
+	port_route_cfg->def_route[DROUTE_BROADCAST].queue =
+		pa_intf->data_queue_num;
+
+	fwd_host = &port_route_cfg->def_route[DROUTE_BROADCAST].u.host;
+	fwd_host->context = PA2_CONTEXT_CONFIG;
+	/* TODO check if mask is 0xf or 0x7 */
+	fwd_host->ps_flags = (pa_intf->eth_port & GENMASK(4, 0))
+				<< PA2FRM_ETH_PS_FLAGS_PORT_SHIFT;
+	swizfcmd(fcmd);
+	swizfwd(&port_route_cfg->def_route[DROUTE_MULTICAST]);
+	swizfwd(&port_route_cfg->def_route[DROUTE_BROADCAST]);
+
+	tx->psdata[0] = BIT(31);
+
+	return core_ops->submit_packet(tx, PA2_CLUSTER_5);
+}
+
 static int pa2_fmtcmd_next_route(struct netcp_packet *p_info, int eth_port)
 {
 	u8 ps_flags = (eth_port & PA2_EMAC_CTRL_PORT_MASK) <<
@@ -1326,6 +1458,7 @@ static struct pa_hw netcp_pa2_hw = {
 	.num_pdsps = PA2_NUM_PDSPS,
 	.ingress_l2_cluster_id = PA2_CLUSTER_0,
 	.ingress_l3_cluster_id = PA2_CLUSTER_1,
+	.post_cluster_id = PA2_CLUSTER_5,
 	.egress_cluster_id = PA2_CLUSTER_6,
 	.streaming_pdsp = PSTREAM_ROUTE_INGRESS0,
 	.map_resources	= pa2_map_resources,
@@ -1335,6 +1468,8 @@ static struct pa_hw netcp_pa2_hw = {
 	.set_firmware = pa2_set_firmware,
 	.rx_packet_handler = pa2_rx_packet_handler,
 	.add_mac_rule = pa2_add_mac_rule,
+	.config_ingress_port_def_route = pa2_config_ingress_port_def_route,
+	.config_pre_classify = pa2_config_pre_classify,
 	.set_streaming_switch = pa2_set_streaming_switch,
 	.get_streaming_switch = pa2_get_streaming_switch,
 };
