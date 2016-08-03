@@ -718,7 +718,9 @@ void	ishtp_bus_remove_all_clients(struct ishtp_device *ishtp_dev,
 			continue;
 
 		list_del(&cl_device->device_link);
+		spin_unlock_irqrestore(&ishtp_dev->device_list_lock, flags);
 		ishtp_bus_remove_device(cl_device);
+		spin_lock_irqsave(&ishtp_dev->device_list_lock, flags);
 	}
 	spin_unlock_irqrestore(&ishtp_dev->device_list_lock, flags);
 
