@@ -180,7 +180,7 @@ enum pa2_route_pri_info {
 #define PA2_CMD_SPLIT				17
 #define PA2_CMD_EF_OP				18
 
-struct pa2_frm_forward_host {
+struct pa_frm_forward_host {
 	/* Context returned as swInfo0 for matched packet */
 	u32	context;
 	/* Control bitmap, 1 for enable, 0 for disable
@@ -295,7 +295,7 @@ struct pa2_frm_forward  {
 				 * via PKTDMA
 				 */
 	union {
-		struct pa2_frm_forward_host	host;    /* Host specific
+		struct pa_frm_forward_host	host;    /* Host specific
 							  * routing
 							  * information
 							  */
@@ -947,15 +947,6 @@ struct pa2_frm_config_crc {
 #define PA2FRM_CFG_CMD_STATUS_PROC		0
 #define PA2FRM_CFG_CMD_STATUS_DONE		1
 
-struct pa2_frm_command_cmd_hdr {
-	/* Command Header of each command within the multiple command packet */
-	u8	command;
-	/* Offset to the next command, 0: Indicate the last command */
-	u8	offset;
-	/* general parameter used by host only */
-	u16	com_id;
-};
-
 /* Commands to PA */
 struct pa2_frm_command {
 	/* Command Status (used by firmware only) */
@@ -1337,5 +1328,106 @@ struct pa2_cmd_reply {
 	u8	flow_id;
 	/*  Flow ID used on command reply from PASS */
 };
+
+#define PAFRM_PKT_CAP_MAX_PORT			9
+#define PAFRM_MAX_EMAC_PORT	(PAFRM_PKT_CAP_MAX_PORT - 1)
+
+enum  {
+	DROUTE_MULTICAST,  /* default multicast route */
+	DROUTE_BROADCAST,  /* default broadcast route */
+	DROUTE_UNICAST,    /* default unicast route */
+	DROUTE_N_MAX
+};
+
+struct pa_frm_def_route_info {
+	/* Control Bit Map
+	 * b0: enable/disable route config for MC packets
+	 * b1: enable/disable route config for BC packets
+	 * b2: enable/disable route config for UC packets
+	 * b3: Pre classification enabled for default route
+	 *     otherwise post classification for default route
+	 */
+	u8	ctrl_bit_map;
+	/* ingress port. This is zero based. 0 - for first ethernet
+	 * slave port, 1 for second and so forth
+	 */
+	u8	port;
+	u16	rsvd;
+	struct pa2_frm_forward def_route[DROUTE_N_MAX];
+};
+
+/* Default route configuration */
+struct pa2_frm_def_route_cfg {
+	u8	num_ports; /* number of ports to be configured */
+	u8	rsvd1;
+	u16	rsvd2;
+	struct pa_frm_def_route_info route_cfg[PAFRM_MAX_EMAC_PORT];
+};
+
+/* PA system configuration codes */
+#define PAFRM_SYSTEM_CONFIG_CODE_DEFAULT_ROUTE  8
+
+/* PA system configuration command struct. Used by
+ * PAFRM_CONFIG_COMMAND_SYS_CONFIG command
+ */
+struct pa2_frm_command_sys_config_pa {
+	/* system configuration code as defined below */
+	u8	cfg_code;
+	u8	rsvd1;
+	/* reserved for alignment */
+	u16	rsvd2;
+
+	union {
+		/* Default route configuration for interface */
+		struct pa2_frm_def_route_cfg def_route_cfg;
+	} u;
+};
+
+/* PA global configuration command struct. Used by
+ * PA2FRM_CONFIG_COMMAND_CONFIG_PA
+ */
+struct pa_frm_packet_ctrl_config {
+	u16	ctrl_bit_map;
+	u16	valid_bit_map;
+	/* Below fields are not used by linux driver. So keeping it as reseved
+	 * for now for alignment and may be enhanced later as and when feature
+	 * is required in linux.
+	 */
+	u32	rsvd[2];
+};
+
+struct pa2_frm_command_config_pa {
+	u16	valid_flag;
+	u16	rsvd2;
+	/* Below fields are not used by linux driver. So keeping it as reseved
+	 * for now for alignment and may be enhanced later as and when feature
+	 * is required in linux.
+	 */
+	u32	rsvd3[6];
+	struct	pa_frm_packet_ctrl_config pkt_ctrl;
+	/* reserved because linux driver doesn't use the feature */
+	u32	rsvd4[12];
+};
+
+/* Definitions below is used for valid_flag field of packet control command.
+ * Ingress default route is to be enabled for Pre-classification. This
+ * requires PA_PKT_CTRL_EMAC_IF_INGRESS_DEFAULT_ROUTE with valid_flag set
+ * or reset at bit position below.
+ */
+#define PAFRM_COMMAND_CONFIG_VALID_PKT_CTRL		BIT(6)
+
+/* Definitions below are used for Pre-Classify feature enablement for BC and
+ * MC at the ingress
+ */
+/* Set/Clear: default route enable for multicast */
+#define PA_EMAC_IF_DEF_ROUTE_MC_ENABLE			BIT(0)
+/* Set/Clear: default route enable for broadcast */
+#define PA_EMAC_IF_DEF_ROUTE_BC_ENABLE			BIT(1)
+/* Set/Clear: default route for multicast pre classification enable */
+#define PA_EMAC_IF_DEF_ROUTE_MC_PRE_CLASSIFY_ENABLE	BIT(3)
+/* Set/Clear:  default route for broadcast pre classification enable */
+#define PA_EMAC_IF_DEF_ROUTE_BC_PRE_CLASSIFY_ENABLE	BIT(4)
+/* Ingress default route enable/enable for mac interface */
+#define PA_PKT_CTRL_EMAC_IF_INGRESS_DEFAULT_ROUTE	BIT(7)
 
 #endif /* KEYSTONE_PA2_FW_H */

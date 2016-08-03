@@ -483,18 +483,15 @@ static void pa_tx_compl_work_handler(unsigned long data)
 	knav_queue_enable_notify(cfg->tx_cmd_cmpl_queue);
 }
 
-static int pa_core_init_ingress_tx_resources(struct pa_core_device *core_dev,
-					     bool l2_cluster)
+static int pa_core_init_command_tx_resources(struct pa_core_device *core_dev,
+					     int cluster_id)
 {
 	struct knav_queue_notify_config notify_cfg;
 	struct device *dev = core_dev->dev;
 	struct knav_dma_cfg config;
 	struct pa_cluster_config *cfg;
-	int ret = 0, cluster_id;
+	int ret = 0;
 	char name[32];
-
-	cluster_id = (l2_cluster) ? core_dev->hw->ingress_l2_cluster_id :
-				    core_dev->hw->ingress_l3_cluster_id;
 
 	/* Open the PA Command transmit channel */
 	memset(&config, 0, sizeof(config));
@@ -772,14 +769,10 @@ static void pa_core_cleanup_common_rx_resources(struct pa_core_device *core_dev)
 }
 
 static void
-pa_core_cleanup_ingress_tx_resources(struct pa_core_device *core_dev,
-				     bool l2_cluster)
+pa_core_cleanup_command_tx_resources(struct pa_core_device *core_dev,
+				     int cluster_id)
 {
 	struct pa_cluster_config *cfg;
-	int cluster_id;
-
-	cluster_id = (l2_cluster) ? core_dev->hw->ingress_l2_cluster_id :
-				    core_dev->hw->ingress_l3_cluster_id;
 
 	cfg = &core_dev->cluster_config[cluster_id];
 	if (cfg->tx_chan)
@@ -795,21 +788,27 @@ pa_core_cleanup_ingress_tx_resources(struct pa_core_device *core_dev,
 		knav_queue_close(cfg->tx_cmd_cmpl_queue);
 		tasklet_kill(&cfg->tx_task);
 	}
-
-	/* clean up tx cmd pool last, when l3_cluster resources are cleaned */
-	if (core_dev->tx_cmd_pool && !l2_cluster)
-		knav_pool_destroy(core_dev->tx_cmd_pool);
 }
 
 int pa_core_remove(struct netcp_device *netcp_device, void *inst_priv)
 {
 	struct pa_core_device *core_dev = inst_priv;
+	struct pa_hw *hw = core_dev->hw;
 
 	netcp_txpipe_close(&core_dev->tx_pipe);
 	/* clean up ingress L2 cluster tx resources */
-	pa_core_cleanup_ingress_tx_resources(core_dev, true);
+	pa_core_cleanup_command_tx_resources(core_dev,
+					     hw->ingress_l2_cluster_id);
 	/* clean up ingress L3 cluster tx resources */
-	pa_core_cleanup_ingress_tx_resources(core_dev, false);
+	pa_core_cleanup_command_tx_resources(core_dev,
+					     hw->ingress_l3_cluster_id);
+	if (hw->post_cluster_id)
+		pa_core_cleanup_command_tx_resources(core_dev,
+						     hw->post_cluster_id);
+	/* clean up tx cmd pool */
+	if (core_dev->tx_cmd_pool)
+		knav_pool_destroy(core_dev->tx_cmd_pool);
+
 	/* clean up common rx resources */
 	pa_core_cleanup_common_rx_resources(core_dev);
 	device_remove_file(core_dev->dev,
@@ -1095,16 +1094,6 @@ int pa_core_open(void *intf_priv,
 						 PA_INVALID_PORT);
 			}
 
-			/* Enable global pre-classify feature in PA firmware
-			 * once
-			 */
-			if (!core_dev->disable_pre_classify) {
-				ret =
-				hw->config_pre_classify(core_dev, true);
-				if (ret)
-					goto fail;
-			}
-
 			/* make IP LUT entries invalid */
 			for (i = 0; i < core_dev->ip_lut_size; i++) {
 				if (!core_dev->ip_lut[i].valid)
@@ -1121,6 +1110,15 @@ int pa_core_open(void *intf_priv,
 			ret = pa_add_ip_proto(core_dev, IPPROTO_UDP);
 			if (ret)
 				goto fail;
+		}
+
+		/* Enable global pre-classify feature in PA firmware
+		 * once
+		 */
+		if (!core_dev->disable_pre_classify) {
+			ret = hw->config_pre_classify(core_dev, true);
+				if (ret)
+					goto fail;
 		}
 	}
 
@@ -1310,14 +1308,24 @@ static void *pa_core_init(struct netcp_device *netcp_device,
 		goto cleanup;
 
 	/* initialize tx resources for L2 ingress cluster */
-	*error = pa_core_init_ingress_tx_resources(core_dev, true);
+	*error = pa_core_init_command_tx_resources(core_dev,
+						   hw->ingress_l2_cluster_id);
 	if (*error)
 		goto cleanup;
 
 	/* initialize tx resources for L3 ingress cluster */
-	*error = pa_core_init_ingress_tx_resources(core_dev, false);
+	*error = pa_core_init_command_tx_resources(core_dev,
+						   hw->ingress_l3_cluster_id);
 	if (*error)
 		goto cleanup;
+
+	if (hw->post_cluster_id) {
+		*error =
+			pa_core_init_command_tx_resources(core_dev,
+							  hw->post_cluster_id);
+		if (*error)
+			goto cleanup;
+	}
 
 	/* initialize common rx resources */
 	*error = pa_core_init_common_rx_resources(core_dev);

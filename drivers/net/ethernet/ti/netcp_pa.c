@@ -1038,7 +1038,7 @@ pa_config_ingress_port_def_route(struct pa_intf *pa_intf,
 	size = (sizeof(struct pa_frm_command) +
 		sizeof(struct pa_frm_command_sys_config_pa) + 4);
 
-	tx = core_ops->alloc_packet(core_dev, size, PA_CLUSTER_1);
+	tx = core_ops->alloc_packet(core_dev, size, PA_CLUSTER_0);
 	if (!tx) {
 		dev_err(core_dev->dev,
 			"%s: could not allocate cmd tx packet\n",
