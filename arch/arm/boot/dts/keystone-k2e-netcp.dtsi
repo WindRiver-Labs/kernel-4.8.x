@@ -477,7 +477,6 @@ netcp: netcp@24000000 {
 			rx-cmd-rsp-chan		= "pa-cmd-rsp";
 			rx-cmd-rsp-queue-depth	= <128 32 0 0>;
 			rx-cmd-rsp-buffer-size	= <128 512 0 0>;
-			disable-pre-classify;
 			/* rx channels get overridden for the interface
 			 * when PA is enabled
 			 */
@@ -507,6 +506,12 @@ netcp: netcp@24000000 {
 					reg = <1>;
 					tx-queue = <905>;
 					tx-channel = "pa-cl1";
+				};
+
+				cluster@5 {
+					reg = <5>;
+					tx-queue = <909>;
+					tx-channel = "pa-cl5";
 				};
 
 				cluster@6 {
