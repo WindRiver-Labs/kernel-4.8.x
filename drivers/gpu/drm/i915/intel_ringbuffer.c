@@ -2291,7 +2291,7 @@ static int wait_for_space(struct drm_i915_gem_request *req, int bytes)
 	if (WARN_ON(&target->ring_link == &ring->request_list))
 		return -ENOSPC;
 
-	ret = __i915_wait_request(target, true, NULL, NULL);
+	ret = __i915_wait_request(target, true, NULL, NO_WAITBOOST);
 	if (ret)
 		return ret;
 
