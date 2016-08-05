@@ -2221,10 +2221,6 @@ struct drm_i915_gem_object {
 	unsigned int madv:2;
 
 	/**
-	 * Current tiling mode for the object.
-	 */
-	unsigned int tiling_mode:2;
-	/**
 	 * Whether the tiling parameters for the currently associated fence
 	 * register have changed. Note that for the purposes of tracking
 	 * tiling changes we also treat the unfenced register, the register
@@ -2256,6 +2252,14 @@ struct drm_i915_gem_object {
 
 	atomic_t frontbuffer_bits;
 
+	/**
+	 * Current tiling mode for the object.
+	 */
+	unsigned int tiling_mode;
+
+	/** Current tiling stride for the object, if it's tiled. */
+	uint32_t stride;
+
 	unsigned int has_wc_mmap;
 	/** Count of VMA actually bound by this object */
 	unsigned int bind_count;
@@ -2282,9 +2286,6 @@ struct drm_i915_gem_object {
 	struct i915_gem_active last_read[I915_NUM_ENGINES];
 	struct i915_gem_active last_write;
 	struct i915_gem_active last_fence;
-
-	/** Current tiling stride for the object, if it's tiled. */
-	uint32_t stride;
 
 	/** References from framebuffers, locks out tiling changes. */
 	unsigned long framebuffer_references;
