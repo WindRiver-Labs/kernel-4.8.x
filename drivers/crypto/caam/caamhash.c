@@ -1090,13 +1090,16 @@ static int ahash_digest(struct ahash_request *req)
 	u32 options;
 	int sh_len;
 
-	src_nents = sg_count(req->src, req->nbytes);
+	src_nents = sg_nents_for_len(req->src, req->nbytes);
 	if (src_nents < 0) {
 		dev_err(jrdev, "Invalid number of src SG.\n");
 		return src_nents;
 	}
-	dma_map_sg(jrdev, req->src, src_nents ? : 1, DMA_TO_DEVICE);
-	sec4_sg_bytes = src_nents * sizeof(struct sec4_sg_entry);
+	dma_map_sg(jrdev, req->src, src_nents, DMA_TO_DEVICE);
+	if (src_nents > 1)
+		sec4_sg_bytes = src_nents * sizeof(struct sec4_sg_entry);
+	else
+		sec4_sg_bytes = 0;
 
 	/* allocate space for base edesc and hw desc commands, link tables */
 	edesc = kzalloc(sizeof(*edesc) + sec4_sg_bytes + DESC_JOB_IO_LEN,
@@ -1114,7 +1117,7 @@ static int ahash_digest(struct ahash_request *req)
 	desc = edesc->hw_desc;
 	init_job_desc_shared(desc, ptr, sh_len, HDR_SHARE_DEFER | HDR_REVERSE);
 
-	if (src_nents) {
+	if (src_nents > 1) {
 		sg_to_sec4_sg_last(req->src, src_nents, edesc->sec4_sg, 0);
 		edesc->sec4_sg_dma = dma_map_single(jrdev, edesc->sec4_sg,
 					    sec4_sg_bytes, DMA_TO_DEVICE);
@@ -1242,7 +1245,7 @@ static int ahash_update_no_ctx(struct ahash_request *req)
 
 	if (to_hash) {
 		src_nents = sg_nents_for_len(req->src,
-					     req->nbytes - (*next_buflen));
+					     req->nbytes - *next_buflen);
 		if (src_nents < 0) {
 			dev_err(jrdev, "Invalid number of src SG.\n");
 			return src_nents;
@@ -1446,13 +1449,18 @@ static int ahash_update_first(struct ahash_request *req)
 	to_hash = req->nbytes - *next_buflen;
 
 	if (to_hash) {
-		src_nents = sg_count(req->src, req->nbytes - (*next_buflen));
+		src_nents = sg_nents_for_len(req->src,
+					     req->nbytes - *next_buflen);
 		if (src_nents < 0) {
 			dev_err(jrdev, "Invalid number of src SG.\n");
 			return src_nents;
 		}
-		dma_map_sg(jrdev, req->src, src_nents ? : 1, DMA_TO_DEVICE);
-		sec4_sg_bytes = src_nents * sizeof(struct sec4_sg_entry);
+		dma_map_sg(jrdev, req->src, src_nents, DMA_TO_DEVICE);
+		if (src_nents > 1)
+			sec4_sg_bytes = src_nents *
+					sizeof(struct sec4_sg_entry);
+		else
+			sec4_sg_bytes = 0;
 
 		/*
 		 * allocate space for base edesc and hw desc commands,
@@ -1472,7 +1480,7 @@ static int ahash_update_first(struct ahash_request *req)
 				 DESC_JOB_IO_LEN;
 		edesc->dst_dma = 0;
 
-		if (src_nents) {
+		if (src_nents > 1) {
 			sg_to_sec4_sg_last(req->src, src_nents,
 					   edesc->sec4_sg, 0);
 			edesc->sec4_sg_dma = dma_map_single(jrdev,
