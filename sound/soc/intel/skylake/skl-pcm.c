@@ -1173,6 +1173,32 @@ static int skl_pcm_new(struct snd_soc_pcm_runtime *rtd)
 	return retval;
 }
 
+static int skl_populate_modules(struct skl *skl)
+{
+	struct skl_pipeline *p;
+	struct skl_pipe_module *m;
+	struct snd_soc_dapm_widget *w;
+	struct skl_module_cfg *mconfig;
+	int ret;
+
+	list_for_each_entry(p, &skl->ppl_list, node) {
+		list_for_each_entry(m, &p->pipe->w_list, node) {
+
+			w = m->w;
+			mconfig = w->priv;
+
+			ret = snd_skl_get_module_info(skl->skl_sst, mconfig);
+			if (ret < 0) {
+				dev_err(skl->skl_sst->dev,
+					"query module info failed:%d\n", ret);
+				goto err;
+			}
+		}
+	}
+err:
+	return ret;
+}
+
 static int skl_platform_soc_probe(struct snd_soc_platform *platform)
 {
 	struct hdac_ext_bus *ebus = dev_get_drvdata(platform->dev);
@@ -1206,6 +1232,7 @@ static int skl_platform_soc_probe(struct snd_soc_platform *platform)
 			return ret;
 		}
 		skl_dsp_enable_notification(skl->skl_sst, false);
+		skl_populate_modules(skl);
 	}
 	pm_runtime_mark_last_busy(platform->dev);
 	pm_runtime_put_autosuspend(platform->dev);
