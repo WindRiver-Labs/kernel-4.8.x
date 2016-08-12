@@ -162,7 +162,7 @@ static struct device_attribute rpmsg_dev_attrs[] = {
 
 /* rpmsg devices and drivers are matched using the service name */
 static inline int rpmsg_id_match(const struct rpmsg_channel *rpdev,
-				  const struct rpmsg_device_id *id)
+				 const struct rpmsg_device_id *id)
 {
 	return strncmp(id->name, rpdev->id.name, RPMSG_NAME_SIZE) == 0;
 }
@@ -234,8 +234,9 @@ static void __ept_release(struct kref *kref)
 
 /* for more info, see below documentation of rpmsg_create_ept() */
 static struct rpmsg_endpoint *__rpmsg_create_ept(struct virtproc_info *vrp,
-		struct rpmsg_channel *rpdev, rpmsg_rx_cb_t cb,
-		void *priv, u32 addr)
+						 struct rpmsg_channel *rpdev,
+						 rpmsg_rx_cb_t cb,
+						 void *priv, u32 addr)
 {
 	int id_min, id_max, id;
 	struct rpmsg_endpoint *ept;
@@ -322,7 +323,7 @@ free_ept:
  * Returns a pointer to the endpoint on success, or NULL on error.
  */
 struct rpmsg_endpoint *rpmsg_create_ept(struct rpmsg_channel *rpdev,
-				rpmsg_rx_cb_t cb, void *priv, u32 addr)
+					rpmsg_rx_cb_t cb, void *priv, u32 addr)
 {
 	return __rpmsg_create_ept(rpdev->vrp, rpdev, cb, priv, addr);
 }
@@ -402,7 +403,7 @@ static int rpmsg_dev_probe(struct device *dev)
 
 	/* need to tell remote processor's name service about this channel ? */
 	if (rpdev->announce &&
-			virtio_has_feature(vrp->vdev, VIRTIO_RPMSG_F_NS)) {
+	    virtio_has_feature(vrp->vdev, VIRTIO_RPMSG_F_NS)) {
 		struct rpmsg_ns_msg nsm;
 
 		strncpy(nsm.name, rpdev->id.name, RPMSG_NAME_SIZE);
@@ -427,7 +428,7 @@ static int rpmsg_dev_remove(struct device *dev)
 
 	/* tell remote processor's name service we're removing this channel */
 	if (rpdev->announce &&
-			virtio_has_feature(vrp->vdev, VIRTIO_RPMSG_F_NS)) {
+	    virtio_has_feature(vrp->vdev, VIRTIO_RPMSG_F_NS)) {
 		struct rpmsg_ns_msg nsm;
 
 		strncpy(nsm.name, rpdev->id.name, RPMSG_NAME_SIZE);
@@ -572,7 +573,7 @@ static struct rpmsg_channel *rpmsg_create_channel(struct virtproc_info *vrp,
  * and destroy it
  */
 static int rpmsg_destroy_channel(struct virtproc_info *vrp,
-					struct rpmsg_channel_info *chinfo)
+				 struct rpmsg_channel_info *chinfo)
 {
 	struct virtio_device *vdev = vrp->vdev;
 	struct device *dev;
@@ -703,7 +704,7 @@ static void rpmsg_downref_sleepers(struct virtproc_info *vrp)
  * Returns 0 on success and an appropriate error value on failure.
  */
 int rpmsg_send_offchannel_raw(struct rpmsg_channel *rpdev, u32 src, u32 dst,
-					void *data, int len, bool wait)
+			      void *data, int len, bool wait)
 {
 	struct virtproc_info *vrp = rpdev->vrp;
 	struct device *dev = &rpdev->dev;
@@ -769,11 +770,10 @@ int rpmsg_send_offchannel_raw(struct rpmsg_channel *rpdev, u32 src, u32 dst,
 	memcpy(msg->data, data, len);
 
 	dev_dbg(dev, "TX From 0x%x, To 0x%x, Len %d, Flags %d, Reserved %d\n",
-					msg->src, msg->dst, msg->len,
-					msg->flags, msg->reserved);
+		msg->src, msg->dst, msg->len, msg->flags, msg->reserved);
 #ifdef DEBUG
 	print_hex_dump(KERN_DEBUG, "rpmsg_virtio TX: ", DUMP_PREFIX_NONE, 16, 1,
-					msg, sizeof(*msg) + msg->len, true);
+		       msg, sizeof(*msg) + msg->len, true);
 #endif
 
 	rpmsg_sg_init(&sg, msg, sizeof(*msg) + len);
@@ -808,11 +808,10 @@ static int rpmsg_recv_single(struct virtproc_info *vrp, struct device *dev,
 	int err;
 
 	dev_dbg(dev, "From: 0x%x, To: 0x%x, Len: %d, Flags: %d, Reserved: %d\n",
-					msg->src, msg->dst, msg->len,
-					msg->flags, msg->reserved);
+		msg->src, msg->dst, msg->len, msg->flags, msg->reserved);
 #ifdef DEBUG
 	print_hex_dump(KERN_DEBUG, "rpmsg_virtio RX: ", DUMP_PREFIX_NONE, 16, 1,
-					msg, sizeof(*msg) + msg->len, true);
+		       msg, sizeof(*msg) + msg->len, true);
 #endif
 
 	/*
@@ -820,7 +819,7 @@ static int rpmsg_recv_single(struct virtproc_info *vrp, struct device *dev,
 	 * the reported payload length.
 	 */
 	if (len > RPMSG_BUF_SIZE ||
-		msg->len > (len - sizeof(struct rpmsg_hdr))) {
+	    msg->len > (len - sizeof(struct rpmsg_hdr))) {
 		dev_warn(dev, "inbound msg too big: (%d, %d)\n", len, msg->len);
 		return -EINVAL;
 	}
@@ -915,7 +914,7 @@ static void rpmsg_xmit_done(struct virtqueue *svq)
 
 /* invoked when a name service announcement arrives */
 static void rpmsg_ns_cb(struct rpmsg_channel *rpdev, void *data, int len,
-							void *priv, u32 src)
+			void *priv, u32 src)
 {
 	struct rpmsg_ns_msg *msg = data;
 	struct rpmsg_channel *newch;
@@ -925,8 +924,7 @@ static void rpmsg_ns_cb(struct rpmsg_channel *rpdev, void *data, int len,
 	int ret;
 
 	print_hex_dump(KERN_DEBUG, "NS announcement: ",
-			DUMP_PREFIX_NONE, 16, 1,
-			data, len, true);
+		       DUMP_PREFIX_NONE, 16, 1, data, len, true);
 
 	if (len != sizeof(*msg)) {
 		dev_err(dev, "malformed ns msg (%d)\n", len);
@@ -948,8 +946,8 @@ static void rpmsg_ns_cb(struct rpmsg_channel *rpdev, void *data, int len,
 	msg->name[RPMSG_NAME_SIZE - 1] = '\0';
 
 	dev_info(dev, "%sing channel %s addr 0x%x\n",
-			msg->flags & RPMSG_NS_DESTROY ? "destroy" : "creat",
-			msg->name, msg->addr);
+		 msg->flags & RPMSG_NS_DESTROY ? "destroy" : "creat",
+		 msg->name, msg->addr);
 
 	strncpy(chinfo.name, msg->name, sizeof(chinfo.name));
 	chinfo.src = RPMSG_ADDR_ANY;
@@ -1034,7 +1032,7 @@ static int rpmsg_probe(struct virtio_device *vdev)
 		rpmsg_sg_init(&sg, cpu_addr, RPMSG_BUF_SIZE);
 
 		err = virtqueue_add_inbuf(vrp->rvq, &sg, 1, cpu_addr,
-								GFP_KERNEL);
+					  GFP_KERNEL);
 		WARN_ON(err); /* sanity check; this can't really happen */
 	}
 
