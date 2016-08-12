@@ -258,3 +258,12 @@ Simple KMS Helper Reference
 
 .. kernel-doc:: drivers/gpu/drm/drm_simple_kms_helper.c
    :doc: overview
+
+Auxiliary Modeset Helpers
+=========================
+
+.. kernel-doc:: drivers/gpu/drm/drm_modeset_helper.c
+   :doc: aux kms helpers
+
+.. kernel-doc:: drivers/gpu/drm/drm_modeset_helper.c
+   :export:
