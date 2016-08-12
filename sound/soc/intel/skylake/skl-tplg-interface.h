@@ -228,4 +228,14 @@ struct skl_dfw_algo_data {
 	char params[0];
 } __packed;
 
+enum skl_tkn_dir {
+	SKL_DIR_IN,
+	SKL_DIR_OUT
+};
+
+enum skl_tuple_type {
+	SKL_TYPE_TUPLE,
+	SKL_TYPE_DATA
+};
+
 #endif
