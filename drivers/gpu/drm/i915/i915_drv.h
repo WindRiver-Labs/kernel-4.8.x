@@ -786,6 +786,7 @@ struct drm_i915_error_state {
 
 		struct drm_i915_error_request {
 			long jiffies;
+			pid_t pid;
 			u32 seqno;
 			u32 head;
 			u32 tail;
@@ -884,6 +885,7 @@ struct i915_gem_context {
 	struct drm_i915_private *i915;
 	struct drm_i915_file_private *file_priv;
 	struct i915_hw_ppgtt *ppgtt;
+	struct pid *pid;
 
 	struct i915_ctx_hang_stats hang_stats;
 
