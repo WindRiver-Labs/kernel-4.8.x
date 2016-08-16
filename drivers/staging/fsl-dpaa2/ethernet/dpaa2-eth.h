@@ -100,8 +100,8 @@
 	SKB_DATA_ALIGN(sizeof(struct skb_shared_info)) + \
 	DPAA2_ETH_RX_BUF_ALIGN)
 
-/* PTP nominal frequency 1MHz */
-#define DPAA2_PTP_NOMINAL_FREQ_PERIOD_NS 1000
+/* PTP nominal frequency 1GHz */
+#define DPAA2_PTP_NOMINAL_FREQ_PERIOD_NS 1
 
 /* We are accommodating a skb backpointer and some S/G info
  * in the frame's software annotation. The hardware
