@@ -172,6 +172,13 @@ static void dw_pcie_prog_outbound_atu(struct pcie_port *pp, int index,
 	dw_pcie_readl_rc(pp, PCIE_ATU_CR2, &val);
 }
 
+void dw_pcie_disable_outbound_atu(struct pcie_port *pp, int index)
+{
+	dw_pcie_writel_rc(pp, PCIE_ATU_REGION_OUTBOUND | index,
+			  PCIE_ATU_VIEWPORT);
+	dw_pcie_writel_rc(pp, 0, PCIE_ATU_CR2);
+}
+
 static struct irq_chip dw_msi_irq_chip = {
 	.name = "PCI-MSI",
 	.irq_enable = pci_msi_unmask_irq,
