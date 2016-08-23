@@ -785,6 +785,7 @@ struct amd_ir_data {
 	union irte irte_entry;
 	struct msi_msg msi_entry;
 	void *entry;    /* Pointer to union irte or struct irte_ga */
+	void *ref;      /* Pointer to the actual irte */
 };
 
 struct amd_irte_ops {
