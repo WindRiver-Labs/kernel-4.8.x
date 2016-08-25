@@ -255,6 +255,9 @@
 #define TTBCR2_SEP_SHIFT		15
 #define TTBCR2_SEP_UPSTREAM		(0x7 << TTBCR2_SEP_SHIFT)
 
+#define TTBCR2_AS_SHIFT			4
+#define TTBCR2_AS_ENABLE		(1 << TTBCR2_AS_SHIFT)
+
 #define TTBRn_ASID_SHIFT		48
 
 #define FSR_MULTI			(1 << 31)
@@ -814,6 +817,7 @@ static void arm_smmu_init_context_bank(struct arm_smmu_domain *smmu_domain,
 		if (smmu->version > ARM_SMMU_V1) {
 			reg = pgtbl_cfg->arm_lpae_s1_cfg.tcr >> 32;
 			reg |= TTBCR2_SEP_UPSTREAM;
+			reg |= TTBCR2_AS_ENABLE;
 			writel_relaxed(reg, cb_base + ARM_SMMU_CB_TTBCR2);
 		}
 	} else {
