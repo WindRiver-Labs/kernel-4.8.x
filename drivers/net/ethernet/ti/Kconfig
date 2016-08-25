@@ -147,6 +147,15 @@ config TI_KEYSTONE_NETCP_QOS
 	  To compile this driver as a module, choose M here: the module
 	  will be called netcp_qos.
 
+config TI_KEYSTONE_NETCP_SA
+	tristate "TI Keystone inflow Security Accelerator mode Support"
+	depends on TI_KEYSTONE_NETCP
+	default TI_KEYSTONE_NETCP
+	---help---
+
+	  This driver supports TI Keystone inflow Security Accelerator
+          mode.
+
 config TLAN
 	tristate "TI ThunderLAN support"
 	depends on (PCI || EISA)
