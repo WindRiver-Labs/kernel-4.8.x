@@ -575,7 +575,7 @@ xgbe_serdes: phy@231e000 {
 	#size-cells	= <0>;
 
 	xserdes_lane0: lane@0 {
-		status		= "ok";
+		status		= "disabled";
 		/*loopback;*/
 		#phy-cells	= <0>;
 		reg		= <0>;
@@ -585,7 +585,7 @@ xgbe_serdes: phy@231e000 {
 		tx-coeff	= <2 0 0 12 4>; /* c1 c2 cm att vreg */
 	};
 	xserdes_lane1: lane@1 {
-		status		= "ok";
+		status		= "disabled";
 		/*loopback;*/
 		#phy-cells	= <0>;
 		reg		= <1>;
