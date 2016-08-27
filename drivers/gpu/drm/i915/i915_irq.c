@@ -3323,6 +3323,7 @@ static void i915_hangcheck_elapsed(struct work_struct *work)
 
 	if (hung) {
 		char msg[80];
+		unsigned int tmp;
 		int len;
 
 		/* If some rings hung but others were still busy, only
@@ -3332,7 +3333,7 @@ static void i915_hangcheck_elapsed(struct work_struct *work)
 			hung &= ~stuck;
 		len = scnprintf(msg, sizeof(msg),
 				"%s on ", stuck == hung ? "No progress" : "Hang");
-		for_each_engine_masked(engine, dev_priv, hung)
+		for_each_engine_masked(engine, dev_priv, hung, tmp)
 			len += scnprintf(msg + len, sizeof(msg) - len,
 					 "%s, ", engine->name);
 		msg[len-2] = '\0';
