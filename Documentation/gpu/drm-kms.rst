@@ -20,6 +20,14 @@ be setup by initializing the following fields.
 
 Display Modes Function Reference
 --------------------------------
+Modeset Base Object Abstraction
+===============================
+
+.. kernel-doc:: include/drm/drm_mode_object.h
+   :internal:
+
+.. kernel-doc:: drivers/gpu/drm/drm_mode_object.c
+   :export:
 
 .. kernel-doc:: include/drm/drm_modes.h
    :internal:
