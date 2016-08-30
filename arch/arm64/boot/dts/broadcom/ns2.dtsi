@@ -732,20 +732,19 @@
 		};
 
 		qspi: spi@66470200 {
-			compatible = "brcm,spi-bcm-qspi", "brcm,spi-ns2-qspi";
-			reg = <0x66470200 0x184>,
-				<0x66470000 0x124>,
-				<0x67017408 0x004>,
-				<0x664703a0 0x01c>;
-			reg-names = "mspi", "bspi", "intr_regs",
-				"intr_status_reg";
-			interrupts = <GIC_SPI 419 IRQ_TYPE_LEVEL_HIGH>;
-			interrupt-names = "spi_l1_intr";
+			#address-cells = <1>;
+			#size-cells = <1>;
+			compatible = "brcm,qspi_iproc";
+			reg = mspi_hw:<0x66470200 0x187>,
+				bspi_hw:<0x66470000 0x04f>,
+				bspi_hw_raf:<0x66470100 0x023>,
+				qspi_intr:<0x664703a0 0x01b>,
+				idm_qspi:<0x67017408 0x003>,
+				cru_hw:<0x660E0000 0x003>;
+			interrupts = <GIC_SPI 419 IRQ_TYPE_LEVEL_HIGH>,
+					<GIC_SPI 419 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&iprocmed>;
 			clock-names = "iprocmed";
-			num-cs = <2>;
-			#address-cells = <1>;
-			#size-cells = <0>;
 		};
 
 		usb3_rst_ctrl: syscon@67000800 {
