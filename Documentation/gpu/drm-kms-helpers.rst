@@ -110,6 +110,12 @@ Framebuffer CMA Helper Functions Reference
 .. kernel-doc:: drivers/gpu/drm/drm_fb_cma_helper.c
    :export:
 
+Bridge Helper Reference
+-------------------------
+
+.. kernel-doc:: include/drm/drm_bridge.h
+   :internal:
+
 Display Port Helper Functions Reference
 =======================================
 
