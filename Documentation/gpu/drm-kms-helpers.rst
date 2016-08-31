@@ -167,6 +167,9 @@ MIPI DSI Helper Functions Reference
 EDID Helper Functions Reference
 ===============================
 
+.. kernel-doc:: include/drm/drm_edid.h
+   :internal:
+
 .. kernel-doc:: drivers/gpu/drm/drm_edid.c
    :export:
 
