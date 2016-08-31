@@ -42,6 +42,7 @@
 #include <drm/drm_connector.h>
 #include <drm/drm_encoder.h>
 #include <drm/drm_property.h>
+#include <drm/drm_bridge.h>
 #include <drm/drm_plane.h>
 #include <drm/drm_blend.h>
 #include <drm/drm_color_mgmt.h>
@@ -1461,23 +1462,5 @@ void drm_edid_get_monitor_name(struct edid *edid, char *name,
 struct drm_display_mode *drm_mode_find_dmt(struct drm_device *dev,
 					   int hsize, int vsize, int fresh,
 					   bool rb);
-
-/* drm_bridge.c */
-extern int drm_bridge_add(struct drm_bridge *bridge);
-extern void drm_bridge_remove(struct drm_bridge *bridge);
-extern struct drm_bridge *of_drm_find_bridge(struct device_node *np);
-extern int drm_bridge_attach(struct drm_device *dev, struct drm_bridge *bridge);
-extern void drm_bridge_detach(struct drm_bridge *bridge);
-
-bool drm_bridge_mode_fixup(struct drm_bridge *bridge,
-			const struct drm_display_mode *mode,
-			struct drm_display_mode *adjusted_mode);
-void drm_bridge_disable(struct drm_bridge *bridge);
-void drm_bridge_post_disable(struct drm_bridge *bridge);
-void drm_bridge_mode_set(struct drm_bridge *bridge,
-			struct drm_display_mode *mode,
-			struct drm_display_mode *adjusted_mode);
-void drm_bridge_pre_enable(struct drm_bridge *bridge);
-void drm_bridge_enable(struct drm_bridge *bridge);
 
 #endif /* __DRM_CRTC_H__ */
