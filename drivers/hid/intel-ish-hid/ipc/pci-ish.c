@@ -147,6 +147,8 @@ static int ish_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
 
 	dev->pdev = pdev;
 
+	pdev->dev_flags |= PCI_DEV_FLAGS_NO_D3;
+
 	/* request and enable interrupt */
 	ret = request_irq(pdev->irq, ish_irq_handler, IRQF_NO_SUSPEND,
 			  KBUILD_MODNAME, dev);
