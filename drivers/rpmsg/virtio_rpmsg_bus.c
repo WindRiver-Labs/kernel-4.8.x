@@ -308,9 +308,17 @@ struct rpmsg_endpoint *rpmsg_create_ept(struct rpmsg_device *rpdev,
 					rpmsg_rx_cb_t cb, void *priv,
 					struct rpmsg_channel_info chinfo)
 {
-	return __rpmsg_create_ept(rpdev->vrp, rpdev, cb, priv, chinfo.src);
+	return rpdev->ops->create_ept(rpdev, cb, priv, chinfo);
 }
 EXPORT_SYMBOL(rpmsg_create_ept);
+
+static struct rpmsg_endpoint *virtio_rpmsg_create_ept(struct rpmsg_device *rpdev,
+						      rpmsg_rx_cb_t cb,
+						      void *priv,
+						      struct rpmsg_channel_info chinfo)
+{
+	return __rpmsg_create_ept(rpdev->vrp, rpdev, cb, priv, chinfo.src);
+}
 
 /**
  * __rpmsg_destroy_ept() - destroy an existing rpmsg endpoint
@@ -363,7 +371,6 @@ static int rpmsg_dev_probe(struct device *dev)
 {
 	struct rpmsg_device *rpdev = to_rpmsg_device(dev);
 	struct rpmsg_driver *rpdrv = to_rpmsg_driver(rpdev->dev.driver);
-	struct virtproc_info *vrp = rpdev->vrp;
 	struct rpmsg_channel_info chinfo = {};
 	struct rpmsg_endpoint *ept;
 	int err;
@@ -389,6 +396,18 @@ static int rpmsg_dev_probe(struct device *dev)
 		goto out;
 	}
 
+	if (rpdev->ops->announce_create)
+		err = rpdev->ops->announce_create(rpdev);
+out:
+	return err;
+}
+
+static int virtio_rpmsg_announce_create(struct rpmsg_device *rpdev)
+{
+	struct virtproc_info *vrp = rpdev->vrp;
+	struct device *dev = &rpdev->dev;
+	int err = 0;
+
 	/* need to tell remote processor's name service about this channel ? */
 	if (rpdev->announce &&
 	    virtio_has_feature(vrp->vdev, VIRTIO_RPMSG_F_NS)) {
@@ -403,15 +422,13 @@ static int rpmsg_dev_probe(struct device *dev)
 			dev_err(dev, "failed to announce service %d\n", err);
 	}
 
-out:
 	return err;
 }
 
-static int rpmsg_dev_remove(struct device *dev)
+static int virtio_rpmsg_announce_destroy(struct rpmsg_device *rpdev)
 {
-	struct rpmsg_device *rpdev = to_rpmsg_device(dev);
-	struct rpmsg_driver *rpdrv = to_rpmsg_driver(rpdev->dev.driver);
 	struct virtproc_info *vrp = rpdev->vrp;
+	struct device *dev = &rpdev->dev;
 	int err = 0;
 
 	/* tell remote processor's name service we're removing this channel */
@@ -427,6 +444,18 @@ static int rpmsg_dev_remove(struct device *dev)
 		if (err)
 			dev_err(dev, "failed to announce service %d\n", err);
 	}
+
+	return err;
+}
+
+static int rpmsg_dev_remove(struct device *dev)
+{
+	struct rpmsg_device *rpdev = to_rpmsg_device(dev);
+	struct rpmsg_driver *rpdrv = to_rpmsg_driver(rpdev->dev.driver);
+	int err = 0;
+
+	if (rpdev->ops->announce_destroy)
+		err = rpdev->ops->announce_destroy(rpdev);
 
 	rpdrv->remove(rpdev);
 
@@ -501,6 +530,12 @@ static int rpmsg_device_match(struct device *dev, void *data)
 	return 1;
 }
 
+static const struct rpmsg_device_ops virtio_rpmsg_ops = {
+	.create_ept = virtio_rpmsg_create_ept,
+	.announce_create = virtio_rpmsg_announce_create,
+	.announce_destroy = virtio_rpmsg_announce_destroy,
+};
+
 /*
  * create an rpmsg channel using its name and address info.
  * this function will be used to create both static and dynamic
@@ -530,6 +565,7 @@ static struct rpmsg_device *rpmsg_create_channel(struct virtproc_info *vrp,
 	rpdev->vrp = vrp;
 	rpdev->src = chinfo->src;
 	rpdev->dst = chinfo->dst;
+	rpdev->ops = &virtio_rpmsg_ops;
 
 	/*
 	 * rpmsg server channels has predefined local address (for now),
