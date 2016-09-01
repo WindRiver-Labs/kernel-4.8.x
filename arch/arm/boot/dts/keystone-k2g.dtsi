@@ -893,11 +893,19 @@
 			link-rate-kbps = <5000000>;
 			num-lanes = <1>;
 			status = "disabled";
+			#address-cells  = <1>;
+			#size-cells     = <0>;
 
 			power-domains = <&k2g_pds K2G_DEV_PCIE0>;
 			clocks = <&k2g_clks
 					K2G_DEV_PCIE0 K2G_DEV_PCIE_VBUS_CLK>;
 			clock-names = "fck";
+
+			pciserdes0_lane0: lane@0 {
+				status		= "ok";
+				#phy-cells	= <0>;
+				reg		= <0>;
+			};
 		};
 
 		pcie0: pcie@21800000 {
