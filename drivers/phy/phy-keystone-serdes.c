@@ -2474,21 +2474,37 @@ static int kserdes_probe(struct platform_device *pdev)
 	if (!sd)
 		return -ENOMEM;
 
+	pm_runtime_enable(dev);
+	ret = pm_runtime_get_sync(dev);
+	if (ret < 0) {
+		dev_err(dev, "pm_runtime_get_sync failed\n");
+		goto err_get_sync;
+	}
+
 	sd->dev = dev;
 	dev_set_drvdata(dev, sd);
 
 	ret = kserdes_of_parse(pdev, sd, np);
 	if (ret)
-		return ret;
+		goto err_of_parse;
 
 	phy_provider = devm_of_phy_provider_register(sd->dev, kserdes_xlate);
-	if (IS_ERR(phy_provider))
-		return PTR_ERR_OR_ZERO(phy_provider);
+	if (IS_ERR(phy_provider)) {
+		ret =  PTR_ERR_OR_ZERO(phy_provider);
+		goto err_of_parse;
+	}
 
 	kserdes_provider_init(sd);
 
 	dev_vdbg(&pdev->dev, "probed");
 	return 0;
+
+err_of_parse:
+	pm_runtime_put(dev);
+
+err_get_sync:
+	pm_runtime_disable(dev);
+	return ret;
 }
 
 static struct platform_driver kserdes_driver = {
