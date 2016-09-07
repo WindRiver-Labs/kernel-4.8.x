@@ -37,5 +37,6 @@ void gic_enable_quirks(u32 iidr, const struct gic_quirk *quirks,
 		void *data);
 
 void gic_set_kvm_info(const struct gic_kvm_info *info);
+void cavium_smmu_tlb_sync(void *iommu);
 
 #endif /* _IRQ_GIC_COMMON_H */
