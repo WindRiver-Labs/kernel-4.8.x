@@ -457,12 +457,14 @@
 					usb3_phy0: usb3_phy@0 {
 						reg = <0>;
 						#phy-cells = <0>;
+						hist-syscon = <&usb3_hst_ctrl0>;
 						status = "disabled";
 					};
 
 					usb3_phy1: usb_phy@1 {
 						reg = <1>;
 						#phy-cells = <0>;
+						hist-syscon = <&usb3_hst_ctrl1>;
 						status = "disabled";
 					};
 				};
@@ -635,22 +637,33 @@
 		
 		xhci0: usb@66300000 {
 			compatible = "generic-xhci";
-			reg = <0x66300000 0x1000>;
+			reg = <0x66300000 0xcf0>;
 			interrupts = <GIC_SPI 429 IRQ_TYPE_LEVEL_HIGH>;
 			phys = <&usb3_phy0>;
 			phy-names = "usb3-phy";
 			status = "disabled";
 		};
 
+		/* These are Broadcom extensions to xhci register set */
+		usb3_hst_ctrl0: syscon@66300e00 {
+			compatible = "brcm,ns2-xhci0-histogram", "syscon";
+			reg = <0x66300e00 0x1ac>;
+		};
+
 		xhci1: usb@66310000 {
 			compatible = "generic-xhci";
-			reg = <0x66310000 0x1000>;
+			reg = <0x66310000 0xcf0>;
 			interrupts = <GIC_SPI 433 IRQ_TYPE_LEVEL_HIGH>;
 			phys = <&usb3_phy1>;
 			phy-names = "usb3-phy";
 			status = "disabled";
 		};
 
+		/* These are Broadcom extensions to xhci register set */
+		usb3_hst_ctrl1: syscon@66310e00 {
+			compatible = "brcm,ns2-xhci1-histogram", "syscon";
+			reg = <0x66310e00 0x1ac>;
+		};
 
 		sata_phy: sata_phy@663f0100 {
 			compatible = "brcm,iproc-ns2-sata-phy";
@@ -775,9 +788,9 @@
 			status = "disabled";
 		};
 
-		usb3_rst_ctrl: syscon@67000800 {
+		usb3_rst_ctrl: syscon@67000408 {
 			compatible = "brcm,ns2-usb3-rst-ctrl", "syscon";
-			reg = <0x67000800 0x1808>;
+			reg = <0x67000408 0x1808>;
 		};
 	};
 };
