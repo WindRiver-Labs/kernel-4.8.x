@@ -108,6 +108,7 @@ struct its_device {
 	struct its_node		*its;
 	struct event_lpi_map	event_map;
 	void			*itt;
+	struct device		*dev;
 	u32			nr_ites;
 	u32			device_id;
 };
@@ -657,10 +658,28 @@ static void its_irq_compose_msi_msg(struct irq_data *d, struct msi_msg *msg)
 	msg->data		= its_get_event_id(d);
 }
 
+/**
+ *  * Due to ASID space collision in Cavium SMMU,
+ *   * we need to make sure SMMU is in sync with ITS translations.
+ *    **/
+static void its_ack_irq(struct irq_data *d)
+{
+	struct its_device *its_dev = irq_data_get_irq_chip_data(d);
+	struct pci_dev *pdev;
+
+	if (!dev_is_pci(its_dev->dev))
+		return;
+
+	pdev = to_pci_dev(its_dev->dev);
+	if (pdev->vendor != 0x177d)
+		cavium_smmu_tlb_sync(its_dev->dev);
+}
+
 static struct irq_chip its_irq_chip = {
 	.name			= "ITS",
 	.irq_mask		= its_mask_irq,
 	.irq_unmask		= its_unmask_irq,
+	.irq_ack		= its_ack_irq,
 	.irq_eoi		= irq_chip_eoi_parent,
 	.irq_set_affinity	= its_set_affinity,
 	.irq_compose_msi_msg	= its_irq_compose_msi_msg,
@@ -1414,6 +1433,8 @@ static int its_msi_prepare(struct irq_domain *domain, struct device *dev,
 	its_dev = its_create_device(its, dev_id, nvec);
 	if (!its_dev)
 		return -ENOMEM;
+
+	its_dev->dev =dev;
 
 	pr_debug("ITT %d entries, %d bits\n", nvec, ilog2(nvec));
 out:

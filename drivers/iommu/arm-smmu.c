@@ -614,6 +614,19 @@ static void arm_smmu_tlb_sync(void *cookie)
 	__arm_smmu_tlb_sync(smmu_domain->smmu);
 }
 
+void cavium_smmu_tlb_sync(struct device *dev)
+{
+	struct arm_smmu_device *smmu;
+	struct arm_smmu_master_cfg *cfg;
+
+	smmu = find_smmu_for_device(dev);
+	if (!smmu)
+		return;
+
+	__arm_smmu_tlb_sync(smmu);
+}
+EXPORT_SYMBOL(cavium_smmu_tlb_sync);
+
 static void arm_smmu_tlb_inv_context(void *cookie)
 {
 	struct arm_smmu_domain *smmu_domain = cookie;
