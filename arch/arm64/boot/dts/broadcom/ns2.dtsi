@@ -747,6 +747,34 @@
 			clock-names = "iprocmed";
 		};
 
+		ehci0: usb@66480000 {
+			compatible = "generic-ehci";
+			reg = <0x66480000 0x100>;
+			interrupts = <GIC_SPI 425 IRQ_TYPE_LEVEL_HIGH>;
+			status = "disabled";
+		};
+
+		ohci0: usb@66480800 {
+			compatible = "generic-ohci";
+			reg = <0x66480800 0x100>;
+			interrupts = <GIC_SPI 425 IRQ_TYPE_LEVEL_HIGH>;
+			status = "disabled";
+		};
+
+		ehci1: usb@664a0000 {
+			compatible = "generic-ehci";
+			reg = <0x664a0000 0x100>;
+			interrupts = <GIC_SPI 426 IRQ_TYPE_LEVEL_HIGH>;
+			status = "disabled";
+		};
+
+		ohci1: usb@664a0800 {
+			compatible = "generic-ohci";
+			reg = <0x664a0800 0x100>;
+			interrupts = <GIC_SPI 426 IRQ_TYPE_LEVEL_HIGH>;
+			status = "disabled";
+		};
+
 		usb3_rst_ctrl: syscon@67000800 {
 			compatible = "brcm,ns2-usb3-rst-ctrl", "syscon";
 			reg = <0x67000800 0x1808>;

@@ -354,3 +354,19 @@
 &xhci1 {
 	status = "ok";
 };
+
+&ehci0 {
+	status = "ok";
+};
+
+&ehci1 {
+	status = "ok";
+};
+
+&ohci0 {
+	status = "ok";
+};
+
+&ohci1 {
+	status = "ok";
+};
