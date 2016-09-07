@@ -34,9 +34,14 @@
 
 #define NS2_USB3_PHY_MISC_STATUS_REG		0x10
 
-#define NS2_IDM_RST_CTRL_P0_OFFSET		0x0
-#define NS2_IDM_RST_CTRL_P1_OFFSET		0x1000
+#define NS2_IDM_RST_CTRL_P0_OFFSET		0x3f8
+#define NS2_IDM_RST_CTRL_P1_OFFSET		0x13f8
 #define NS2_IDM_RESET_CONTROL_BIT		BIT(0)
+
+#define NS2_IDM_IO_CTRL_P0_OFFSET		0x0
+#define NS2_IDM_IO_CTRL_P1_OFFSET		0x1000
+/* Bit 23 for PPC Polarity, Bit 24 for PPC NANDNOR select */
+#define NS2_IDM_IO_CTRL_PPC_CFG			(BIT(23) | BIT(24))
 
 #define NS2_PHY_RESET_BIT			BIT(5)
 #define NS2_PHY_PLL_RESET_BIT			BIT(6)
@@ -51,6 +56,14 @@
 #define NS2_USB3_MDIO_AFE30_RX_SIG_DETECT	0x5
 #define NS2_USB3_MDIO_AFE30_RX_SIG_DETECT_VAL	0xAC04
 
+/* USB3 Histogram Programming */
+#define NS2_USB3_IRAADR_OFFSET			0x198
+#define NS2_USB3_IRADAT_OFFSET			0x19c
+#define USB3_HISTOGRAM_OFFSET_VAL		0xA200
+#define USB3_BYPASS_VBUS_INPUTS			BIT(2)
+#define USB3_OVERRIDE_VBU_PRESENT		BIT(3)
+#define USB3_OVERRIDE_CURRENT_MASK		(~(BIT(4)))
+
 enum ns2_phy_block {
 	PHY_RESET,
 	PHY_PLL_RESET,
@@ -59,12 +72,15 @@ enum ns2_phy_block {
 	PHY_REF_CLOCK,
 	PHY_PLL_SEQ_START,
 	PHY_PLL_STATUS,
+	PHY_VBUS_PPC,
+	PHY_USB3_TUNE,
 };
 
 enum ns2_reg_base {
 	NS2_USB3_CTRL = 1,
 	NS2_USB3_PHY_CFG,
 	NS2_USB3_RST_CTRL,
+	NS2_USB3_HIST_CTRL,
 	NS2_USB3_REG_BASE_MAX
 };
 
@@ -172,6 +188,57 @@ static int iproc_ns2_phy_action(struct ns2_usb3_phy *iphy,
 			data |= NS2_IDM_RESET_CONTROL_BIT;
 		else
 			data &= ~NS2_IDM_RESET_CONTROL_BIT;
+
+		ret = regmap_write(addr, offset, data);
+		break;
+
+	case PHY_VBUS_PPC:
+		addr = iphy->reg_base[NS2_USB3_RST_CTRL];
+
+		switch (iphy->port_no) {
+		case 0:
+			offset = NS2_IDM_IO_CTRL_P0_OFFSET;
+		break;
+
+		case 1:
+			offset = NS2_IDM_IO_CTRL_P1_OFFSET;
+		break;
+
+		default:
+			return -EINVAL;
+		}
+
+		ret = regmap_read(addr, offset, &data);
+		if (ret != 0)
+			return ret;
+
+		if (assert)
+			data |= NS2_IDM_IO_CTRL_PPC_CFG;
+		else
+			data &= ~NS2_IDM_IO_CTRL_PPC_CFG;
+
+		ret = regmap_write(addr, offset, data);
+		break;
+
+	case PHY_USB3_TUNE:
+		addr = iphy->reg_base[NS2_USB3_HIST_CTRL];
+
+		offset = NS2_USB3_IRAADR_OFFSET;
+		ret = regmap_write(addr, offset, USB3_HISTOGRAM_OFFSET_VAL);
+		if (ret != 0)
+			return ret;
+
+		offset = NS2_USB3_IRADAT_OFFSET;
+		ret = regmap_read(addr, offset, &data);
+		if (ret != 0)
+			return ret;
+
+		/* bypass vbus inputs. AIUCTL0[2]=1 */
+		data |= USB3_BYPASS_VBUS_INPUTS;
+		/* override vbus present. AIUCTL[3]=1 */
+		data |= USB3_OVERRIDE_VBU_PRESENT;
+		/* override oca. AIUCTL[4]=0 */
+		data &= USB3_OVERRIDE_CURRENT_MASK;
 
 		ret = regmap_write(addr, offset, data);
 		break;
@@ -326,7 +393,16 @@ static int ns2_usb3_phy_init(struct phy *phy)
 	udelay(100);
 
 	rc = iproc_ns2_phy_action(iphy, PHY_PLL_STATUS, true);
+	if (rc)
+		goto out;
 
+	/* Configure USB3 histogram registers for PHY tuning */
+	rc = iproc_ns2_phy_action(iphy, PHY_USB3_TUNE, true);
+	if (rc)
+		goto out;
+
+	/* Set USB3H VBUS PPC Polarity and NandNor select */
+	rc = iproc_ns2_phy_action(iphy, PHY_VBUS_PPC, true);
 out:
 	mutex_unlock(&iphy->mphy->phy_mutex);
 
@@ -350,6 +426,7 @@ static int ns2_usb3_phy_probe(struct mdio_device *mdiodev)
 	if (!mphy)
 		return -ENOMEM;
 	mphy->mdiodev = mdiodev;
+	mutex_init(&mphy->phy_mutex);
 
 	cnt = 0;
 	for_each_available_child_of_node(dn, child) {
@@ -382,6 +459,11 @@ static int ns2_usb3_phy_probe(struct mdio_device *mdiodev)
 			return PTR_ERR(io);
 		iphy->reg_base[NS2_USB3_RST_CTRL] = io;
 
+		io = syscon_regmap_lookup_by_phandle(child, "hist-syscon");
+		if (IS_ERR(io))
+			return PTR_ERR(io);
+		iphy->reg_base[NS2_USB3_HIST_CTRL] = io;
+
 		iphy->phy = devm_phy_create(dev, child, &ns2_usb3_phy_ops);
 		if (IS_ERR(iphy->phy)) {
 			dev_err(dev, "failed to create PHY\n");
@@ -389,11 +471,11 @@ static int ns2_usb3_phy_probe(struct mdio_device *mdiodev)
 		}
 
 		phy_set_drvdata(iphy->phy, iphy);
+		ns2_usb3_phy_init(iphy->phy);
 		cnt++;
 	}
 
 	dev_set_drvdata(dev, mphy);
-	mutex_init(&mphy->phy_mutex);
 	provider = devm_of_phy_provider_register(dev, of_phy_simple_xlate);
 	if (IS_ERR(provider)) {
 		dev_err(dev, "could not register PHY provider\n");
