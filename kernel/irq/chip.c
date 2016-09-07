@@ -587,6 +587,10 @@ void handle_fasteoi_irq(struct irq_desc *desc)
 	}
 
 	kstat_incr_irqs_this_cpu(desc);
+
+	if  (chip->irq_ack)
+		chip->irq_ack(&desc->irq_data);
+
 	if (desc->istate & IRQS_ONESHOT)
 		mask_irq(desc);
 
