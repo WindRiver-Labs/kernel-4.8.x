@@ -45,6 +45,7 @@ obj-$(CONFIG_MDIO_SUN4I)	+= mdio-sun4i.o
 obj-$(CONFIG_MDIO_MOXART)	+= mdio-moxart.o
 obj-$(CONFIG_MDIO_BCM_UNIMAC)	+= mdio-bcm-unimac.o
 obj-$(CONFIG_XILINX_PHY)	+= xilinx_phy.o
+obj-$(CONFIG_XILINX_GMII2RGMII) += xilinx_gmii2rgmii.o
 obj-$(CONFIG_MICROCHIP_PHY)	+= microchip.o
 obj-$(CONFIG_MDIO_BCM_IPROC)	+= mdio-bcm-iproc.o
 obj-$(CONFIG_INTEL_XWAY_PHY)	+= intel-xway.o
