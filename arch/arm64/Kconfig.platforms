@@ -67,7 +67,6 @@ config ARCH_LAYERSCAPE
 	bool "ARMv8 based Freescale Layerscape SoC family"
 	select PCI_LAYERSCAPE if PCI
 	select LS2080A_ERRATA_ERR009971
-	select LS1_MSI if PCI_MSI
 	help
 	  This enables support for the Freescale Layerscape SoC family.
 
