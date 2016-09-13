@@ -594,6 +594,32 @@ xgbe_serdes: phy@231e000 {
 		rx-force	= <1 1>;
 		tx-coeff	= <2 0 0 12 4>; /* c1 c2 cm att vreg */
 	};
+
+	mcu-firmware {
+		status = "disabled";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		lane@0 {
+			status = "disabled";
+			reg = <0>;
+			rate = <0>; /* 0 = default, 1 = 1g, 2 = 10g */
+			autonegotiate;
+			/*tx_pause;*/
+			/*rx_pause;*/
+			10g_train;
+			/*fec;*/
+		};
+		lane@1 {
+			status = "disabled";
+			reg = <1>;
+			rate = <0>; /* 0 = default, 1 = 1g, 2 = 10g */
+			autonegotiate;
+			/*tx_pause;*/
+			/*rx_pause;*/
+			10g_train;
+			/*fec;*/
+		};
+	};
 };
 
 netcpx: netcp@2f00000 {
