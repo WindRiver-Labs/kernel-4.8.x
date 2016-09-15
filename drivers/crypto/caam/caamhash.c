@@ -1842,7 +1842,6 @@ static int caam_hash_cra_init(struct crypto_tfm *tfm)
 					 HASH_MSG_LEN + SHA256_DIGEST_SIZE,
 					 HASH_MSG_LEN + 64,
 					 HASH_MSG_LEN + SHA512_DIGEST_SIZE };
-	int ret = 0;
 
 	/*
 	 * Get a Job ring from Job Ring driver to ensure in-order
@@ -1862,10 +1861,7 @@ static int caam_hash_cra_init(struct crypto_tfm *tfm)
 
 	crypto_ahash_set_reqsize(__crypto_ahash_cast(tfm),
 				 sizeof(struct caam_hash_state));
-
-	ret = ahash_set_sh_desc(ahash);
-
-	return ret;
+	return ahash_set_sh_desc(ahash);
 }
 
 static void caam_hash_cra_exit(struct crypto_tfm *tfm)
