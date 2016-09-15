@@ -141,6 +141,8 @@
 #define	GBE_RXHOOK_ORDER			0
 #define GBE_DEFAULT_ALE_AGEOUT			30
 #define SLAVE_LINK_IS_XGMII(s) ((s)->link_interface >= XGMII_LINK_MAC_PHY)
+#define SLAVE_LINK_IS_XGMII_MAC_MAC(s) \
+	((s)->link_interface == XGMII_LINK_MAC_MAC_FORCED)
 #define SLAVE_LINK_IS_RGMII(s) \
 	(((s)->link_interface >= RGMII_LINK_MAC_PHY) && \
 	 ((s)->link_interface <= RGMII_LINK_MAC_PHY_NO_MDIO))
@@ -2017,6 +2019,12 @@ static void netcp_ethss_link_state_action(struct gbe_priv *gbe_dev,
 	}
 
 	if (slave->link_interface == XGMII_LINK_MAC_MAC_FORCED) {
+		/* start recover process only if there is a
+		 * serdes phy to recover
+		 */
+		if (!slave->serdes_phy)
+			return;
+
 		if (up) {
 			if (slave->link_recover_thresh ||
 			    slave->link_recovering) {
@@ -2081,7 +2089,7 @@ static void netcp_ethss_update_link_state(struct gbe_priv *gbe_dev,
 		} else
 			sw_link_state = netcp_sgmii_get_port_link(
 						SGMII_BASE(gbe_dev, sp), sp);
-	} else if (slave->link_interface == XGMII_LINK_MAC_MAC_FORCED) {
+	} else if (SLAVE_LINK_IS_XGMII_MAC_MAC(slave) && slave->serdes_phy) {
 		/* read status from pcsr status reg */
 		ret = regmap_read(gbe_dev->pcsr_regmap,
 				  XGBE10_PCSR_RX_STATUS(sp), &stat);
@@ -2099,14 +2107,10 @@ static void netcp_ethss_update_link_state(struct gbe_priv *gbe_dev,
 	if (atomic_xchg(&slave->link_state, link_state) != link_state) {
 		netcp_ethss_link_state_action(gbe_dev, ndev, slave,
 					      link_state);
-	} else {
-		if (slave->link_recover_thresh) {
-			if (++slave->link_recovering >=
-					slave->link_recover_thresh) {
-				schedule_delayed_work(&slave->link_recover_work,
-						      0);
-				slave->link_recovering = 1;
-			}
+	} else if (slave->serdes_phy && slave->link_recover_thresh) {
+		if (++slave->link_recovering >= slave->link_recover_thresh) {
+			schedule_delayed_work(&slave->link_recover_work, 0);
+			slave->link_recovering = 1;
 		}
 	}
 }
