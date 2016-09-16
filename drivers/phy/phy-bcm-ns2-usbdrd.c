@@ -54,8 +54,14 @@
 #define DRD_DEVICE_MODE		(BIT(4) | BIT(5))
 #define DRD_HOST_VAL		0x803
 #define DRD_DEV_VAL		0x807
+#define DRD_AFE_VAL		0xc0000001
+#define DRD_IOCTRL_VAL		0x3dee001
+#define STRAP_CTRL_VAL		0x7ff0001
 #define GPIO_DELAY		20
 #define PHY_WQ_DELAY		msecs_to_jiffies(500)
+
+#define VBUS_TO_GPIO_31         (BIT(17))
+#define USB_ID_TO_GPIO_30       (BIT(16))
 
 struct ns2_phy_data;
 struct ns2_phy_driver {
@@ -63,6 +69,8 @@ struct ns2_phy_driver {
 	void __iomem *idmdrd_rst_ctrl;
 	void __iomem *crmu_usb2_ctrl;
 	void __iomem *usb2h_strap_reg;
+	void __iomem *idmdrd_io_ctrl;
+	void __iomem *apbx_idm_io_ctrl;
 	spinlock_t lock; /* spin lock for phy driver */
 	bool host_mode;
 	struct ns2_phy_data *data;
@@ -431,18 +439,43 @@ static int ns2_drd_phy_probe(struct platform_device *pdev)
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 1);
 	driver->idmdrd_rst_ctrl = devm_ioremap_resource(dev, res);
-	if (IS_ERR(driver->icfgdrd_regs))
+	if (IS_ERR(driver->idmdrd_rst_ctrl))
 		return PTR_ERR(driver->idmdrd_rst_ctrl);
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 2);
 	driver->crmu_usb2_ctrl = devm_ioremap_resource(dev, res);
-	if (IS_ERR(driver->icfgdrd_regs))
+	if (IS_ERR(driver->crmu_usb2_ctrl))
 		return PTR_ERR(driver->crmu_usb2_ctrl);
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 3);
 	driver->usb2h_strap_reg = devm_ioremap_resource(dev, res);
-	if (IS_ERR(driver->icfgdrd_regs))
+	if (IS_ERR(driver->usb2h_strap_reg))
 		return PTR_ERR(driver->usb2h_strap_reg);
+
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 4);
+	driver->idmdrd_io_ctrl = devm_ioremap_resource(dev, res);
+	if (IS_ERR(driver->idmdrd_io_ctrl))
+		return PTR_ERR(driver->idmdrd_io_ctrl);
+
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 5);
+	driver->apbx_idm_io_ctrl = devm_ioremap_resource(dev, res);
+	if (IS_ERR(driver->apbx_idm_io_ctrl))
+		return PTR_ERR(driver->apbx_idm_io_ctrl);
+
+	/* Enable VBUS and ID Pins */
+	val = readl(driver->apbx_idm_io_ctrl);
+	val |= (VBUS_TO_GPIO_31 | USB_ID_TO_GPIO_30);
+	writel(val, driver->apbx_idm_io_ctrl);
+
+	/* Configure ICFG registers */
+	val = readl(driver->icfgdrd_regs + ICFG_STRAP_CTRL);
+	val |= STRAP_CTRL_VAL;
+	writel(val, driver->icfgdrd_regs + ICFG_STRAP_CTRL);
+
+	writel(DRD_AFE_VAL, driver->icfgdrd_regs + ICFG_DRD_AFE);
+
+	/* Configure IDM IO control register*/
+	writel(DRD_IOCTRL_VAL, driver->idmdrd_io_ctrl);
 
 	 /* create extcon */
 	driver->id_gpiod = devm_gpiod_get(&pdev->dev, "id", GPIOD_IN);
