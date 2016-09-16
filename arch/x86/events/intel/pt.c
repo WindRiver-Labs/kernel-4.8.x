@@ -389,6 +389,20 @@ static bool pt_event_valid(struct perf_event *event)
 			return false;
 	}
 
+	if (config & RTIT_CTL_PWR_EVT_EN &&
+	    !pt_cap_get(PT_CAP_power_event_trace))
+		return false;
+
+	if (config & RTIT_CTL_PTW) {
+		if (!pt_cap_get(PT_CAP_ptwrite))
+			return false;
+
+		/* FUPonPTW without PTW doesn't make sense */
+		if ((config & RTIT_CTL_FUP_ON_PTW) &&
+		    !(config & RTIT_CTL_PTW_EN))
+			return false;
+	}
+
 	return true;
 }
 
