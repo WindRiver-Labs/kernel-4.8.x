@@ -182,6 +182,37 @@
 	};
 };
 
+&pinctrl {
+	pinctrl-names = "default";
+	pinctrl-0 = <&nand_sel &uart0_sel &uart1_sel &uart2_sel &usb2_sel>;
+	nand_sel: nand_sel {
+		function = "nand";
+		groups = "nand_grp";
+	};
+
+	uart0_sel: uart0_sel {
+		function = "uart0";
+		groups = "uart0_rts_cts_grp", "uart0_in_out_grp",
+			 "uart0_modem_grp";
+	};
+
+	uart1_sel: uart1_sel {
+		function = "uart1";
+		groups = "uart1_dcd_dsr_grp", "uart1_ri_dtr_grp",
+			 "uart1_rts_cts_grp", "uart1_in_out_grp";
+	};
+
+	uart2_sel: uart2_sel {
+		function = "uart2";
+		groups = "uart2_rts_cts_grp";
+	};
+
+	usb2_sel: usb2_sel {
+		pins = "usb2_presence_indication";
+		bias-pull-up;
+	};
+};
+
 &sata_phy0 {
 	status = "ok";
 };
@@ -296,15 +327,6 @@
 	};
 };
 
-&pinctrl {
-	pinctrl-names = "default";
-	pinctrl-0 = <&nand_sel>;
-	nand_sel: nand_sel {
-		function = "nand";
-		groups = "nand_grp";
-	};
-};
-
 &qspi {
 	bspi-sel = <0>;
 	flash: m25p80@0 {
@@ -337,36 +359,4 @@
 			reg = <0x00700000 0x01900000>;
 		};
 	};
-};
-
-&usb3_phy0 {
-	status = "ok";
-};
-
-&usb3_phy1 {
-	status = "ok";
-};
-
-&xhci0 {
-	status = "ok";
-};
-
-&xhci1 {
-	status = "ok";
-};
-
-&ehci0 {
-	status = "ok";
-};
-
-&ehci1 {
-	status = "ok";
-};
-
-&ohci0 {
-	status = "ok";
-};
-
-&ohci1 {
-	status = "ok";
 };
