@@ -1704,7 +1704,7 @@ fail:
 }
 EXPORT_SYMBOL(drm_atomic_helper_prepare_planes);
 
-bool plane_crtc_active(struct drm_plane_state *state)
+static bool plane_crtc_active(const struct drm_plane_state *state)
 {
 	return state->crtc && state->crtc->state->active;
 }
