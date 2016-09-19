@@ -293,11 +293,6 @@ drm_fb_helper_remove_conflicting_framebuffers(struct apertures_struct *a,
 	return remove_conflicting_framebuffers(a, name, primary);
 }
 #else
-static inline int drm_fb_helper_modinit(void)
-{
-	return 0;
-}
-
 static inline void drm_fb_helper_prepare(struct drm_device *dev,
 					struct drm_fb_helper *helper,
 					const struct drm_fb_helper_funcs *funcs)
