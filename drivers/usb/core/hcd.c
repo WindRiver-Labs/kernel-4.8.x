@@ -96,6 +96,10 @@ EXPORT_SYMBOL_GPL (usb_bus_idr);
 /* used when allocating bus numbers */
 #define USB_MAXBUS		64
 
+/* Support polling for a single device's urbs */
+static struct usb_device *usb_poll_hcd_device;
+static LIST_HEAD(delayed_usb_complete_queue);
+
 /* used when updating list of hcds */
 DEFINE_MUTEX(usb_bus_idr_lock);	/* exported only for usbfs */
 EXPORT_SYMBOL_GPL (usb_bus_idr_lock);
@@ -1729,6 +1733,7 @@ int usb_hcd_unlink_urb (struct urb *urb, int status)
 }
 
 /*-------------------------------------------------------------------------*/
+static DEFINE_MUTEX(usb_poll_irq_flush_mutex);
 
 static void __usb_hcd_giveback_urb(struct urb *urb)
 {
@@ -1752,6 +1757,17 @@ static void __usb_hcd_giveback_urb(struct urb *urb)
 
 	/* pass ownership to the completion handler */
 	urb->status = status;
+	if (unlikely(usb_poll_hcd_device)) {
+		/*
+		 * Any other device than the one being polled should get
+		 * queued for a later flush.
+		 */
+		if (usb_poll_hcd_device != urb->dev) {
+			list_add_tail(&urb->urb_list,
+				&delayed_usb_complete_queue);
+			return;
+		}
+	}
 
 	/*
 	 * We disable local IRQs here avoid possible deadlock because
@@ -3033,6 +3049,66 @@ usb_hcd_platform_shutdown(struct platform_device *dev)
 		hcd->driver->shutdown(hcd);
 }
 EXPORT_SYMBOL_GPL(usb_hcd_platform_shutdown);
+
+/**
+ * usb_poll_irq - run HCD to call all urb->complete's for a usb device
+ * @udev: The usb device to poll
+ *
+ * The intent of this function is to run the completion handlers for
+ * any urbs for the specified usb device.  Any other devices will have
+ * the urb completions queued to be run at a later point.  Any user of
+ * this function needs call usb_poll_irq_schedule_flush() at a later
+ * point to schedule the processing of the queue.  This function MUST
+ * be called with the interrupts off.
+ */
+void usb_poll_irq(struct usb_device *udev)
+{
+	struct usb_hcd *hcd;
+
+	WARN_ON_ONCE(!irqs_disabled());
+	hcd = bus_to_hcd(udev->bus);
+	usb_poll_hcd_device = udev;
+	usb_hcd_irq(0, hcd);
+	usb_poll_hcd_device = NULL;
+}
+EXPORT_SYMBOL_GPL(usb_poll_irq);
+
+static void usb_poll_irq_flush_helper(struct work_struct *dummy)
+{
+	struct urb *urb;
+	struct urb *scratch;
+	unsigned long flags;
+
+	WARN_ON_ONCE(irqs_disabled());
+	mutex_lock(&usb_poll_irq_flush_mutex);
+	local_irq_save(flags);
+	list_for_each_entry_safe(urb, scratch, &delayed_usb_complete_queue,
+				 urb_list) {
+		list_del(&urb->urb_list);
+		urb->complete(urb);
+		atomic_dec(&urb->use_count);
+		if (unlikely(atomic_read(&urb->reject)))
+			wake_up(&usb_kill_urb_queue);
+		usb_put_urb(urb);
+	}
+	local_irq_restore(flags);
+	mutex_unlock(&usb_poll_irq_flush_mutex);
+}
+
+static DECLARE_WORK(usb_poll_irq_flush_work, usb_poll_irq_flush_helper);
+
+/**
+ * usb_poll_irq_sechedule_flush()
+ *
+ * For any function that invoked usb_poll_irq() this function needs to
+ * be called to schedule the draining of the urb completion queue in
+ * order to restore normal processing of the usb devices.
+ */
+void usb_poll_irq_schedule_flush(void)
+{
+	schedule_work(&usb_poll_irq_flush_work);
+}
+EXPORT_SYMBOL_GPL(usb_poll_irq_schedule_flush);
 
 /*-------------------------------------------------------------------------*/
 
