@@ -193,13 +193,37 @@ static int usb_console_setup(struct console *co, char *options)
 	return retval;
 }
 
+static void usb_do_console_write(struct usb_serial *serial,
+				 struct usb_serial_port *port,
+				 const char *buf, unsigned count)
+{
+	int retval;
+	int loops = 10000;
+try_again:
+	/* pass on to the driver specific version of this function if
+	   it is available */
+	if (serial->type->write)
+		retval = serial->type->write(NULL, port, buf, count);
+	else
+		retval = usb_serial_generic_write(NULL, port, buf, count);
+	if (retval < count && retval >= 0 && loops--) {
+		/* poll the hcd device because the queue is full */
+		count -= retval;
+		buf += retval;
+		udelay(1);
+		usb_poll_irq(serial->dev);
+		usb_poll_irq_schedule_flush();
+		goto try_again;
+	}
+	pr_debug("%s - return value : %d\n", __func__, retval);
+}
+
 static void usb_console_write(struct console *co,
 					const char *buf, unsigned count)
 {
 	static struct usbcons_info *info = &usbcons_info;
 	struct usb_serial_port *port = info->port;
 	struct usb_serial *serial;
-	int retval = -ENODEV;
 
 	if (!port || port->serial->dev->state == USB_STATE_NOTATTACHED)
 		return;
@@ -226,16 +250,11 @@ static void usb_console_write(struct console *co,
 				break;
 			}
 		}
-		/* pass on to the driver specific version of this function if
-		   it is available */
-		retval = serial->type->write(NULL, port, buf, i);
-		dev_dbg(&port->dev, "%s - write: %d\n", __func__, retval);
+		usb_do_console_write(serial, port, buf, i);
 		if (lf) {
 			/* append CR after LF */
 			unsigned char cr = 13;
-			retval = serial->type->write(NULL, port, &cr, 1);
-			dev_dbg(&port->dev, "%s - write cr: %d\n",
-							__func__, retval);
+			usb_do_console_write(serial, port, &cr, 1);
 		}
 		buf += i;
 		count -= i;
