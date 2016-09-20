@@ -89,7 +89,7 @@ int dpmcp_reset(struct fsl_mc_io *mc_io,
 struct dpmcp_irq_cfg {
 	     uint64_t		paddr;
 	     uint32_t		val;
-	     int		irq_num;
+	     int		 user_irq_id;
 };
 
 int dpmcp_set_irq(struct fsl_mc_io	*mc_io,

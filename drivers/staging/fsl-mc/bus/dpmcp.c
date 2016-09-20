@@ -225,7 +225,7 @@ int dpmcp_set_irq(struct fsl_mc_io *mc_io,
 	cmd_params->irq_index = irq_index;
 	cmd_params->irq_val = cpu_to_le32(irq_cfg->val);
 	cmd_params->irq_addr = cpu_to_le64(irq_cfg->paddr);
-	cmd_params->irq_num = cpu_to_le32(irq_cfg->irq_num);
+	cmd_params->irq_num = cpu_to_le32(irq_cfg->user_irq_id);
 
 	/* send command to mc*/
 	return mc_send_command(mc_io, &cmd);
@@ -270,7 +270,7 @@ int dpmcp_get_irq(struct fsl_mc_io *mc_io,
 	rsp_params = (struct dpmcp_rsp_get_irq *)cmd.params;
 	irq_cfg->val = le32_to_cpu(rsp_params->irq_val);
 	irq_cfg->paddr = le64_to_cpu(rsp_params->irq_paddr);
-	irq_cfg->irq_num = le32_to_cpu(rsp_params->irq_num);
+	irq_cfg->user_irq_id = le32_to_cpu(rsp_params->irq_num);
 	*type = le32_to_cpu(rsp_params->type);
 	return 0;
 }
