@@ -155,10 +155,10 @@ static int kgdboc_rx_callback(u8 c)
 	if (likely(atomic_read(&kgdb_active) == -1)) {
 		if (no_polled_breaks)
 			return 0;
-		if (c != break_char)
-			buffered_char = c;
 		if (c == break_char ||
 		    (c == '$' && !kgdb_connected && break_char == 0x03)) {
+			if (c == '$')
+				buffered_char = c;
 			if (schedule_breakpoints)
 				kgdb_schedule_breakpoint();
 			else
