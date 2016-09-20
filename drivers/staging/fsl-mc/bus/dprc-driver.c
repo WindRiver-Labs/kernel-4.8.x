@@ -662,8 +662,10 @@ static int dprc_create_dpmcp(struct fsl_mc_device *dprc_dev)
 				 &dpmcp_cfg,
 				 &dpmcp_obj_id);
 	if (error < 0) {
-		dev_err(&dprc_dev->dev, "dpmcp_create() failed: %d\n",
-			error);
+		dev_err(&dprc_dev->dev,
+				"dpmcp_create() failed, portal id: %u, error: %d\n",
+				dpmcp_cfg.portal_id,
+				error);
 		return error;
 	}
 
@@ -673,6 +675,10 @@ static int dprc_create_dpmcp(struct fsl_mc_device *dprc_dev)
 
 	if (WARN_ON(dpmcp_obj_id != mc_bus->dprc_attr.portal_id)) {
 		error = -EINVAL;
+		dev_warn(&dprc_dev->dev,
+				"dpmcp_create() failed, expected id: %u, actual id: %u\n",
+				mc_bus->dprc_attr.portal_id,
+				dpmcp_obj_id);
 		goto error_destroy_dpmcp;
 	}
 
@@ -689,7 +695,11 @@ static int dprc_create_dpmcp(struct fsl_mc_device *dprc_dev)
 			    &res_req);
 
 	if (error < 0) {
-		dev_err(&dprc_dev->dev, "dprc_assign() failed: %d\n", error);
+		dev_err(&dprc_dev->dev,
+			"dprc_assign() failed, dpmcp id: %u, container: %u, error: %d\n",
+			dpmcp_obj_id,
+			dprc_dev->obj_desc.id,
+			error);
 		goto error_destroy_dpmcp;
 	}
 
@@ -719,8 +729,10 @@ static void dprc_destroy_dpmcp(struct fsl_mc_device *dprc_dev)
 			      MC_CMD_FLAG_INTR_DIS,
 				mc_bus->dprc_attr.portal_id);
 	if (error < 0) {
-		dev_err(&dprc_dev->dev, "dpmcp_destroy() failed: %d\n",
-			error);
+		dev_err(&dprc_dev->dev,
+				"dpmcp_destroy() failed, object id: %u, error: %d\n",
+				mc_bus->dprc_attr.portal_id,
+				error);
 		return;
 	}
 }
