@@ -42,6 +42,7 @@ struct sysrq_key_op {
  * are available -- else NULL's).
  */
 
+void handle_sysrq_tasklet(int key);
 void handle_sysrq(int key);
 void __handle_sysrq(int key, bool check_mask);
 int register_sysrq_key(int key, struct sysrq_key_op *op);
@@ -68,6 +69,9 @@ static inline int register_sysrq_key(int key, struct sysrq_key_op *op)
 static inline int unregister_sysrq_key(int key, struct sysrq_key_op *op)
 {
 	return -EINVAL;
+}
+static inline void handle_sysrq_tasklet(int key)
+{
 }
 
 #endif
