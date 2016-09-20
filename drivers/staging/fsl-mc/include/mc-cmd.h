@@ -154,6 +154,20 @@ static inline uint32_t get_mc_cmd_create_object_id(struct mc_command *cmd)
 			MC_CMD_CREATE_OBJ_ID_S);
 }
 
+static inline uint16_t get_mc_cmd_hdr_token(uint64_t mcp_header)
+{
+	return ((uint16_t)mc_dec((mcp_header),
+			MC_CMD_HDR_TOKEN_O,
+			MC_CMD_HDR_TOKEN_S));
+}
+
+static inline uint16_t get_mc_cmd_hdr_cmdid(uint64_t mcp_header)
+{
+	return ((uint16_t)mc_dec((mcp_header),
+			MC_CMD_HDR_CMDID_O,
+			MC_CMD_HDR_CMDID_S));
+}
+
 static inline u64 mc_encode_cmd_header(u16 cmd_id,
 				       u32 cmd_flags,
 				       u16 token)
