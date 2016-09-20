@@ -92,15 +92,22 @@ enum mc_cmd_status {
 #define MC_CMD_PRI_LOW         0 	/*!< Low Priority command indication */
 #define MC_CMD_PRI_HIGH        1	/*!< High Priority command indication */
 
-#define MC_CMD_HDR_CMDID_O     52      /* Command ID field offset */
-#define MC_CMD_HDR_CMDID_S     12      /* Command ID field size */
-#define MC_CMD_HDR_TOKEN_O     38      /* Token field offset */
-#define MC_CMD_HDR_TOKEN_S     10      /* Token field size */
+#define MC_CMD_HDR_CMDID_O	48	/* Command ID field offset */
+#define MC_CMD_HDR_CMDID_S	16	/* Command ID field size */
+#define MC_CMD_HDR_TOKEN_O	32	/* Token field offset */
+#define MC_CMD_HDR_TOKEN_S	16	/* Token field size */
 #define MC_CMD_HDR_STATUS_O    16      /* Status field offset */
 #define MC_CMD_HDR_STATUS_S    8       /* Status field size*/
 #define MC_CMD_HDR_FLAGS_O     0       /* Flags field offset */
 #define MC_CMD_HDR_FLAGS_S     32      /* Flags field size*/
 #define MC_CMD_HDR_FLAGS_MASK  0xFF00FF00 /* Command flags mask */
+
+#define MC_CMD_CREATE_OBJ_ID_O	0 	/* Object id field offset */
+#define MC_CMD_CREATE_OBJ_ID_S	32 	/* Object id field size */
+
+#define MC_CMD_OBJ_VERSION_MAJ_O	0 	/* Object major version offset */
+#define MC_CMD_OBJ_VERSION_MIN_O	16 	/* Object minor version offset */
+#define MC_CMD_OBJ_VERSION_S		16 	/* Object version field size */
 
 #define MC_CMD_HDR_READ_STATUS(_hdr) \
 		((enum mc_cmd_status)mc_dec((_hdr), \
@@ -128,6 +135,24 @@ enum mc_cmd_status {
 #define MC_CMD_HDR_CMDID_SHIFT		4
 #define MC_CMD_HDR_TOKEN_MASK		0xFFC0
 #define MC_CMD_HDR_TOKEN_SHIFT		6
+
+static inline void get_mc_cmd_object_api_ver(struct mc_command *mc_cmd,
+		uint16_t *major_ver, uint16_t *minor_ver)
+{
+	*major_ver = (uint16_t)mc_dec(mc_cmd->params[0],
+			MC_CMD_OBJ_VERSION_MAJ_O,
+			MC_CMD_OBJ_VERSION_S);
+	*minor_ver = (uint16_t)mc_dec(mc_cmd->params[0],
+			MC_CMD_OBJ_VERSION_MIN_O,
+			MC_CMD_OBJ_VERSION_S);
+}
+
+static inline uint32_t get_mc_cmd_create_object_id(struct mc_command *cmd)
+{
+	return (uint32_t) mc_dec(cmd->params[0],
+			MC_CMD_CREATE_OBJ_ID_O,
+			MC_CMD_CREATE_OBJ_ID_S);
+}
 
 static inline u64 mc_encode_cmd_header(u16 cmd_id,
 				       u32 cmd_flags,

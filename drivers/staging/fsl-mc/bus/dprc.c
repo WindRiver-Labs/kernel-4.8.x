@@ -34,6 +34,30 @@
 #include "../include/dprc.h"
 #include "dprc-cmd.h"
 
+int dprc_get_container_id(struct fsl_mc_io *mc_io,
+			  uint32_t cmd_flags,
+			  int *container_id)
+{
+	struct mc_command cmd = { 0 };
+	int err;
+
+	/* prepare command */
+	cmd.header = mc_encode_cmd_header(DPRC_CMDID_GET_CONT_ID,
+					  cmd_flags,
+					  0);
+
+	/* send command to mc*/
+	err = mc_send_command(mc_io, &cmd);
+	if (err)
+		return err;
+
+	/* retrieve response parameters */
+	*container_id = (int)get_mc_cmd_create_object_id(&cmd);
+
+	return 0;
+}
+EXPORT_SYMBOL(dprc_get_container_id);
+
 /**
  * dprc_open() - Open DPRC object for use
  * @mc_io:	Pointer to MC portal's I/O object
@@ -574,8 +598,6 @@ int dprc_get_attributes(struct fsl_mc_io *mc_io,
 	attr->icid = le16_to_cpu(rsp_params->icid);
 	attr->options = le32_to_cpu(rsp_params->options);
 	attr->portal_id = le32_to_cpu(rsp_params->portal_id);
-	attr->version.major = le16_to_cpu(rsp_params->version_major);
-	attr->version.minor = le16_to_cpu(rsp_params->version_minor);
 
 	return 0;
 }
@@ -1405,3 +1427,25 @@ int dprc_get_connection(struct fsl_mc_io *mc_io,
 	return 0;
 }
 EXPORT_SYMBOL(dprc_get_connection);
+
+int dprc_get_api_version(struct fsl_mc_io *mc_io,
+			   uint32_t cmd_flags,
+			   uint16_t *major_ver,
+			   uint16_t *minor_ver)
+{
+	struct mc_command cmd = { 0 };
+	int err;
+
+	cmd.header = mc_encode_cmd_header(DPRC_CMDID_GET_VERSION,
+					cmd_flags,
+					0);
+
+	err = mc_send_command(mc_io, &cmd);
+	if (err)
+		return err;
+
+	get_mc_cmd_object_api_ver(&cmd, major_ver, minor_ver);
+
+	return 0;
+}
+EXPORT_SYMBOL(dprc_get_api_version);

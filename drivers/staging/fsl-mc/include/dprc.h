@@ -54,6 +54,10 @@ struct fsl_mc_io;
  */
 #define DPRC_GET_PORTAL_ID_FROM_POOL	(int)(~(0))
 
+int dprc_get_container_id(struct fsl_mc_io	*mc_io,
+			  uint32_t		cmd_flags,
+			  int			*container_id);
+
 int dprc_open(struct fsl_mc_io *mc_io,
 	      u32 cmd_flags,
 	      int container_id,
@@ -230,23 +234,12 @@ int dprc_clear_irq_status(struct fsl_mc_io	*mc_io,
  * @container_id: Container's ID
  * @icid: Container's ICID
  * @portal_id: Container's portal ID
- * @options: Container's options as set at container's creation
- * @version: DPRC version
  */
 struct dprc_attributes {
 	int container_id;
 	u16 icid;
 	int portal_id;
 	u64 options;
-	/**
-	 * struct version - DPRC version
-	 * @major: DPRC major version
-	 * @minor: DPRC minor version
-	 */
-	struct {
-		u16 major;
-		u16 minor;
-	} version;
 };
 
 int dprc_get_attributes(struct fsl_mc_io	*mc_io,
@@ -539,6 +532,11 @@ int dprc_get_connection(struct fsl_mc_io		*mc_io,
 			const struct dprc_endpoint	*endpoint1,
 			struct dprc_endpoint		*endpoint2,
 			int				*state);
+
+int dprc_get_api_version(struct fsl_mc_io *mc_io,
+			   uint32_t cmd_flags,
+			   uint16_t *major_ver,
+			   uint16_t *minor_ver);
 
 #endif /* _FSL_DPRC_H */
 
