@@ -60,13 +60,15 @@ struct dpmcp_cfg {
 };
 
 int dpmcp_create(struct fsl_mc_io	*mc_io,
-		 uint32_t		cmd_flags,
-		 const struct dpmcp_cfg	*cfg,
-		uint16_t		*token);
+		uint16_t	dprc_token,
+		uint32_t	cmd_flags,
+		const struct dpmcp_cfg	*cfg,
+		uint32_t	*obj_id);
 
-int dpmcp_destroy(struct fsl_mc_io *mc_io,
-		  uint32_t cmd_flags,
-		  uint16_t token);
+int dpmcp_destroy(struct fsl_mc_io	*mc_io,
+		uint16_t	dprc_token,
+		uint32_t	cmd_flags,
+		uint32_t	object_id);
 
 int dpmcp_reset(struct fsl_mc_io *mc_io,
 		uint32_t cmd_flags,
@@ -136,19 +138,9 @@ int dpmcp_get_irq_status(struct fsl_mc_io	*mc_io,
 /**
  * struct dpmcp_attr - Structure representing DPMCP attributes
  * @id:		DPMCP object ID
- * @version:	DPMCP version
  */
 struct dpmcp_attr {
 	int id;
-	/**
-	 * struct version - Structure representing DPMCP version
-	 * @major:	DPMCP major version
-	 * @minor:	DPMCP minor version
-	 */
-	struct {
-		uint16_t major;
-		uint16_t minor;
-	} version;
 };
 
 int dpmcp_get_attributes(struct fsl_mc_io	*mc_io,
@@ -156,4 +148,8 @@ int dpmcp_get_attributes(struct fsl_mc_io	*mc_io,
 			 uint16_t		token,
 			struct dpmcp_attr	*attr);
 
+int dpmcp_get_api_version(struct fsl_mc_io *mc_io,
+			   uint32_t cmd_flags,
+			   uint16_t *major_ver,
+			   uint16_t *minor_ver);
 #endif /* __FSL_DPMCP_H */

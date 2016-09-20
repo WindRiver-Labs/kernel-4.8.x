@@ -40,9 +40,11 @@
 #ifndef __FSL_DPMNG_CMD_H
 #define __FSL_DPMNG_CMD_H
 
+#define DPMNG_CMD_BASE_VERSION		1
+#define DPMNG_CMD_ID_OFFSET		4
+
 /* Command IDs */
-#define DPMNG_CMDID_GET_CONT_ID			0x830
-#define DPMNG_CMDID_GET_VERSION			0x831
+#define DPMNG_CMDID_GET_VERSION			((0x831 << DPMNG_CMD_ID_OFFSET) | DPMNG_CMD_BASE_VERSION)
 
 struct dpmng_rsp_get_container_id {
 	__le32 container_id;
