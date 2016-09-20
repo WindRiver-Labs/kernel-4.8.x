@@ -544,7 +544,7 @@ int usb_serial_handle_sysrq_char(struct usb_serial_port *port, unsigned int ch)
 {
 	if (port->sysrq && port->port.console) {
 		if (ch && time_before(jiffies, port->sysrq)) {
-			handle_sysrq(ch);
+			handle_sysrq_tasklet(ch);
 			port->sysrq = 0;
 			return 1;
 		}
