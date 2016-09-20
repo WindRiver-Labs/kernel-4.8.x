@@ -1088,6 +1088,33 @@ int unregister_sysrq_key(int key, struct sysrq_key_op *op_p)
 }
 EXPORT_SYMBOL(unregister_sysrq_key);
 
+/* The sysrq tasklet is used only in the rare case that an
+ * input/output character device processes a sysrq in its input
+ * routine while holding a lock required for the output routine for
+ * the console device.
+ */
+static struct sysrq_tasklet_data {
+	unsigned int key;
+	int pending;
+} priv_sysrq_data;
+
+static void sysrq_task(unsigned long args)
+{
+	handle_sysrq(priv_sysrq_data.key);
+	priv_sysrq_data.pending = 0;
+}
+static DECLARE_TASKLET(sysrq_tasklet, sysrq_task, 0);
+
+void handle_sysrq_tasklet(int key)
+{
+	if (priv_sysrq_data.pending)
+		return;
+	priv_sysrq_data.pending = 1;
+	priv_sysrq_data.key = key;
+	tasklet_schedule(&sysrq_tasklet);
+}
+EXPORT_SYMBOL(handle_sysrq_tasklet);
+
 #ifdef CONFIG_PROC_FS
 /*
  * writing 'C' to /proc/sysrq-trigger is like sysrq-C
