@@ -35,23 +35,26 @@
 /* Minimal supported DPMCP Version */
 #define DPMCP_MIN_VER_MAJOR				3
 #define DPMCP_MIN_VER_MINOR				1
+#define DPMCP_CMD_BASE_VERSION				1
+#define DPMCP_CMD_ID_OFFSET				4
 
 /* Command IDs */
-#define DPMCP_CMDID_CLOSE				0x800
-#define DPMCP_CMDID_OPEN				0x80b
-#define DPMCP_CMDID_CREATE				0x90b
-#define DPMCP_CMDID_DESTROY				0x900
+#define DPMCP_CMDID_CLOSE                               ((0x800 << DPMCP_CMD_ID_OFFSET) | DPMCP_CMD_BASE_VERSION)
+#define DPMCP_CMDID_OPEN                                ((0x80b << DPMCP_CMD_ID_OFFSET) | DPMCP_CMD_BASE_VERSION)
+#define DPMCP_CMDID_CREATE                              ((0x90b << DPMCP_CMD_ID_OFFSET) | DPMCP_CMD_BASE_VERSION)
+#define DPMCP_CMDID_DESTROY                             ((0x98b << DPMCP_CMD_ID_OFFSET) | DPMCP_CMD_BASE_VERSION)
+#define DPMCP_CMDID_GET_API_VERSION                     ((0xa0b << DPMCP_CMD_ID_OFFSET) | DPMCP_CMD_BASE_VERSION)
 
-#define DPMCP_CMDID_GET_ATTR				0x004
-#define DPMCP_CMDID_RESET				0x005
+#define DPMCP_CMDID_GET_ATTR                            ((0x004 << DPMCP_CMD_ID_OFFSET) | DPMCP_CMD_BASE_VERSION)
+#define DPMCP_CMDID_RESET                               ((0x005 << DPMCP_CMD_ID_OFFSET) | DPMCP_CMD_BASE_VERSION)
 
-#define DPMCP_CMDID_SET_IRQ				0x010
-#define DPMCP_CMDID_GET_IRQ				0x011
-#define DPMCP_CMDID_SET_IRQ_ENABLE			0x012
-#define DPMCP_CMDID_GET_IRQ_ENABLE			0x013
-#define DPMCP_CMDID_SET_IRQ_MASK			0x014
-#define DPMCP_CMDID_GET_IRQ_MASK			0x015
-#define DPMCP_CMDID_GET_IRQ_STATUS			0x016
+#define DPMCP_CMDID_SET_IRQ                             ((0x010 << DPMCP_CMD_ID_OFFSET) | DPMCP_CMD_BASE_VERSION)
+#define DPMCP_CMDID_GET_IRQ                             ((0x011 << DPMCP_CMD_ID_OFFSET) | DPMCP_CMD_BASE_VERSION)
+#define DPMCP_CMDID_SET_IRQ_ENABLE                      ((0x012 << DPMCP_CMD_ID_OFFSET) | DPMCP_CMD_BASE_VERSION)
+#define DPMCP_CMDID_GET_IRQ_ENABLE                      ((0x013 << DPMCP_CMD_ID_OFFSET) | DPMCP_CMD_BASE_VERSION)
+#define DPMCP_CMDID_SET_IRQ_MASK                        ((0x014 << DPMCP_CMD_ID_OFFSET) | DPMCP_CMD_BASE_VERSION)
+#define DPMCP_CMDID_GET_IRQ_MASK                        ((0x015 << DPMCP_CMD_ID_OFFSET) | DPMCP_CMD_BASE_VERSION)
+#define DPMCP_CMDID_GET_IRQ_STATUS                      ((0x016 << DPMCP_CMD_ID_OFFSET) | DPMCP_CMD_BASE_VERSION)
 
 struct dpmcp_cmd_open {
 	__le32 dpmcp_id;

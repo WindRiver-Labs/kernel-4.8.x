@@ -22,6 +22,9 @@
 #include "../include/mc-sys.h"
 #include "dprc-cmd.h"
 
+/* Minimal supported MC Firmware version */
+#define MC_FW_MIN_VER_MAJOR 10
+
 static struct kmem_cache *mc_dev_cache;
 static bool gic_support = false;
 
@@ -428,13 +431,9 @@ static int get_dprc_icid(struct fsl_mc_io *mc_io,
 static int get_dprc_version(struct fsl_mc_io *mc_io,
 			    int container_id, u16 *major, u16 *minor)
 {
-	struct dprc_attributes attr;
-	int error;
-
-	error = get_dprc_attr(mc_io, container_id, &attr);
-	if (error == 0) {
-		*major = attr.version.major;
-		*minor = attr.version.minor;
+	int error = dprc_get_api_version(mc_io, 0, major, minor);
+	if (error < 0) {
+		pr_err("dprc_get_api_version() failed: %d\n", error);
 	}
 
 	return error;
@@ -920,16 +919,24 @@ static int fsl_mc_bus_probe(struct platform_device *pdev)
 		 "Freescale Management Complex Firmware version: %u.%u.%u\n",
 		 mc_version.major, mc_version.minor, mc_version.revision);
 
+	if (MC_FW_MIN_VER_MAJOR > mc_version.major) {
+		dev_err(&pdev->dev,
+				"ERROR: Expected MC firmware version %u or later",
+				MC_FW_MIN_VER_MAJOR);
+		error = -ENOTSUPP;
+		goto error_cleanup_mc_io;
+	}
+
 	error = get_mc_addr_translation_ranges(&pdev->dev,
 					       &mc->translation_ranges,
 					       &mc->num_translation_ranges);
 	if (error < 0)
 		goto error_cleanup_mc_io;
 
-	error = dpmng_get_container_id(mc_io, 0, &container_id);
+	error = dprc_get_container_id(mc_io, 0, &container_id);
 	if (error < 0) {
 		dev_err(&pdev->dev,
-			"dpmng_get_container_id() failed: %d\n", error);
+			"get container id failed: %d\n", error);
 		goto error_cleanup_mc_io;
 	}
 
