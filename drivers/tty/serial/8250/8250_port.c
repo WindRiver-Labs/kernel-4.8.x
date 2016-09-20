@@ -1691,6 +1691,12 @@ static void serial8250_read_char(struct uart_8250_port *up, unsigned char lsr)
 		else if (lsr & UART_LSR_FE)
 			flag = TTY_FRAME;
 	}
+
+#ifdef CONFIG_CONSOLE_POLL
+        if (up->port.poll_rx_cb && up->port.poll_rx_cb(ch))
+        	return;
+#endif
+
 	if (uart_handle_sysrq_char(port, ch))
 		return;
 
@@ -1709,10 +1715,8 @@ unsigned char serial8250_rx_chars(struct uart_8250_port *up, unsigned char lsr)
 
 	do {
 		serial8250_read_char(up, lsr);
-		if (--max_count == 0)
-			break;
 		lsr = serial_in(up, UART_LSR);
-	} while (lsr & (UART_LSR_DR | UART_LSR_BI));
+	} while ((lsr & (UART_LSR_DR | UART_LSR_BI)) && (--max_count > 0));
 
 	tty_flip_buffer_push(&port->state->port);
 	return lsr;
