@@ -187,7 +187,8 @@ static int schedule_breakpoints;
  */
 static int kgdboc_rx_callback(u8 c)
 {
-	if (likely(atomic_read(&kgdb_active) == -1)) {
+	if (likely(atomic_read(&kgdb_active) == -1 &&
+		   !kgdb_is_waiting_on_breakpoint())) {
 		if (no_polled_breaks)
 			return 0;
 		if (c == break_char ||
@@ -308,6 +309,8 @@ do_register:
 		goto nmi_con_failed;
 
 	configured = 1;
+	ch_head = 0;
+	ch_tail = 0;
 
 	return 0;
 
@@ -354,11 +357,6 @@ static int kgdboc_get_char(void)
 	if (buffered_char >= 0)
 		return xchg(&buffered_char, -1);
 
-	ret = kgdb_tty_driver->ops->poll_get_char(kgdb_tty_driver,
-						  kgdb_tty_line);
-	if (ret != -2)
-		return ret;
-
 	/* A return of -2 means use the poll character ring */
 	if (ch_head != ch_tail) {
 		ret = ch_ring[ch_head];
@@ -367,6 +365,11 @@ static int kgdboc_get_char(void)
 			ch_head = 0;
 		return ret;
 	}
+
+	ret = kgdb_tty_driver->ops->poll_get_char(kgdb_tty_driver,
+						  kgdb_tty_line);
+	if (ret != -2)
+		return ret;
 
 	return -1;
 }
@@ -424,8 +427,6 @@ static void kgdboc_pre_exp_handler(void)
 	/* Increment the module count when the debugger is active */
 	if (!kgdb_connected)
 		try_module_get(THIS_MODULE);
-	ch_head = 0;
-	ch_tail = 0;
 }
 
 static void kgdboc_post_exp_handler(void)
@@ -437,6 +438,8 @@ static void kgdboc_post_exp_handler(void)
 		dbg_restore_graphics = 0;
 		con_debug_leave();
 	}
+	ch_head = 0;
+	ch_tail = 0;
 	kgdboc_restore_input();
 }
 
