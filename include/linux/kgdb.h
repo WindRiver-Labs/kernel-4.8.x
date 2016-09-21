@@ -324,4 +324,12 @@ extern void __init dbg_late_init(void);
 #define in_dbg_master() (0)
 #define dbg_late_init()
 #endif /* ! CONFIG_KGDB */
+#ifdef CONFIG_KGDB_SERIAL_CONSOLE
+extern void __init early_kgdboc_init(void);
+extern void kgdboc_init_hook(void);
+#else /* ! CONFIG_KGDB_SERIAL_CONSOLE */
+static inline void kgdboc_init_hook(void)
+{
+}
+#endif /* ! CONFIG_KGDB_SERIAL_CONSOLE */
 #endif /* _KGDB_H_ */
