@@ -862,6 +862,8 @@ static void module_unload_free(struct module *mod)
 		list_del(&use->target_list);
 		kfree(use);
 	}
+	blocking_notifier_call_chain(&module_notify_list,
+				     MODULE_STATE_GONE, mod);
 	mutex_unlock(&module_mutex);
 }
 
@@ -1171,6 +1173,9 @@ static ssize_t show_initstate(struct module_attribute *mattr,
 		break;
 	case MODULE_STATE_GOING:
 		state = "going";
+		break;
+	case MODULE_STATE_GONE:
+		state = "gone";
 		break;
 	default:
 		BUG();
