@@ -151,7 +151,7 @@ static struct stack stacks[NR_CPUS];
 char elf_platform[ELF_PLATFORM_SIZE];
 EXPORT_SYMBOL(elf_platform);
 
-static const char *cpu_name;
+const char *ARM_cpu_name;
 static const char *machine_name;
 static char __initdata cmd_line[COMMAND_LINE_SIZE];
 const struct machine_desc *machine_desc __initdata;
@@ -685,7 +685,7 @@ static void __init setup_processor(void)
 		while (1);
 	}
 
-	cpu_name = list->cpu_name;
+	ARM_cpu_name = list->cpu_name;
 	__cpu_architecture = __get_cpu_architecture();
 
 #ifdef MULTI_CPU
@@ -702,7 +702,7 @@ static void __init setup_processor(void)
 #endif
 
 	pr_info("CPU: %s [%08x] revision %d (ARMv%s), cr=%08lx\n",
-		cpu_name, read_cpuid_id(), read_cpuid_id() & 15,
+		ARM_cpu_name, read_cpuid_id(), read_cpuid_id() & 15,
 		proc_arch[cpu_architecture()], get_cr());
 
 	snprintf(init_utsname()->machine, __NEW_UTS_LEN + 1, "%s%c",
@@ -1221,7 +1221,7 @@ static int c_show(struct seq_file *m, void *v)
 		seq_printf(m, "processor\t: %d\n", i);
 		cpuid = is_smp() ? per_cpu(cpu_data, i).cpuid : read_cpuid_id();
 		seq_printf(m, "model name\t: %s rev %d (%s)\n",
-			   cpu_name, cpuid & 15, elf_platform);
+			   ARM_cpu_name, cpuid & 15, elf_platform);
 
 #if defined(CONFIG_SMP)
 		seq_printf(m, "BogoMIPS\t: %lu.%02lu\n",
