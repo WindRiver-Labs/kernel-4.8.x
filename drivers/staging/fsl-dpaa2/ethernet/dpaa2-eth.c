@@ -633,7 +633,8 @@ static int dpaa2_eth_tx(struct sk_buff *skb, struct net_device *net_dev)
 	struct dpaa2_fd fd;
 	struct rtnl_link_stats64 *percpu_stats;
 	struct dpaa2_eth_drv_stats *percpu_extras;
-	u16 queue_mapping, flow_id;
+	struct dpaa2_eth_fq fq;
+	u16 queue_mapping;
 	int err, i;
 
 	percpu_stats = this_cpu_ptr(priv->percpu_stats);
@@ -683,11 +684,15 @@ static int dpaa2_eth_tx(struct sk_buff *skb, struct net_device *net_dev)
 	/* TxConf FQ selection primarily based on cpu affinity; this is
 	 * non-migratable context, so it's safe to call smp_processor_id().
 	 */
-	queue_mapping = smp_processor_id() % priv->dpni_attrs.max_senders;
-	flow_id = priv->fq[queue_mapping].flowid;
+	queue_mapping = smp_processor_id() % priv->dpni_attrs.num_queues;
+	fq = priv->fq[queue_mapping];
 	for (i = 0; i < (DPAA2_ETH_MAX_TX_QUEUES << 1); i++) {
 		err = dpaa2_io_service_enqueue_qd(NULL, priv->tx_qdid, 0,
-						  flow_id, &fd);
+				fq.tx_qdbin, &fd);
+		/* TODO: This doesn't work. Check on simulator.
+		 * err = dpaa2_io_service_enqueue_fq(NULL,
+		 *			priv->fq[0].fqid_tx, &fd);
+		 */
 		if (err != -EBUSY)
 			break;
 	}
@@ -740,19 +745,19 @@ static int set_rx_csum(struct dpaa2_eth_priv *priv, bool enable)
 {
 	int err;
 
-	err = dpni_set_l3_chksum_validation(priv->mc_io, 0, priv->mc_token,
-					    enable);
+	err = dpni_set_offload(priv->mc_io, 0, priv->mc_token,
+					    DPNI_OFF_RX_L3_CSUM, enable);
 	if (err) {
 		netdev_err(priv->net_dev,
-			   "dpni_set_l3_chksum_validation() failed\n");
+			   "dpni_set_offload() DPNI_OFF_RX_L3_CSUM failed\n");
 		return err;
 	}
 
-	err = dpni_set_l4_chksum_validation(priv->mc_io, 0, priv->mc_token,
-					    enable);
+	err = dpni_set_offload(priv->mc_io, 0, priv->mc_token,
+					    DPNI_OFF_RX_L4_CSUM, enable);
 	if (err) {
 		netdev_err(priv->net_dev,
-			   "dpni_set_l4_chksum_validation failed\n");
+			   "dpni_set_offload() DPNI_OFF_RX_L4_CSUM failed\n");
 		return err;
 	}
 
@@ -761,29 +766,22 @@ static int set_rx_csum(struct dpaa2_eth_priv *priv, bool enable)
 
 static int set_tx_csum(struct dpaa2_eth_priv *priv, bool enable)
 {
-	struct dpaa2_eth_fq *fq;
-	struct dpni_tx_flow_cfg tx_flow_cfg;
 	int err;
-	int i;
 
-	memset(&tx_flow_cfg, 0, sizeof(tx_flow_cfg));
-	tx_flow_cfg.options = DPNI_TX_FLOW_OPT_L3_CHKSUM_GEN |
-			      DPNI_TX_FLOW_OPT_L4_CHKSUM_GEN;
-	tx_flow_cfg.l3_chksum_gen = enable;
-	tx_flow_cfg.l4_chksum_gen = enable;
+	err = dpni_set_offload(priv->mc_io, 0, priv->mc_token,
+					    DPNI_OFF_TX_L3_CSUM, enable);
+	if (err) {
+		netdev_err(priv->net_dev,
+			   "dpni_set_offload() DPNI_OFF_RX_L3_CSUM failed\n");
+		return err;
+	}
 
-	for (i = 0; i < priv->num_fqs; i++) {
-		fq = &priv->fq[i];
-		if (fq->type != DPAA2_TX_CONF_FQ)
-			continue;
-
-		/* The Tx flowid is kept in the corresponding TxConf FQ. */
-		err = dpni_set_tx_flow(priv->mc_io, 0, priv->mc_token,
-				       &fq->flowid, &tx_flow_cfg);
-		if (err) {
-			netdev_err(priv->net_dev, "dpni_set_tx_flow failed\n");
-			return err;
-		}
+	err = dpni_set_offload(priv->mc_io, 0, priv->mc_token,
+					    DPNI_OFF_TX_L4_CSUM, enable);
+	if (err) {
+		netdev_err(priv->net_dev,
+			   "dpni_set_offload() DPNI_OFF_RX_L4_CSUM failed\n");
+		return err;
 	}
 
 	return 0;
@@ -1202,15 +1200,13 @@ static int dpaa2_eth_init(struct net_device *net_dev)
 	/* Capabilities listing */
 	supported |= IFF_LIVE_ADDR_CHANGE | IFF_PROMISC | IFF_ALLMULTI;
 
-	if (options & DPNI_OPT_UNICAST_FILTER)
-		supported |= IFF_UNICAST_FLT;
-	else
+	if (options & DPNI_OPT_NO_MAC_FILTER) {
 		not_supported |= IFF_UNICAST_FLT;
-
-	if (options & DPNI_OPT_MULTICAST_FILTER)
-		supported |= IFF_MULTICAST;
-	else
 		not_supported |= IFF_MULTICAST;
+	} else {
+		supported |= IFF_UNICAST_FLT;
+		supported |= IFF_MULTICAST;
+	}
 
 	net_dev->priv_flags |= supported;
 	net_dev->priv_flags &= ~not_supported;
@@ -1233,7 +1229,7 @@ static int dpaa2_eth_set_addr(struct net_device *net_dev, void *addr)
 
 	err = eth_mac_addr(net_dev, addr);
 	if (err < 0) {
-		dev_err(dev, "eth_mac_addr() failed with error %d\n", err);
+		dev_err(dev, "eth_mac_addr() failed (%d)\n", err);
 		return err;
 	}
 
@@ -1339,34 +1335,29 @@ static void dpaa2_eth_set_rx_mode(struct net_device *net_dev)
 	struct dpaa2_eth_priv *priv = netdev_priv(net_dev);
 	int uc_count = netdev_uc_count(net_dev);
 	int mc_count = netdev_mc_count(net_dev);
-	u8 max_uc = priv->dpni_attrs.max_unicast_filters;
-	u8 max_mc = priv->dpni_attrs.max_multicast_filters;
+	u8 max_mac = priv->dpni_attrs.mac_filter_entries;
 	u32 options = priv->dpni_attrs.options;
 	u16 mc_token = priv->mc_token;
 	struct fsl_mc_io *mc_io = priv->mc_io;
 	int err;
 
 	/* Basic sanity checks; these probably indicate a misconfiguration */
-	if (!(options & DPNI_OPT_UNICAST_FILTER) && max_uc != 0)
+	if (options & DPNI_OPT_NO_MAC_FILTER && max_mac != 0)
 		netdev_info(net_dev,
-			    "max_unicast_filters=%d, DPNI_OPT_UNICAST_FILTER option must be enabled\n",
-			    max_uc);
-	if (!(options & DPNI_OPT_MULTICAST_FILTER) && max_mc != 0)
-		netdev_info(net_dev,
-			    "max_multicast_filters=%d, DPNI_OPT_MULTICAST_FILTER option must be enabled\n",
-			    max_mc);
+			    "mac_filter_entries=%d, DPNI_OPT_NO_MAC_FILTER option must be disabled\n",
+			    max_mac);
 
 	/* Force promiscuous if the uc or mc counts exceed our capabilities. */
-	if (uc_count > max_uc) {
+	if (uc_count > max_mac) {
 		netdev_info(net_dev,
 			    "Unicast addr count reached %d, max allowed is %d; forcing promisc\n",
-			    uc_count, max_uc);
+			    uc_count, max_mac);
 		goto force_promisc;
 	}
-	if (mc_count > max_mc) {
+	if (mc_count + uc_count > max_mac) {
 		netdev_info(net_dev,
-			    "Multicast addr count reached %d, max allowed is %d; forcing promisc\n",
-			    mc_count, max_mc);
+			    "Unicast + Multicast addr count reached %d, max allowed is %d; forcing promisc\n",
+			    uc_count + mc_count, max_mac);
 		goto force_mc_promisc;
 	}
 
@@ -1785,18 +1776,15 @@ static void setup_fqs(struct dpaa2_eth_priv *priv)
 {
 	int i;
 
-	/* We have one TxConf FQ per Tx flow */
-	for (i = 0; i < priv->dpni_attrs.max_senders; i++) {
-		priv->fq[priv->num_fqs].type = DPAA2_TX_CONF_FQ;
-		priv->fq[priv->num_fqs].consume = dpaa2_eth_tx_conf;
-		priv->fq[priv->num_fqs++].flowid = DPNI_NEW_FLOW_ID;
-	}
-
-	/* The number of Rx queues (Rx distribution width) may be different from
-	 * the number of cores.
+	/* We have one TxConf FQ per Tx flow.
+	 * Number of Rx and Tx queues are the same.
 	 * We only support one traffic class for now.
 	 */
 	for (i = 0; i < dpaa2_eth_queue_count(priv); i++) {
+		priv->fq[priv->num_fqs].type = DPAA2_TX_CONF_FQ;
+		priv->fq[priv->num_fqs].consume = dpaa2_eth_tx_conf;
+		priv->fq[priv->num_fqs++].flowid = (u16)i;
+
 		priv->fq[priv->num_fqs].type = DPAA2_RX_FQ;
 		priv->fq[priv->num_fqs].consume = dpaa2_eth_rx;
 		priv->fq[priv->num_fqs++].flowid = (u16)i;
@@ -1881,7 +1869,6 @@ static int setup_dpni(struct fsl_mc_device *ls_dev)
 	struct device *dev = &ls_dev->dev;
 	struct dpaa2_eth_priv *priv;
 	struct net_device *net_dev;
-	void *dma_mem;
 	int err;
 
 	net_dev = dev_get_drvdata(dev);
@@ -1905,47 +1892,19 @@ static int setup_dpni(struct fsl_mc_device *ls_dev)
 		goto err_reset;
 	}
 
-	/* Map a memory region which will be used by MC to pass us an
-	 * attribute structure
-	 */
-	dma_mem = kzalloc(DPAA2_EXT_CFG_SIZE, GFP_DMA | GFP_KERNEL);
-	if (!dma_mem)
-		goto err_alloc;
-
-	priv->dpni_attrs.ext_cfg_iova = dma_map_single(dev, dma_mem,
-						       DPAA2_EXT_CFG_SIZE,
-						       DMA_FROM_DEVICE);
-	if (dma_mapping_error(dev, priv->dpni_attrs.ext_cfg_iova)) {
-		dev_err(dev, "dma mapping for dpni_ext_cfg failed\n");
-		goto err_dma_map;
-	}
-
 	err = dpni_get_attributes(priv->mc_io, 0, priv->mc_token,
 				  &priv->dpni_attrs);
-
-	/* We'll check the return code after unmapping, as we need to
-	 * do this anyway
-	 */
-	dma_unmap_single(dev, priv->dpni_attrs.ext_cfg_iova,
-			 DPAA2_EXT_CFG_SIZE, DMA_FROM_DEVICE);
 
 	if (err) {
 		dev_err(dev, "dpni_get_attributes() failed (err=%d)\n", err);
 		goto err_get_attr;
 	}
 
-	memset(&priv->dpni_ext_cfg, 0, sizeof(priv->dpni_ext_cfg));
-	err = dpni_extract_extended_cfg(&priv->dpni_ext_cfg, dma_mem);
-	if (err) {
-		dev_err(dev, "dpni_extract_extended_cfg() failed\n");
-		goto err_extract;
-	}
-
 	/* Configure our buffers' layout */
 	priv->buf_layout.options = DPNI_BUF_LAYOUT_OPT_PARSER_RESULT |
-				   DPNI_BUF_LAYOUT_OPT_FRAME_STATUS |
-				   DPNI_BUF_LAYOUT_OPT_PRIVATE_DATA_SIZE |
-				   DPNI_BUF_LAYOUT_OPT_DATA_ALIGN;
+					DPNI_BUF_LAYOUT_OPT_FRAME_STATUS |
+					DPNI_BUF_LAYOUT_OPT_PRIVATE_DATA_SIZE |
+					DPNI_BUF_LAYOUT_OPT_DATA_ALIGN;
 	priv->buf_layout.pass_parser_result = true;
 	priv->buf_layout.pass_frame_status = true;
 	priv->buf_layout.private_data_size = DPAA2_ETH_SWA_SIZE;
@@ -1953,38 +1912,47 @@ static int setup_dpni(struct fsl_mc_device *ls_dev)
 	priv->buf_layout.data_align = DPAA2_ETH_RX_BUF_ALIGN;
 
 	/* rx buffer */
-	err = dpni_set_rx_buffer_layout(priv->mc_io, 0, priv->mc_token,
-					&priv->buf_layout);
+	err = dpni_set_buffer_layout(priv->mc_io, 0, priv->mc_token,
+				DPNI_QUEUE_RX, &priv->buf_layout);
 	if (err) {
-		dev_err(dev, "dpni_set_rx_buffer_layout() failed");
+		dev_err(dev,
+		"dpni_set_buffer_layout() DPNI_QUEUE_RX failed (%d)\n",
+		err);
 		goto err_buf_layout;
 	}
+
 	/* tx buffer: remove Rx-only options */
 	priv->buf_layout.options &= ~(DPNI_BUF_LAYOUT_OPT_DATA_ALIGN |
-				      DPNI_BUF_LAYOUT_OPT_PARSER_RESULT);
-	err = dpni_set_tx_buffer_layout(priv->mc_io, 0, priv->mc_token,
-					&priv->buf_layout);
+					DPNI_BUF_LAYOUT_OPT_PARSER_RESULT);
+	err = dpni_set_buffer_layout(priv->mc_io, 0, priv->mc_token,
+				DPNI_QUEUE_TX, &priv->buf_layout);
 	if (err) {
-		dev_err(dev, "dpni_set_tx_buffer_layout() failed");
+		dev_err(dev,
+		"dpni_set_buffer_layout() DPNI_QUEUE_TX failed (%d)\n",
+		err);
 		goto err_buf_layout;
 	}
+
 	/* tx-confirm: same options as tx */
 	priv->buf_layout.options &= ~DPNI_BUF_LAYOUT_OPT_PRIVATE_DATA_SIZE;
 	priv->buf_layout.options |= DPNI_BUF_LAYOUT_OPT_TIMESTAMP;
 	priv->buf_layout.pass_timestamp = 1;
-	err = dpni_set_tx_conf_buffer_layout(priv->mc_io, 0, priv->mc_token,
-					     &priv->buf_layout);
+	err = dpni_set_buffer_layout(priv->mc_io, 0, priv->mc_token,
+				DPNI_QUEUE_TX_CONFIRM, &priv->buf_layout);
 	if (err) {
-		dev_err(dev, "dpni_set_tx_conf_buffer_layout() failed");
+		dev_err(dev,
+		"dpni_set_buffer_layout() DPNI_QUEUE_TX_CONFIRM failed (%d)\n",
+		err);
 		goto err_buf_layout;
 	}
+
 	/* Now that we've set our tx buffer layout, retrieve the minimum
 	 * required tx data offset.
 	 */
 	err = dpni_get_tx_data_offset(priv->mc_io, 0, priv->mc_token,
 				      &priv->tx_data_offset);
 	if (err) {
-		dev_err(dev, "dpni_get_tx_data_offset() failed\n");
+		dev_err(dev, "dpni_get_tx_data_offset() failed (%d)\n", err);
 		goto err_data_offset;
 	}
 
@@ -1997,22 +1965,16 @@ static int setup_dpni(struct fsl_mc_device *ls_dev)
 
 	/* allocate classification rule space */
 	priv->cls_rule = kzalloc(sizeof(*priv->cls_rule) *
-				 DPAA2_CLASSIFIER_ENTRY_COUNT, GFP_KERNEL);
+				 dpaa2_eth_fs_count(priv), GFP_KERNEL);
 	if (!priv->cls_rule)
 		goto err_cls_rule;
-
-	kfree(dma_mem);
 
 	return 0;
 
 err_cls_rule:
 err_data_offset:
 err_buf_layout:
-err_extract:
 err_get_attr:
-err_dma_map:
-	kfree(dma_mem);
-err_alloc:
 err_reset:
 	dpni_close(priv->mc_io, 0, priv->mc_token);
 err_open:
@@ -2035,33 +1997,40 @@ static int setup_rx_flow(struct dpaa2_eth_priv *priv,
 			 struct dpaa2_eth_fq *fq)
 {
 	struct device *dev = priv->net_dev->dev.parent;
-	struct dpni_queue_attr rx_queue_attr;
-	struct dpni_queue_cfg queue_cfg;
+	struct dpni_queue q = { { 0 } };
+	struct dpni_queue_id qid;
+	u8 q_opt = DPNI_QUEUE_OPT_USER_CTX | DPNI_QUEUE_OPT_DEST;
+	struct dpni_taildrop td;
 	int err;
 
-	memset(&queue_cfg, 0, sizeof(queue_cfg));
-	queue_cfg.options = DPNI_QUEUE_OPT_USER_CTX | DPNI_QUEUE_OPT_DEST |
-			    DPNI_QUEUE_OPT_TAILDROP_THRESHOLD;
-	queue_cfg.dest_cfg.dest_type = DPNI_DEST_DPCON;
-	queue_cfg.dest_cfg.priority = 1;
-	queue_cfg.user_ctx = (u64)fq;
-	queue_cfg.dest_cfg.dest_id = fq->channel->dpcon_id;
-	queue_cfg.tail_drop_threshold = DPAA2_ETH_TAILDROP_THRESH;
-	err = dpni_set_rx_flow(priv->mc_io, 0, priv->mc_token, 0, fq->flowid,
-			       &queue_cfg);
+	err = dpni_get_queue(priv->mc_io, 0, priv->mc_token,
+				     DPNI_QUEUE_RX, 0, fq->flowid, &q, &qid);
 	if (err) {
-		dev_err(dev, "dpni_set_rx_flow() failed\n");
+		dev_err(dev, "dpni_get_queue() failed (%d)\n", err);
 		return err;
 	}
 
-	/* Get the actual FQID that was assigned by MC */
-	err = dpni_get_rx_flow(priv->mc_io, 0, priv->mc_token, 0, fq->flowid,
-			       &rx_queue_attr);
+	fq->fqid = qid.fqid;
+
+	q.destination.id = fq->channel->dpcon_id;
+	q.destination.type = DPNI_DEST_DPCON;
+	q.destination.priority = 1;
+	q.user_context = (u64)fq;
+	err = dpni_set_queue(priv->mc_io, 0, priv->mc_token,
+				     DPNI_QUEUE_RX, 0, fq->flowid, q_opt, &q);
 	if (err) {
-		dev_err(dev, "dpni_get_rx_flow() failed\n");
+		dev_err(dev, "dpni_set_queue() failed (%d)\n", err);
 		return err;
 	}
-	fq->fqid = rx_queue_attr.fqid;
+
+	td.enable = 1;
+	td.threshold = DPAA2_ETH_TAILDROP_THRESH;
+	err = dpni_set_taildrop(priv->mc_io, 0, priv->mc_token, DPNI_CP_QUEUE,
+			DPNI_QUEUE_RX, 0, fq->flowid, &td);
+	if (err) {
+		dev_err(dev, "dpni_set_taildrop() failed (%d)\n", err);
+		return err;
+	}
 
 	return 0;
 }
@@ -2070,44 +2039,39 @@ static int setup_tx_flow(struct dpaa2_eth_priv *priv,
 			 struct dpaa2_eth_fq *fq)
 {
 	struct device *dev = priv->net_dev->dev.parent;
-	struct dpni_tx_flow_cfg tx_flow_cfg;
-	struct dpni_tx_conf_cfg tx_conf_cfg;
-	struct dpni_tx_conf_attr tx_conf_attr;
+	struct dpni_queue q = { { 0 } };
+	struct dpni_queue_id qid;
+	u8 q_opt = DPNI_QUEUE_OPT_USER_CTX | DPNI_QUEUE_OPT_DEST;
 	int err;
 
-	memset(&tx_flow_cfg, 0, sizeof(tx_flow_cfg));
-	tx_flow_cfg.options = DPNI_TX_FLOW_OPT_TX_CONF_ERROR;
-	tx_flow_cfg.use_common_tx_conf_queue = 0;
-	err = dpni_set_tx_flow(priv->mc_io, 0, priv->mc_token,
-			       &fq->flowid, &tx_flow_cfg);
+	err = dpni_get_queue(priv->mc_io, 0, priv->mc_token,
+				     DPNI_QUEUE_TX, 0, fq->flowid, &q, &qid);
 	if (err) {
-		dev_err(dev, "dpni_set_tx_flow() failed\n");
+		dev_err(dev, "dpni_get_queue() failed (%d)\n", err);
 		return err;
 	}
 
-	tx_conf_cfg.errors_only = 0;
-	tx_conf_cfg.queue_cfg.options = DPNI_QUEUE_OPT_USER_CTX |
-					DPNI_QUEUE_OPT_DEST;
-	tx_conf_cfg.queue_cfg.user_ctx = (u64)fq;
-	tx_conf_cfg.queue_cfg.dest_cfg.dest_type = DPNI_DEST_DPCON;
-	tx_conf_cfg.queue_cfg.dest_cfg.dest_id = fq->channel->dpcon_id;
-	tx_conf_cfg.queue_cfg.dest_cfg.priority = 0;
+	fq->tx_qdbin = qid.qdbin;
 
-	err = dpni_set_tx_conf(priv->mc_io, 0, priv->mc_token, fq->flowid,
-			       &tx_conf_cfg);
+	err = dpni_get_queue(priv->mc_io, 0, priv->mc_token,
+			DPNI_QUEUE_TX_CONFIRM, 0, fq->flowid, &q, &qid);
 	if (err) {
-		dev_err(dev, "dpni_set_tx_conf() failed\n");
+		dev_err(dev, "dpni_get_queue() failed (%d)\n", err);
 		return err;
 	}
 
-	err = dpni_get_tx_conf(priv->mc_io, 0, priv->mc_token, fq->flowid,
-			       &tx_conf_attr);
+	fq->fqid = qid.fqid;
+
+	q.destination.id = fq->channel->dpcon_id;
+	q.destination.type = DPNI_DEST_DPCON;
+	q.destination.priority = 0;
+	q.user_context = (u64)fq;
+	err = dpni_set_queue(priv->mc_io, 0, priv->mc_token,
+			DPNI_QUEUE_TX_CONFIRM, 0, fq->flowid, q_opt, &q);
 	if (err) {
-		dev_err(dev, "dpni_get_tx_conf() failed\n");
+		dev_err(dev, "dpni_get_queue() failed (%d)\n", err);
 		return err;
 	}
-
-	fq->fqid = tx_conf_attr.queue_attr.fqid;
 
 	return 0;
 }
@@ -2116,32 +2080,31 @@ static int setup_tx_flow(struct dpaa2_eth_priv *priv,
 static int setup_rx_err_flow(struct dpaa2_eth_priv *priv,
 			     struct dpaa2_eth_fq *fq)
 {
-	struct dpni_queue_attr queue_attr;
-	struct dpni_queue_cfg queue_cfg;
+	struct device *dev = priv->net_dev->dev.parent;
+	struct dpni_queue q = { { 0 } };
+	struct dpni_queue_id qid;
+	u8 q_opt = DPNI_QUEUE_OPT_USER_CTX | DPNI_QUEUE_OPT_DEST;
 	int err;
 
-	/* Configure the Rx error queue to generate CDANs,
-	 * just like the Rx queues
-	 */
-	queue_cfg.options = DPNI_QUEUE_OPT_USER_CTX | DPNI_QUEUE_OPT_DEST;
-	queue_cfg.dest_cfg.dest_type = DPNI_DEST_DPCON;
-	queue_cfg.dest_cfg.priority = 1;
-	queue_cfg.user_ctx = (u64)fq;
-	queue_cfg.dest_cfg.dest_id = fq->channel->dpcon_id;
-	err = dpni_set_rx_err_queue(priv->mc_io, 0, priv->mc_token, &queue_cfg);
+	err = dpni_get_queue(priv->mc_io, 0, priv->mc_token,
+			DPNI_QUEUE_RX_ERR, 0, 0, &q, &qid);
 	if (err) {
-		netdev_err(priv->net_dev, "dpni_set_rx_err_queue() failed\n");
+		dev_err(dev, "dpni_get_queue() failed (%d)\n", err);
 		return err;
 	}
 
-	/* Get the FQID */
-	err = dpni_get_rx_err_queue(priv->mc_io, 0, priv->mc_token,
-				    &queue_attr);
+	fq->fqid = qid.fqid;
+
+	q.destination.id = fq->channel->dpcon_id;
+	q.destination.type = DPNI_DEST_DPCON;
+	q.destination.priority = 1;
+	q.user_context = (u64)fq;
+	err = dpni_set_queue(priv->mc_io, 0, priv->mc_token,
+			DPNI_QUEUE_RX_ERR, 0, 0, q_opt, &q);
 	if (err) {
-		netdev_err(priv->net_dev, "dpni_get_rx_err_queue() failed\n");
+		dev_err(dev, "dpni_set_queue() failed (%d)\n", err);
 		return err;
 	}
-	fq->fqid = queue_attr.fqid;
 
 	return 0;
 }
@@ -2236,7 +2199,7 @@ int set_hash(struct dpaa2_eth_priv *priv)
 
 	err = dpni_prepare_key_cfg(&cls_cfg, dma_mem);
 	if (err) {
-		dev_err(dev, "dpni_prepare_key_cfg error %d", err);
+		dev_err(dev, "dpni_prepare_key_cfg() failed (%d)", err);
 		return err;
 	}
 
@@ -2265,7 +2228,7 @@ int set_hash(struct dpaa2_eth_priv *priv)
 			 DPAA2_CLASSIFIER_DMA_SIZE, DMA_TO_DEVICE);
 	kfree(dma_mem);
 	if (err) {
-		dev_err(dev, "dpni_set_rx_tc_dist() error %d\n", err);
+		dev_err(dev, "dpni_set_rx_tc_dist() failed (%d)\n", err);
 		return err;
 	}
 
@@ -2323,7 +2286,7 @@ static int bind_dpni(struct dpaa2_eth_priv *priv)
 	err = dpni_set_errors_behavior(priv->mc_io, 0, priv->mc_token,
 				       &err_cfg);
 	if (err) {
-		dev_err(dev, "dpni_set_errors_behavior failed\n");
+		dev_err(dev, "dpni_set_errors_behavior() failed (%d)\n", err);
 		return err;
 	}
 
@@ -2349,7 +2312,8 @@ static int bind_dpni(struct dpaa2_eth_priv *priv)
 			return err;
 	}
 
-	err = dpni_get_qdid(priv->mc_io, 0, priv->mc_token, &priv->tx_qdid);
+	err = dpni_get_qdid(priv->mc_io, 0, priv->mc_token, DPNI_QUEUE_TX,
+				     &priv->tx_qdid);
 	if (err) {
 		dev_err(dev, "dpni_get_qdid() failed\n");
 		return err;
@@ -2399,31 +2363,53 @@ static int netdev_init(struct net_device *net_dev)
 	int err;
 	struct device *dev = net_dev->dev.parent;
 	struct dpaa2_eth_priv *priv = netdev_priv(net_dev);
-	u8 mac_addr[ETH_ALEN];
+	u8 mac_addr[ETH_ALEN], dpni_mac_addr[ETH_ALEN];
 	u8 bcast_addr[ETH_ALEN];
 
 	net_dev->netdev_ops = &dpaa2_eth_ops;
 
-	/* If the DPNI attributes contain an all-0 mac_addr,
-	 * set a random hardware address
-	 */
-	err = dpni_get_primary_mac_addr(priv->mc_io, 0, priv->mc_token,
-					mac_addr);
+	/* Get firmware address, if any */
+	err = dpni_get_port_mac_addr(priv->mc_io, 0, priv->mc_token, mac_addr);
 	if (err) {
-		dev_err(dev, "dpni_get_primary_mac_addr() failed (%d)", err);
+		dev_err(dev, "dpni_get_port_mac_addr() failed (%d)\n", err);
 		return err;
 	}
-	if (is_zero_ether_addr(mac_addr)) {
+
+	/* Get DPNI atttributes address, if any */
+	err = dpni_get_primary_mac_addr(priv->mc_io, 0, priv->mc_token,
+					dpni_mac_addr);
+	if (err) {
+		dev_err(dev, "dpni_get_primary_mac_addr() failed (%d)\n", err);
+		return err;
+	}
+
+	/* First check if firmware has any address configured by bootloader */
+	if (!is_zero_ether_addr(mac_addr)) {
+		/* If the DPMAC addr != the DPNI addr, update it */
+		if (!ether_addr_equal(mac_addr, dpni_mac_addr)) {
+			err = dpni_set_primary_mac_addr(priv->mc_io, 0,
+						     priv->mc_token, mac_addr);
+			if (err) {
+				dev_err(dev,
+				"dpni_set_primary_mac_addr() failed (%d)\n",
+				err);
+				return err;
+			}
+		}
+		memcpy(net_dev->dev_addr, mac_addr, net_dev->addr_len);
+	} else if (is_zero_ether_addr(dpni_mac_addr)) {
 		/* Fills in net_dev->dev_addr, as required by
 		 * register_netdevice()
 		 */
 		eth_hw_addr_random(net_dev);
 		/* Make the user aware, without cluttering the boot log */
-		pr_info_once(KBUILD_MODNAME " device(s) have all-zero hwaddr, replaced with random");
-		err = dpni_set_primary_mac_addr(priv->mc_io, 0, priv->mc_token,
-						net_dev->dev_addr);
+		pr_info_once(KBUILD_MODNAME
+			" device(s) have zero hwaddr, replaced with random");
+		err = dpni_set_primary_mac_addr(priv->mc_io, 0,
+					     priv->mc_token, net_dev->dev_addr);
 		if (err) {
-			dev_err(dev, "dpni_set_primary_mac_addr(): %d\n", err);
+			dev_err(dev,
+			"dpni_set_primary_mac_addr() failed  (%d)\n", err);
 			return err;
 		}
 		/* Override NET_ADDR_RANDOM set by eth_hw_addr_random(); for all
@@ -2432,11 +2418,12 @@ static int netdev_init(struct net_device *net_dev)
 		 * register_netdevice() to properly fill up net_dev->perm_addr.
 		 */
 		net_dev->addr_assign_type = NET_ADDR_PERM;
+	/* If DPMAC address is non-zero, use that one */
 	} else {
 		/* NET_ADDR_PERM is default, all we have to do is
 		 * fill in the device addr.
 		 */
-		memcpy(net_dev->dev_addr, mac_addr, net_dev->addr_len);
+		memcpy(net_dev->dev_addr, dpni_mac_addr, net_dev->addr_len);
 	}
 
 	/* Explicitly add the broadcast address to the MAC filtering table;
@@ -2457,7 +2444,7 @@ static int netdev_init(struct net_device *net_dev)
 	/* Our .ndo_init will be called herein */
 	err = register_netdev(net_dev);
 	if (err < 0) {
-		dev_err(dev, "register_netdev() = %d\n", err);
+		dev_err(dev, "register_netdev() failed (%d)\n", err);
 		return err;
 	}
 
