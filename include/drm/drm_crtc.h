@@ -43,6 +43,7 @@
 #include <drm/drm_encoder.h>
 #include <drm/drm_property.h>
 #include <drm/drm_plane.h>
+#include <drm/drm_color_mgmt.h>
 
 struct drm_device;
 struct drm_mode_set;
@@ -1394,9 +1395,6 @@ extern void drm_mode_config_init(struct drm_device *dev);
 extern void drm_mode_config_reset(struct drm_device *dev);
 extern void drm_mode_config_cleanup(struct drm_device *dev);
 
-extern int drm_mode_crtc_set_gamma_size(struct drm_crtc *crtc,
-					 int gamma_size);
-
 extern int drm_mode_set_config_internal(struct drm_mode_set *set);
 
 extern struct drm_tile_group *drm_mode_create_tile_group(struct drm_device *dev,
@@ -1410,10 +1408,6 @@ extern struct drm_property *drm_mode_create_rotation_property(struct drm_device 
 							      unsigned int supported_rotations);
 extern unsigned int drm_rotation_simplify(unsigned int rotation,
 					  unsigned int supported_rotations);
-extern void drm_crtc_enable_color_mgmt(struct drm_crtc *crtc,
-				       uint degamma_lut_size,
-				       bool has_ctm,
-				       uint gamma_lut_size);
 
 int drm_plane_create_zpos_property(struct drm_plane *plane,
 				   unsigned int zpos,
@@ -1429,25 +1423,6 @@ static inline struct drm_crtc *drm_crtc_find(struct drm_device *dev,
 	struct drm_mode_object *mo;
 	mo = drm_mode_object_find(dev, id, DRM_MODE_OBJECT_CRTC);
 	return mo ? obj_to_crtc(mo) : NULL;
-}
-
-/*
- * Extract a degamma/gamma LUT value provided by user and round it to the
- * precision supported by the hardware.
- */
-static inline uint32_t drm_color_lut_extract(uint32_t user_input,
-					     uint32_t bit_precision)
-{
-	uint32_t val = user_input;
-	uint32_t max = 0xffff >> (16 - bit_precision);
-
-	/* Round only if we're not using full precision. */
-	if (bit_precision < 16) {
-		val += 1UL << (16 - bit_precision - 1);
-		val >>= 16 - bit_precision;
-	}
-
-	return clamp_val(val, 0, max);
 }
 
 #define drm_for_each_crtc(crtc, dev) \
