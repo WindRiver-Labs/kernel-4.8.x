@@ -21,6 +21,7 @@
 #include <linux/vt_kern.h>
 #include <linux/input.h>
 #include <linux/module.h>
+#include <linux/usb.h>
 
 #define MAX_CONFIG_LEN		40
 #define MAX_CHAR_RING		512
@@ -98,8 +99,12 @@ static int do_restore_input(void *dummy);
 
 static void _kgdboc_restore_input(void)
 {
-	if (likely(system_state == SYSTEM_RUNNING))
+	if (likely(system_state == SYSTEM_RUNNING)) {
 		schedule_work(&kgdboc_restore_input_work);
+#ifdef CONFIG_KDB_USB
+		usb_poll_irq_schedule_flush();
+#endif /* CONFIG_KDB_USB */
+	}
 }
 
 static void kgdboc_restore_input(void)
@@ -120,6 +125,12 @@ static int kgdboc_register_kbd(char **cptr)
 		if (kdb_poll_idx < KDB_POLL_FUNC_MAX) {
 			kdb_poll_funcs[kdb_poll_idx] = kdb_get_kbd_char;
 			kdb_poll_idx++;
+#ifdef CONFIG_KDB_USB
+			if (kdb_poll_idx < KDB_POLL_FUNC_MAX) {
+				kdb_poll_funcs[kdb_poll_idx] = kdb_get_usb_char;
+				kdb_poll_idx++;
+			}
+#endif /* CONFIG_KDB_USB */
 			if (cptr[0][3] == ',')
 				*cptr += 4;
 			else
@@ -134,7 +145,12 @@ static void kgdboc_unregister_kbd(void)
 	int i;
 
 	for (i = 0; i < kdb_poll_idx; i++) {
+#ifdef CONFIG_KDB_USB
+		if (kdb_poll_funcs[i] == kdb_get_kbd_char ||
+			kdb_poll_funcs[i] == kdb_get_usb_char) {
+#else /* ! CONFIG_KDB_USB */
 		if (kdb_poll_funcs[i] == kdb_get_kbd_char) {
+#endif /* CONFIG_KDB_USB */
 			kdb_poll_idx--;
 			kdb_poll_funcs[i] = kdb_poll_funcs[kdb_poll_idx];
 			kdb_poll_funcs[kdb_poll_idx] = NULL;

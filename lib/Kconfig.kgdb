@@ -123,4 +123,14 @@ config KDB_CONTINUE_CATASTROPHIC
 	  CONFIG_KDB_CONTINUE_CATASTROPHIC == 2. KDB forces a reboot.
 	  If you are not sure, say 0.
 
+config KDB_USB
+	bool "KGDB_KDB: Allow usb input device devices"
+	depends on KDB_KEYBOARD && USB
+	default n
+	help
+	  Activate the support for using a USB keyboard with KDB.  The
+	  USB keyboard support uses the same options as the KDB
+	  keyboard support so you would activate it at runtime or from
+	  the kernel boot arguments with kgdboc=kbd.
+
 endif # KGDB
