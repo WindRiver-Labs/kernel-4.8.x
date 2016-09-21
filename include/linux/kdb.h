@@ -220,4 +220,19 @@ enum {
 extern int kdbgetintenv(const char *, int *);
 extern int kdb_set(int, const char **);
 
+/* KDB usb poll API */
+#ifdef CONFIG_KDB_USB
+extern int kdb_no_usb;
+extern int kdb_get_usb_char(void);
+struct usb_device;
+void kdb_keyboard_attach(struct usb_device *dev);
+void kdb_keyboard_detach(struct usb_device *dev);
+extern void kdb_put_usb_char(char *buffer, struct usb_device *dev);
+#else /* ! CONFIG_KDB_USB */
+#define kdb_put_usb_char(x, y)
+#define kdb_keyboard_attach(x)
+#define kdb_keyboard_detach(x)
+#endif /* ! CONFIG_KDB_USB */
+
+
 #endif	/* !_KDB_H */
