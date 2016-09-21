@@ -335,7 +335,12 @@ extern struct tty_driver *__tty_alloc_driver(unsigned int lines,
 extern void put_tty_driver(struct tty_driver *driver);
 extern void tty_set_operations(struct tty_driver *driver,
 			const struct tty_operations *op);
+#ifdef CONFIG_CONSOLE_POLL
 extern struct tty_driver *tty_find_polling_driver(char *name, int *line);
+extern int tty_console_poll_open(struct tty_driver *driver,
+			struct file **filp, int line);
+extern void tty_console_poll_close(struct file **filp);
+#endif
 
 extern void tty_driver_kref_put(struct tty_driver *driver);
 
