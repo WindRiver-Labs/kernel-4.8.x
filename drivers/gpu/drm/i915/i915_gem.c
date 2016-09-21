@@ -4594,6 +4594,19 @@ void i915_gem_load_cleanup(struct drm_device *dev)
 	rcu_barrier();
 }
 
+int i915_gem_freeze(struct drm_i915_private *dev_priv)
+{
+	intel_runtime_pm_get(dev_priv);
+
+	mutex_lock(&dev_priv->drm.struct_mutex);
+	i915_gem_shrink_all(dev_priv);
+	mutex_unlock(&dev_priv->drm.struct_mutex);
+
+	intel_runtime_pm_put(dev_priv);
+
+	return 0;
+}
+
 int i915_gem_freeze_late(struct drm_i915_private *dev_priv)
 {
 	struct drm_i915_gem_object *obj;
@@ -4617,7 +4630,8 @@ int i915_gem_freeze_late(struct drm_i915_private *dev_priv)
 	 * the objects as well.
 	 */
 
-	i915_gem_shrink_all(dev_priv);
+	mutex_lock(&dev_priv->drm.struct_mutex);
+	i915_gem_shrink(dev_priv, -1UL, I915_SHRINK_UNBOUND);
 
 	for (p = phases; *p; p++) {
 		list_for_each_entry(obj, *p, global_list) {
@@ -4625,6 +4639,7 @@ int i915_gem_freeze_late(struct drm_i915_private *dev_priv)
 			obj->base.write_domain = I915_GEM_DOMAIN_CPU;
 		}
 	}
+	mutex_unlock(&dev_priv->drm.struct_mutex);
 
 	return 0;
 }
