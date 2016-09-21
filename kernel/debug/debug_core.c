@@ -965,6 +965,12 @@ void kgdb_schedule_breakpoint(void)
 }
 EXPORT_SYMBOL_GPL(kgdb_schedule_breakpoint);
 
+int kgdb_is_waiting_on_breakpoint(void)
+{
+	return atomic_read(&kgdb_break_tasklet_var);
+}
+EXPORT_SYMBOL_GPL(kgdb_is_waiting_on_breakpoint);
+
 static void kgdb_initial_breakpoint(void)
 {
 	kgdb_break_asap = 0;
