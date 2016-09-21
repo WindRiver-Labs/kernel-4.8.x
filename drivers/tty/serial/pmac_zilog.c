@@ -261,6 +261,10 @@ static bool pmz_receive_chars(struct uart_pmac_port *uap)
 		}
 
 #if defined(CONFIG_MAGIC_SYSRQ) && defined(CONFIG_SERIAL_CORE_CONSOLE)
+#ifdef CONFIG_CONSOLE_POLL
+		if (uap->port.poll_rx_cb && uap->port.poll_rx_cb(ch))
+			goto next_char;
+#endif
 #ifdef USE_CTRL_O_SYSRQ
 		/* Handle the SysRq ^O Hack */
 		if (ch == '\x0f') {
