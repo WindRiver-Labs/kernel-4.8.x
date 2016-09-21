@@ -16,6 +16,7 @@
 #include <linux/kgdb.h>
 #include <linux/kdb.h>
 #include <linux/tty.h>
+#include <linux/kthread.h>
 #include <linux/console.h>
 #include <linux/vt_kern.h>
 #include <linux/input.h>
@@ -91,14 +92,29 @@ static void kgdboc_restore_input_helper(struct work_struct *dummy)
 
 static DECLARE_WORK(kgdboc_restore_input_work, kgdboc_restore_input_helper);
 
-static void kgdboc_restore_input(void)
+static struct task_struct *delay_schedule_work_task = NULL;
+static int do_reschedule_work = 0;
+static int do_restore_input(void *dummy);
+
+static void _kgdboc_restore_input(void)
 {
 	if (likely(system_state == SYSTEM_RUNNING))
 		schedule_work(&kgdboc_restore_input_work);
 }
 
+static void kgdboc_restore_input(void)
+{
+	do_reschedule_work = 1;
+}
+
 static int kgdboc_register_kbd(char **cptr)
 {
+	if (delay_schedule_work_task == NULL) {
+		delay_schedule_work_task = kthread_create(do_restore_input, NULL, "kgdboc_do_restore_input");
+		if (delay_schedule_work_task)
+			wake_up_process(delay_schedule_work_task);
+	}
+
 	if (strncmp(*cptr, "kbd", 3) == 0 ||
 		strncmp(*cptr, "kdb", 3) == 0) {
 		if (kdb_poll_idx < KDB_POLL_FUNC_MAX) {
@@ -127,6 +143,20 @@ static void kgdboc_unregister_kbd(void)
 	}
 	flush_work(&kgdboc_restore_input_work);
 }
+
+static int do_restore_input(void *dummy)
+{
+	for (;;) {
+		if (do_reschedule_work) {
+			do_reschedule_work = 0;
+			_kgdboc_restore_input();
+		}
+		schedule_timeout_interruptible(HZ);
+	}
+
+	return 0;
+}
+
 #else /* ! CONFIG_KDB_KEYBOARD */
 #define kgdboc_register_kbd(x) 0
 #define kgdboc_unregister_kbd()
