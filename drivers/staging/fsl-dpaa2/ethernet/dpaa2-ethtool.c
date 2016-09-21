@@ -32,22 +32,25 @@
 #include "dpni.h"	/* DPNI_LINK_OPT_* */
 #include "dpaa2-eth.h"
 
-/* To be kept in sync with 'enum dpni_counter' */
+/* To be kept in sync with dpni_statistics */
 char dpaa2_ethtool_stats[][ETH_GSTRING_LEN] = {
 	"rx frames",
 	"rx bytes",
-	/* rx frames filtered/policed */
-	"rx filtered frames",
-	/* rx frames dropped with errors */
-	"rx discarded frames",
 	"rx mcast frames",
 	"rx mcast bytes",
 	"rx bcast frames",
 	"rx bcast bytes",
 	"tx frames",
 	"tx bytes",
-	/* tx frames dropped with errors */
+	"tx mcast frames",
+	"tx mcast bytes",
+	"tx bcast frames",
+	"tx bcast bytes",
+	"rx filtered frames",
+	"rx discarded frames",
+	"rx nobuffer discards",
 	"tx discarded frames",
+	"tx confirmed frames",
 };
 
 #define DPAA2_ETH_NUM_STATS	ARRAY_SIZE(dpaa2_ethtool_stats)
@@ -195,8 +198,9 @@ static void dpaa2_eth_get_ethtool_stats(struct net_device *net_dev,
 					struct ethtool_stats *stats,
 					u64 *data)
 {
-	int i; /* Current index in the data array */
+	int i = 0; /* Current index in the data array */
 	int j, k, err;
+	union dpni_statistics dpni_stats;
 
 #ifdef CONFIG_FSL_QBMAN_DEBUG
 	u32 fcnt, bcnt;
@@ -214,12 +218,40 @@ static void dpaa2_eth_get_ethtool_stats(struct net_device *net_dev,
 	       sizeof(u64) * (DPAA2_ETH_NUM_STATS + DPAA2_ETH_NUM_EXTRA_STATS));
 
 	/* Print standard counters, from DPNI statistics */
-	for (i = 0; i < DPAA2_ETH_NUM_STATS; i++) {
-		err = dpni_get_counter(priv->mc_io, 0, priv->mc_token, i,
-				       data + i);
+	for (j = 0; j <= 2; j++) {
+		err = dpni_get_statistics(priv->mc_io, 0, priv->mc_token,
+					     j, &dpni_stats);
 		if (err != 0)
-			netdev_warn(net_dev, "Err %d getting DPNI counter %d",
-				    err, i);
+			netdev_warn(net_dev, "Err %d getting DPNI stats page %d",
+				    err, j);
+
+		switch (j) {
+		case 0:
+		*(data + i++) = dpni_stats.page_0.ingress_all_frames;
+		*(data + i++) = dpni_stats.page_0.ingress_all_bytes;
+		*(data + i++) = dpni_stats.page_0.ingress_multicast_frames;
+		*(data + i++) = dpni_stats.page_0.ingress_multicast_bytes;
+		*(data + i++) = dpni_stats.page_0.ingress_broadcast_frames;
+		*(data + i++) = dpni_stats.page_0.ingress_broadcast_bytes;
+		break;
+		case 1:
+		*(data + i++) = dpni_stats.page_1.egress_all_frames;
+		*(data + i++) = dpni_stats.page_1.egress_all_bytes;
+		*(data + i++) = dpni_stats.page_1.egress_multicast_frames;
+		*(data + i++) = dpni_stats.page_1.egress_multicast_bytes;
+		*(data + i++) = dpni_stats.page_1.egress_broadcast_frames;
+		*(data + i++) = dpni_stats.page_1.egress_broadcast_bytes;
+		break;
+		case 2:
+		*(data + i++) = dpni_stats.page_2.ingress_filtered_frames;
+		*(data + i++) = dpni_stats.page_2.ingress_discarded_frames;
+		*(data + i++) = dpni_stats.page_2.ingress_nobuffer_discards;
+		*(data + i++) = dpni_stats.page_2.egress_discarded_frames;
+		*(data + i++) = dpni_stats.page_2.egress_confirmed_frames;
+		break;
+		default:
+		break;
+		}
 	}
 
 	/* Print per-cpu extra stats */
@@ -260,6 +292,7 @@ static void dpaa2_eth_get_ethtool_stats(struct net_device *net_dev,
 			bcnt_rx_total += bcnt;
 		}
 	}
+
 	*(data + i++) = fcnt_rx_total;
 	*(data + i++) = bcnt_rx_total;
 	*(data + i++) = fcnt_tx_total;
@@ -304,37 +337,36 @@ void check_cls_support(struct dpaa2_eth_priv *priv)
 	struct device *dev = priv->net_dev->dev.parent;
 
 	if (dpaa2_eth_hash_enabled(priv)) {
-		if (priv->dpni_attrs.max_dist_key_size < key_size) {
-			dev_dbg(dev, "max_dist_key_size = %d, expected %d. Hashing and steering are disabled\n",
-				priv->dpni_attrs.max_dist_key_size,
+		if (priv->dpni_attrs.fs_key_size < key_size) {
+			dev_info(dev, "max_dist_key_size = %d, expected %d. Hashing and steering are disabled\n",
+				priv->dpni_attrs.fs_key_size,
 				key_size);
-			goto disable_cls;
+			goto disable_fs;
 		}
 		if (priv->num_hash_fields > DPKG_MAX_NUM_OF_EXTRACTS) {
-			dev_dbg(dev, "Too many key fields (max = %d). Hashing and steering are disabled\n",
+			dev_info(dev, "Too many key fields (max = %d). Hashing and steering are disabled\n",
 				DPKG_MAX_NUM_OF_EXTRACTS);
-			goto disable_cls;
+			goto disable_fs;
 		}
 	}
 
 	if (dpaa2_eth_fs_enabled(priv)) {
 		if (!dpaa2_eth_hash_enabled(priv)) {
-			dev_dbg(dev, "DPNI_OPT_DIST_HASH option missing. Steering is disabled\n");
-			goto disable_cls;
+			dev_info(dev, "Insufficient queues. Steering is disabled\n");
+			goto disable_fs;
 		}
+
 		if (!dpaa2_eth_fs_mask_enabled(priv)) {
-			dev_dbg(dev, "Key masks not supported. Steering is disabled\n");
+			dev_info(dev, "Key masks not supported. Steering is disabled\n");
 			goto disable_fs;
 		}
 	}
 
 	return;
 
-disable_cls:
-	priv->dpni_attrs.options &= ~DPNI_OPT_DIST_HASH;
 disable_fs:
-	priv->dpni_attrs.options &= ~(DPNI_OPT_DIST_FS |
-				      DPNI_OPT_FS_MASK_SUPPORT);
+	priv->dpni_attrs.options |= DPNI_OPT_NO_FS;
+	priv->dpni_attrs.options &= ~DPNI_OPT_HAS_KEY_MASKING;
 }
 
 static int prep_l4_rule(struct dpaa2_eth_priv *priv,
@@ -558,8 +590,9 @@ static int do_cls(struct net_device *net_dev,
 {
 	struct dpaa2_eth_priv *priv = netdev_priv(net_dev);
 	struct device *dev = net_dev->dev.parent;
-	const int rule_cnt = DPAA2_CLASSIFIER_ENTRY_COUNT;
+	const int rule_cnt = dpaa2_eth_fs_count(priv);
 	struct dpni_rule_cfg rule_cfg;
+	struct dpni_fs_action_cfg fs_act = { 0 };
 	void *dma_mem;
 	int err = 0;
 
@@ -592,13 +625,17 @@ static int do_cls(struct net_device *net_dev,
 
 	rule_cfg.mask_iova = rule_cfg.key_iova + rule_cfg.key_size;
 
-	/* No way to control rule order in firmware */
-	if (add)
-		err = dpni_add_fs_entry(priv->mc_io, 0, priv->mc_token, 0,
-					&rule_cfg, (u16)fs->ring_cookie);
+	if (fs->ring_cookie == RX_CLS_FLOW_DISC)
+		fs_act.options |= DPNI_FS_OPT_DISCARD;
 	else
-		err = dpni_remove_fs_entry(priv->mc_io, 0, priv->mc_token, 0,
-					   &rule_cfg);
+		fs_act.flow_id = fs->ring_cookie;
+
+	if (add)
+		err = dpni_add_fs_entry(priv->mc_io, 0, priv->mc_token,
+				0, fs->location, &rule_cfg, &fs_act);
+	else
+		err = dpni_remove_fs_entry(priv->mc_io, 0, priv->mc_token,
+				0, &rule_cfg);
 
 	dma_unmap_single(dev, rule_cfg.key_iova,
 			 rule_cfg.key_size * 2, DMA_TO_DEVICE);
@@ -607,8 +644,7 @@ static int do_cls(struct net_device *net_dev,
 		goto err_free_mem;
 	}
 
-	priv->cls_rule[fs->location].fs = *fs;
-	priv->cls_rule[fs->location].in_use = true;
+	return 0;
 
 err_free_mem:
 	kfree(dma_mem);
@@ -671,7 +707,7 @@ static int dpaa2_eth_get_rxnfc(struct net_device *net_dev,
 			       struct ethtool_rxnfc *rxnfc, u32 *rule_locs)
 {
 	struct dpaa2_eth_priv *priv = netdev_priv(net_dev);
-	const int rule_cnt = DPAA2_CLASSIFIER_ENTRY_COUNT;
+	const int rule_cnt = dpaa2_eth_fs_count(priv);
 	int i, j;
 
 	switch (rxnfc->cmd) {

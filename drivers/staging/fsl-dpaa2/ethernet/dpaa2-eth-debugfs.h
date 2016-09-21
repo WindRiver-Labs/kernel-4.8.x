@@ -43,6 +43,7 @@ struct dpaa2_debugfs {
 	struct dentry *ch_stats;
 	struct dentry *cpu_stats;
 	struct dentry *reset_stats;
+	struct dentry *reset_mc_stats;
 };
 
 #ifdef CONFIG_FSL_DPAA2_ETH_DEBUGFS

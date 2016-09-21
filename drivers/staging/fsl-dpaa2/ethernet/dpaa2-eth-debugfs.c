@@ -229,6 +229,26 @@ static const struct file_operations dpaa2_dbg_reset_ops = {
 	.write = dpaa2_dbg_reset_write,
 };
 
+static ssize_t dpaa2_dbg_reset_mc_write(struct file *file,
+		const char __user *buf, size_t count, loff_t *offset)
+{
+	struct dpaa2_eth_priv *priv = file->private_data;
+	int err;
+
+	err = dpni_reset_statistics(priv->mc_io, 0, priv->mc_token);
+	if (err)
+		netdev_err(priv->net_dev, "dpni_reset_statistics() failed %d\n",
+				err);
+
+	return count;
+}
+
+static const struct file_operations dpaa2_dbg_reset_mc_ops = {
+	.open = simple_open,
+	.write = dpaa2_dbg_reset_mc_write,
+};
+
+
 void dpaa2_dbg_add(struct dpaa2_eth_priv *priv)
 {
 	if (!dpaa2_dbg_root)
@@ -278,8 +298,19 @@ void dpaa2_dbg_add(struct dpaa2_eth_priv *priv)
 		goto err_reset_stats;
 	}
 
+	/* reset MC stats */
+	priv->dbg.reset_mc_stats = debugfs_create_file("reset_mc_stats",
+						S_IWUSR, priv->dbg.dir, priv,
+						&dpaa2_dbg_reset_mc_ops);
+	if (!priv->dbg.reset_mc_stats) {
+		netdev_err(priv->net_dev, "debugfs_create_file() failed\n");
+		goto err_reset_mc_stats;
+	}
+
 	return;
 
+err_reset_mc_stats:
+	debugfs_remove(priv->dbg.reset_stats);
 err_reset_stats:
 	debugfs_remove(priv->dbg.ch_stats);
 err_ch_stats:
@@ -292,6 +323,7 @@ err_cpu_stats:
 
 void dpaa2_dbg_remove(struct dpaa2_eth_priv *priv)
 {
+	debugfs_remove(priv->dbg.reset_mc_stats);
 	debugfs_remove(priv->dbg.reset_stats);
 	debugfs_remove(priv->dbg.fq_stats);
 	debugfs_remove(priv->dbg.ch_stats);

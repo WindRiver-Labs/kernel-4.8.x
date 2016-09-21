@@ -255,6 +255,7 @@ struct dpaa2_eth_priv;
 
 struct dpaa2_eth_fq {
 	u32 fqid;
+	u32 tx_qdbin;
 	u16 flowid;
 	int target_cpu;
 	struct dpaa2_eth_channel *channel;
@@ -305,7 +306,6 @@ struct dpaa2_eth_priv {
 
 	int dpni_id;
 	struct dpni_attr dpni_attrs;
-	struct dpni_extended_cfg dpni_ext_cfg;
 	/* Insofar as the MC is concerned, we're using one layout on all 3 types
 	 * of buffers (Rx, Tx, Tx-Conf).
 	 */
@@ -356,18 +356,16 @@ struct dpaa2_eth_priv {
 };
 
 #define dpaa2_eth_hash_enabled(priv)	\
-	((priv)->dpni_attrs.options & DPNI_OPT_DIST_HASH)
+	((priv)->dpni_attrs.num_queues > 1)
 
 #define dpaa2_eth_fs_enabled(priv)	\
-	((priv)->dpni_attrs.options & DPNI_OPT_DIST_FS)
+	(!((priv)->dpni_attrs.options & DPNI_OPT_NO_FS))
 
 #define dpaa2_eth_fs_mask_enabled(priv)	\
-	((priv)->dpni_attrs.options & DPNI_OPT_FS_MASK_SUPPORT)
+	((priv)->dpni_attrs.options & DPNI_OPT_HAS_KEY_MASKING)
 
-#define DPAA2_CLASSIFIER_ENTRY_COUNT 16
-
-/* Required by struct dpni_attr::ext_cfg_iova */
-#define DPAA2_EXT_CFG_SIZE	256
+#define dpaa2_eth_fs_count(priv)	\
+	((priv)->dpni_attrs.fs_entries)
 
 /* size of DMA memory used to pass configuration to classifier, in bytes */
 #define DPAA2_CLASSIFIER_DMA_SIZE 256
@@ -376,10 +374,7 @@ extern const struct ethtool_ops dpaa2_ethtool_ops;
 
 static int dpaa2_eth_queue_count(struct dpaa2_eth_priv *priv)
 {
-	if (!dpaa2_eth_hash_enabled(priv))
-		return 1;
-
-	return priv->dpni_ext_cfg.tc_cfg[0].max_dist;
+	return priv->dpni_attrs.num_queues;
 }
 
 static inline int dpaa2_eth_max_channels(struct dpaa2_eth_priv *priv)
@@ -388,8 +383,7 @@ static inline int dpaa2_eth_max_channels(struct dpaa2_eth_priv *priv)
 	 * to accommodate both the Rx distribution size
 	 * and the max number of Tx confirmation queues
 	 */
-	return max_t(int, dpaa2_eth_queue_count(priv),
-		     priv->dpni_attrs.max_senders);
+	return dpaa2_eth_queue_count(priv);
 }
 
 void check_cls_support(struct dpaa2_eth_priv *priv);
