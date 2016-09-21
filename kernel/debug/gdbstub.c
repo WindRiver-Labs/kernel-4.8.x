@@ -33,6 +33,7 @@
 #include <linux/kdb.h>
 #include <linux/serial_core.h>
 #include <linux/reboot.h>
+#include <linux/utsname.h>
 #include <linux/uaccess.h>
 #include <asm/cacheflush.h>
 #include <asm/unaligned.h>
@@ -739,6 +740,47 @@ static void gdb_cmd_query(struct kgdb_state *ks)
 		*(--ptr) = '\0';
 		break;
 
+	case 'c':
+		if (memcmp(remcom_in_buffer + 1, "cpu,", 3) == 0) {
+			/* This is the qcpu command.
+			 *
+			 * The response is
+			 * arch,endian,kernel rev,arch specific
+			 */
+			strcpy(remcom_out_buffer, utsname()->machine);
+			strcat(remcom_out_buffer, ",");
+#ifdef __BIG_ENDIAN
+			strcat(remcom_out_buffer, "big,");
+#else
+			strcat(remcom_out_buffer, "little,");
+#endif
+			strcat(remcom_out_buffer, utsname()->release);
+			strcat(remcom_out_buffer, ",");
+#if defined(CONFIG_PPC64) || defined(CONFIG_PPC)
+			strcat(remcom_out_buffer, cur_cpu_spec[0].cpu_name);
+#elif defined(CONFIG_ARM)
+			{
+				if (ARM_cpu_name)
+					strcat(remcom_out_buffer, ARM_cpu_name);
+			}
+#elif defined(CONFIG_MIPS)
+			{
+				char fmt[64];
+				char fmt2[80];
+				unsigned int version =
+					cpu_data[0].processor_id;
+				unsigned int fp_vers = cpu_data[0].fpu_id;
+				sprintf(fmt, "%%s V%%d.%%d%s",
+					cpu_data[0].options &
+					MIPS_CPU_FPU ? "  FPU V%d.%d" : "");
+				sprintf(fmt2, fmt, __cpu_name[0],
+					(version >> 4) & 0x0f, version & 0x0f,
+					(fp_vers >> 4) & 0x0f, fp_vers & 0x0f);
+				strcat(remcom_out_buffer, fmt2);
+			}
+#endif
+		}
+		break;
 	case 'C':
 		/* Current thread id */
 		strcpy(remcom_out_buffer, "QC");
