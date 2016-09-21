@@ -282,7 +282,10 @@ static int kgdb_brk_fn(struct pt_regs *regs, unsigned int instr)
 		regs->ARM_cpsr |= stepped_cpsr_it_mask;
 	}
 	stepped_opcode = 0;
-	kgdb_handle_exception(1, SIGTRAP, 0, regs);
+	if ((long)stepped_address == regs->ARM_pc)
+		kgdb_handle_exception(0, SIGTRAP, 0, regs);
+	else
+		kgdb_handle_exception(1, SIGTRAP, 0, regs);
 
 	return 0;
 }
