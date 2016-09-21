@@ -237,13 +237,9 @@ void sleeping_thread_to_gdb_regs(unsigned long *gdb_regs, struct task_struct *p)
 	for (reg = 14; reg < 32; reg++)
 		PACK64(ptr, regs->gpr[reg]);
 
-#ifdef CONFIG_FSL_BOOKE
-#ifdef CONFIG_SPE
+#if defined(CONFIG_FSL_BOOKE) && defined(CONFIG_SPE)
 	for (reg = 0; reg < 32; reg++)
 		PACK64(ptr, p->thread.evr[reg]);
-#else
-	ptr += 32;
-#endif
 #else
 	/* fp registers not used by kernel, leave zero */
 	ptr += 32 * 8 / sizeof(long);
