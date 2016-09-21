@@ -456,7 +456,7 @@ static void teardown_irqs(struct fsl_mc_device *mc_dev)
 	fsl_mc_free_irqs(mc_dev);
 }
 
-static struct device_node *lookup_node(struct device *dev, int dpmac_id)
+static struct device_node *lookup_node(struct device *dev, u16 dpmac_id)
 {
 	struct device_node *dpmacs, *dpmac = NULL;
 	struct device_node *mc_node = dev->of_node;

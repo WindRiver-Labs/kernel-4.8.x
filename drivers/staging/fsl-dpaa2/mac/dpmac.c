@@ -1,4 +1,4 @@
-/* Copyright 2013-2015 Freescale Semiconductor Inc.
+/* Copyright 2013-2016 Freescale Semiconductor Inc.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -54,7 +54,7 @@ int dpmac_open(struct fsl_mc_io *mc_io,
 		return err;
 
 	/* retrieve response parameters */
-	*token = MC_CMD_HDR_READ_TOKEN(cmd.header);
+	*token = get_mc_cmd_hdr_token(cmd.header);
 
 	return err;
 }
@@ -73,10 +73,11 @@ int dpmac_close(struct fsl_mc_io *mc_io,
 	return mc_send_command(mc_io, &cmd);
 }
 
-int dpmac_create(struct fsl_mc_io *mc_io,
-		 uint32_t cmd_flags,
-		 const struct dpmac_cfg *cfg,
-		 uint16_t *token)
+int dpmac_create(struct fsl_mc_io	*mc_io,
+		uint16_t	dprc_token,
+		uint32_t	cmd_flags,
+		const struct dpmac_cfg	*cfg,
+		uint32_t *object_id)
 {
 	struct mc_command cmd = { 0 };
 	int err;
@@ -84,7 +85,7 @@ int dpmac_create(struct fsl_mc_io *mc_io,
 	/* prepare command */
 	cmd.header = mc_encode_cmd_header(DPMAC_CMDID_CREATE,
 					  cmd_flags,
-					  0);
+					  dprc_token);
 	DPMAC_CMD_CREATE(cmd, cfg);
 
 	/* send command to mc*/
@@ -93,22 +94,24 @@ int dpmac_create(struct fsl_mc_io *mc_io,
 		return err;
 
 	/* retrieve response parameters */
-	*token = MC_CMD_HDR_READ_TOKEN(cmd.header);
+	*object_id = get_mc_cmd_create_object_id(&cmd);
 
 	return 0;
 }
 
 int dpmac_destroy(struct fsl_mc_io *mc_io,
-		  uint32_t cmd_flags,
-		  uint16_t token)
+		uint16_t dprc_token,
+		uint32_t cmd_flags,
+		uint32_t object_id)
 {
 	struct mc_command cmd = { 0 };
 
 	/* prepare command */
 	cmd.header = mc_encode_cmd_header(DPMAC_CMDID_DESTROY,
 					  cmd_flags,
-					  token);
-
+					  dprc_token);
+	/* set object id to destroy */
+	cmd.params[0] = mc_enc(0, sizeof(object_id), object_id);
 	/* send command to mc*/
 	return mc_send_command(mc_io, &cmd);
 }
@@ -314,48 +317,6 @@ int dpmac_get_attributes(struct fsl_mc_io *mc_io,
 	return 0;
 }
 
-int dpmac_mdio_read(struct fsl_mc_io *mc_io,
-		    uint32_t cmd_flags,
-		    uint16_t token,
-		    struct dpmac_mdio_cfg *cfg)
-{
-	struct mc_command cmd = { 0 };
-	int err;
-
-	/* prepare command */
-	cmd.header = mc_encode_cmd_header(DPMAC_CMDID_MDIO_READ,
-					  cmd_flags,
-					  token);
-	DPMAC_CMD_MDIO_READ(cmd, cfg);
-
-	/* send command to mc*/
-	err = mc_send_command(mc_io, &cmd);
-	if (err)
-		return err;
-
-	/* retrieve response parameters */
-	DPMAC_RSP_MDIO_READ(cmd, cfg->data);
-
-	return 0;
-}
-
-int dpmac_mdio_write(struct fsl_mc_io *mc_io,
-		     uint32_t cmd_flags,
-		     uint16_t token,
-		     struct dpmac_mdio_cfg *cfg)
-{
-	struct mc_command cmd = { 0 };
-
-	/* prepare command */
-	cmd.header = mc_encode_cmd_header(DPMAC_CMDID_MDIO_WRITE,
-					  cmd_flags,
-					  token);
-	DPMAC_CMD_MDIO_WRITE(cmd, cfg);
-
-	/* send command to mc*/
-	return mc_send_command(mc_io, &cmd);
-}
-
 int dpmac_get_link_cfg(struct fsl_mc_io *mc_io,
 		       uint32_t cmd_flags,
 		       uint16_t token,
@@ -417,6 +378,44 @@ int dpmac_get_counter(struct fsl_mc_io *mc_io,
 		return err;
 
 	DPMAC_RSP_GET_COUNTER(cmd, *counter);
+
+	return 0;
+}
+
+int dpmac_set_port_mac_addr(struct fsl_mc_io *mc_io,
+		      uint32_t cmd_flags,
+		      uint16_t token,
+		      const uint8_t addr[6])
+{
+	struct mc_command cmd = { 0 };
+
+	/* prepare command */
+	cmd.header = mc_encode_cmd_header(DPMAC_CMDID_SET_PORT_MAC_ADDR,
+					  cmd_flags,
+					  token);
+	DPMAC_CMD_SET_PORT_MAC_ADDR(cmd, addr);
+
+	/* send command to mc*/
+	return mc_send_command(mc_io, &cmd);
+}
+
+int dpmac_get_api_version(struct fsl_mc_io *mc_io,
+			   uint32_t cmd_flags,
+			   uint16_t *major_ver,
+			   uint16_t *minor_ver)
+{
+	struct mc_command cmd = { 0 };
+	int err;
+
+	cmd.header = mc_encode_cmd_header(DPMAC_CMDID_GET_API_VERSION,
+					cmd_flags,
+					0);
+
+	err = mc_send_command(mc_io, &cmd);
+	if (err)
+		return err;
+
+	get_mc_cmd_object_api_ver(&cmd, major_ver, minor_ver);
 
 	return 0;
 }

@@ -1,4 +1,4 @@
-/* Copyright 2013-2015 Freescale Semiconductor Inc.
+/* Copyright 2013-2016 Freescale Semiconductor Inc.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -45,7 +45,7 @@ int dpbp_open(struct fsl_mc_io *mc_io,
 
 int dpbp_close(struct fsl_mc_io *mc_io,
 	       u32		cmd_flags,
-	       u16	token);
+	       uint16_t		token);
 
 /**
  * struct dpbp_cfg - Structure representing DPBP configuration
@@ -56,13 +56,15 @@ struct dpbp_cfg {
 };
 
 int dpbp_create(struct fsl_mc_io	*mc_io,
+		uint16_t		dprc_token,
 		u32		cmd_flags,
 		const struct dpbp_cfg	*cfg,
-		u16		*token);
+		uint32_t		*obj_id);
 
 int dpbp_destroy(struct fsl_mc_io *mc_io,
+		 uint16_t		dprc_token,
 		 u32 cmd_flags,
-		 u16 token);
+		 uint32_t		object_id);
 
 int dpbp_enable(struct fsl_mc_io *mc_io,
 		u32 cmd_flags,
@@ -145,21 +147,11 @@ int dpbp_clear_irq_status(struct fsl_mc_io	*mc_io,
 /**
  * struct dpbp_attr - Structure representing DPBP attributes
  * @id:		DPBP object ID
- * @version:	DPBP version
  * @bpid:	Hardware buffer pool ID; should be used as an argument in
  *		acquire/release operations on buffers
  */
 struct dpbp_attr {
 	int id;
-	/**
-	 * struct version - Structure representing DPBP version
-	 * @major:	DPBP major version
-	 * @minor:	DPBP minor version
-	 */
-	struct {
-		u16 major;
-		u16 minor;
-	} version;
 	u16 bpid;
 };
 
@@ -214,6 +206,11 @@ int dpbp_get_notifications(struct fsl_mc_io	*mc_io,
 			   u32		cmd_flags,
 			   u16		token,
 			   struct dpbp_notification_cfg	*cfg);
+
+int dpbp_get_api_version(struct fsl_mc_io *mc_io,
+			 uint32_t cmd_flags,
+			 uint16_t *major_ver,
+			 uint16_t *minor_ver);
 
 /** @} */
 
