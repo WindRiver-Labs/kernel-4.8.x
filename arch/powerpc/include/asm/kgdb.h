@@ -47,14 +47,16 @@ static inline void arch_kgdb_breakpoint(void)
 #define NUMCRITREGBYTES		184
 #else /* CONFIG_PPC32 */
 /* On non-E500 family PPC32 we determine the size by picking the last
- * register we need, but on E500 we skip sections so we list what we
- * need to store, and add it up. */
-#ifndef CONFIG_E500
-#define MAXREG			(PT_FPSCR+1)
-#else
+ * register we need, but on E500 which with SPE support we skip sections
+ * so we list what we need to store, and add it up. */
+
+#if defined(CONFIG_E500) && defined(CONFIG_SPE)
 /* 32 GPRs (8 bytes), nip, msr, ccr, link, ctr, xer, acc (8 bytes), spefscr*/
 #define MAXREG                 ((32*2)+6+2+1)
+#else
+#define MAXREG			(PT_FPSCR+1)
 #endif
+
 #define NUMREGBYTES		(MAXREG * sizeof(int))
 /* CR/LR, R1, R2, R13-R31 inclusive. */
 #define NUMCRITREGBYTES		(23 * sizeof(int))
