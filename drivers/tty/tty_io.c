@@ -144,6 +144,9 @@ ssize_t redirected_tty_write(struct file *, const char __user *,
 							size_t, loff_t *);
 static unsigned int tty_poll(struct file *, poll_table *);
 static int tty_open(struct inode *, struct file *);
+static struct tty_struct *tty_driver_lookup_tty(struct tty_driver *driver,
+					 struct file *file, int idx);
+
 long tty_ioctl(struct file *file, unsigned int cmd, unsigned long arg);
 #ifdef CONFIG_COMPAT
 static long tty_compat_ioctl(struct file *file, unsigned int cmd,
@@ -325,6 +328,88 @@ static struct tty_driver *get_tty_driver(dev_t device, int *index)
 }
 
 #ifdef CONFIG_CONSOLE_POLL
+/**
+ *	tty_console_poll_open	-	allocate a tty for a polled device
+ *	@driver: the tty driver
+ *	@filp: file pointer to point to the tty
+ *	@tty_line: the minor device number
+ *
+ *	This routine returns allocates an empty struct file structure
+ *	to allow a polling device to open a tty.  This ultimately
+ *	allows the low level startup code for the uart to only be
+ *	called one time, for either the polling device init or user
+ *	space tty init.
+ */
+int tty_console_poll_open(struct tty_driver *driver, struct file **filp,
+			  int tty_line)
+{
+	static struct address_space fi_mapping;
+	static struct inode finode = { .i_mapping = &fi_mapping };
+	static struct dentry fdentry = { .d_inode = &finode };
+	static struct path fpath = { .dentry = &fdentry };
+	int ret = -EIO;
+	int do_tty_lock;
+	struct tty_struct *tty;
+	int inc_tty = 1;
+
+	if (!*filp)
+		*filp = alloc_file(&fpath, 0, NULL);
+	if (!*filp)
+		goto out;
+
+	if (!mutex_is_locked(&tty_mutex))
+		do_tty_lock = 1;
+	if (do_tty_lock) {
+		mutex_lock(&tty_mutex);
+	}
+	tty = tty_driver_lookup_tty(driver, NULL, tty_line);
+	if (!tty) {
+		tty = tty_init_dev(driver, tty_line);
+		inc_tty = 0;
+	}
+	ret = tty_alloc_file(*filp);
+	/*
+	 * Force clocal temporarily while opening and then restore the
+	 * setting when finished
+	 */
+	if (!ret) {
+		bool force_clocal = tty && !C_CLOCAL(tty);
+
+		if (force_clocal)
+			tty->termios.c_cflag |= CLOCAL;
+		ret = tty->ops->open(tty, *filp);
+		if (force_clocal)
+			tty->termios.c_cflag &= ~CLOCAL;
+	}
+	if (ret == 0) {
+		tty_add_file(tty, *filp);
+		tty->count += inc_tty;
+	} else {
+		put_filp(*filp);
+		tty_free_file(*filp);
+		*filp = NULL;
+	}
+	if (do_tty_lock)
+		mutex_unlock(&tty_mutex);
+out:
+	return ret;
+}
+EXPORT_SYMBOL_GPL(tty_console_poll_open);
+
+/**
+ *	tty_console_poll_close	-	shutdown a tty for a polled device
+ *	@filp: file pointer to point to the tty
+ *
+ *	Deallocate the tty device used by the polling driver, and free
+ *	the associated filp.
+ */
+void tty_console_poll_close(struct file **filp)
+{
+	tty_release(NULL, *filp);
+	put_filp(*filp);
+	*filp = NULL;
+}
+EXPORT_SYMBOL_GPL(tty_console_poll_close);
 
 /**
  *	tty_find_polling_driver	-	find device of a polled tty
@@ -713,6 +798,8 @@ static void __tty_hangup(struct tty_struct *tty, int exit_session)
 	/* This breaks for file handles being sent over AF_UNIX sockets ? */
 	list_for_each_entry(priv, &tty->tty_files, list) {
 		filp = priv->file;
+		if (!filp->f_op)
+			continue;
 		if (filp->f_op->write == redirected_tty_write)
 			cons_filp = filp;
 		if (filp->f_op->write != tty_write)
