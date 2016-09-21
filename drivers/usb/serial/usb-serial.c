@@ -1084,6 +1084,7 @@ static int usb_serial_probe(struct usb_interface *interface,
 		usb_serial_console_init(serial->port[0]->minor);
 exit:
 	module_put(type->driver.owner);
+	kgdboc_init_hook();
 	return 0;
 
 probe_error:
