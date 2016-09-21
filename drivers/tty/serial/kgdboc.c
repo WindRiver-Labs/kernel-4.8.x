@@ -41,6 +41,7 @@ static struct kparam_string kps = {
 static int kgdboc_use_kms;  /* 1 if we use kernel mode switching */
 static struct tty_driver	*kgdb_tty_driver;
 static int			kgdb_tty_line;
+static struct file		*kgdb_filp;
 
 #ifdef CONFIG_KDB_KEYBOARD
 static int kgdboc_reset_connect(struct input_handler *handler,
@@ -243,6 +244,16 @@ static void cleanup_kgdboc(void)
 		kgdb_unregister_io_module(&kgdboc_io_ops);
 }
 
+static void release_kgdboc_tty(void)
+{
+	if (kgdb_tty_driver)
+		kgdb_tty_driver->ops->poll_init(kgdb_tty_driver, kgdb_tty_line,
+						NULL, (void *)-1);
+	if (kgdb_filp)
+		tty_console_poll_close(&kgdb_filp);
+	kgdb_tty_driver = NULL;
+}
+
 static int configure_kgdboc(void)
 {
 	struct tty_driver *p;
@@ -258,10 +269,7 @@ static int configure_kgdboc(void)
 
 	err = -ENODEV;
 	/* If a driver was previously configured remove it now */
-	if (kgdb_tty_driver)
-		kgdb_tty_driver->ops->poll_init(kgdb_tty_driver, kgdb_tty_line,
-						NULL, (void *)-1);
-	kgdb_tty_driver = NULL;
+	release_kgdboc_tty();
 	kgdboc_io_ops.is_console = 0;
 	kgdb_tty_driver = NULL;
 
@@ -315,6 +323,11 @@ static int configure_kgdboc(void)
 	if (p->ops->poll_init(p, tty_line, str, kgdboc_rx_callback))
 		goto noconfig;
 
+	/* Open the port and obtain a tty which call low level driver startup */
+	if (tty_console_poll_open(kgdb_tty_driver, &kgdb_filp,
+				  kgdb_tty_line) != 0)
+		goto noconfig;
+
 do_register:
 	err = kgdb_register_io_module(&kgdboc_io_ops);
 	if (err)
@@ -334,10 +347,7 @@ nmi_con_failed:
 	kgdb_unregister_io_module(&kgdboc_io_ops);
 noconfig:
 	kgdboc_unregister_kbd();
-	if (kgdb_tty_driver)
-		kgdb_tty_driver->ops->poll_init(kgdb_tty_driver, kgdb_tty_line,
-						NULL, (void *)-1);
-	kgdb_tty_driver = NULL;
+	release_kgdboc_tty();
 	config[0] = 0;
 	configured = 0;
 	cleanup_kgdboc();
