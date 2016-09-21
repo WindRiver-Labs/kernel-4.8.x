@@ -321,7 +321,10 @@ static int pl011_fifo_to_tty(struct uart_amba_port *uap)
 			else if (ch & UART011_DR_FE)
 				flag = TTY_FRAME;
 		}
-
+#ifdef CONFIG_CONSOLE_POLL
+		if (uap->port.poll_rx_cb && uap->port.poll_rx_cb(ch & 255))
+			continue;
+#endif
 		if (uart_handle_sysrq_char(&uap->port, ch & 255))
 			continue;
 
