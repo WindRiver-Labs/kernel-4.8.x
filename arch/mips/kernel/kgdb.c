@@ -480,9 +480,6 @@ int kgdb_arch_handle_exception(int vector, int signo, int err_code,
 		/* masks interrupts */
 		regs->cp0_status &= ~ST0_IE;
 
-		/* Flush cache */
-		flush_icache_range((long)next_addr,
-				   (long)next_addr + 4);
 		atomic_set(&kgdb_cpu_doing_single_step, cpu);
 
 		PRINTK("step armed over 0x%lx\n", regs->cp0_epc);
