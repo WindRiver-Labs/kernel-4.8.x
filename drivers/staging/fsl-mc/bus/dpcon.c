@@ -1,4 +1,4 @@
-/* Copyright 2013-2015 Freescale Semiconductor Inc.
+/* Copyright 2013-2016 Freescale Semiconductor Inc.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -54,11 +54,10 @@ int dpcon_open(struct fsl_mc_io *mc_io,
 		return err;
 
 	/* retrieve response parameters */
-	*token = MC_CMD_HDR_READ_TOKEN(cmd.header);
+	*token = get_mc_cmd_hdr_token(cmd.header);
 
 	return 0;
 }
-EXPORT_SYMBOL(dpcon_open);
 
 int dpcon_close(struct fsl_mc_io *mc_io,
 		uint32_t cmd_flags,
@@ -74,12 +73,12 @@ int dpcon_close(struct fsl_mc_io *mc_io,
 	/* send command to mc*/
 	return mc_send_command(mc_io, &cmd);
 }
-EXPORT_SYMBOL(dpcon_close);
 
 int dpcon_create(struct fsl_mc_io *mc_io,
-		 uint32_t cmd_flags,
-		 const struct dpcon_cfg *cfg,
-		 uint16_t *token)
+		 uint16_t dprc_token,
+		uint32_t cmd_flags,
+		const struct dpcon_cfg *cfg,
+		uint32_t *object_id)
 {
 	struct mc_command cmd = { 0 };
 	int err;
@@ -87,7 +86,7 @@ int dpcon_create(struct fsl_mc_io *mc_io,
 	/* prepare command */
 	cmd.header = mc_encode_cmd_header(DPCON_CMDID_CREATE,
 					  cmd_flags,
-					  0);
+					  dprc_token);
 	DPCON_CMD_CREATE(cmd, cfg);
 
 	/* send command to mc*/
@@ -96,22 +95,24 @@ int dpcon_create(struct fsl_mc_io *mc_io,
 		return err;
 
 	/* retrieve response parameters */
-	*token = MC_CMD_HDR_READ_TOKEN(cmd.header);
+	*object_id = get_mc_cmd_create_object_id(&cmd);
 
 	return 0;
 }
 
 int dpcon_destroy(struct fsl_mc_io *mc_io,
-		  uint32_t cmd_flags,
-		  uint16_t token)
+		  uint16_t dprc_token,
+		uint32_t cmd_flags,
+		uint32_t object_id)
 {
 	struct mc_command cmd = { 0 };
 
 	/* prepare command */
 	cmd.header = mc_encode_cmd_header(DPCON_CMDID_DESTROY,
 					  cmd_flags,
-					  token);
-
+					  dprc_token);
+	/* set object id to destroy */
+	cmd.params[0] = mc_enc(0, sizeof(object_id), object_id);
 	/* send command to mc*/
 	return mc_send_command(mc_io, &cmd);
 }
@@ -130,7 +131,6 @@ int dpcon_enable(struct fsl_mc_io *mc_io,
 	/* send command to mc*/
 	return mc_send_command(mc_io, &cmd);
 }
-EXPORT_SYMBOL(dpcon_enable);
 
 int dpcon_disable(struct fsl_mc_io *mc_io,
 		  uint32_t cmd_flags,
@@ -146,7 +146,6 @@ int dpcon_disable(struct fsl_mc_io *mc_io,
 	/* send command to mc*/
 	return mc_send_command(mc_io, &cmd);
 }
-EXPORT_SYMBOL(dpcon_disable);
 
 int dpcon_is_enabled(struct fsl_mc_io *mc_io,
 		     uint32_t cmd_flags,
@@ -385,7 +384,6 @@ int dpcon_get_attributes(struct fsl_mc_io *mc_io,
 
 	return 0;
 }
-EXPORT_SYMBOL(dpcon_get_attributes);
 
 int dpcon_set_notification(struct fsl_mc_io *mc_io,
 			   uint32_t cmd_flags,
@@ -403,5 +401,24 @@ int dpcon_set_notification(struct fsl_mc_io *mc_io,
 	/* send command to mc*/
 	return mc_send_command(mc_io, &cmd);
 }
-EXPORT_SYMBOL(dpcon_set_notification);
 
+int dpcon_get_api_version(struct fsl_mc_io *mc_io,
+			  uint32_t cmd_flags,
+			  uint16_t *major_ver,
+			  uint16_t *minor_ver)
+{
+	struct mc_command cmd = { 0 };
+	int err;
+
+	cmd.header = mc_encode_cmd_header(DPCON_CMDID_GET_API_VERSION,
+					cmd_flags,
+					0);
+
+	err = mc_send_command(mc_io, &cmd);
+	if (err)
+		return err;
+
+	get_mc_cmd_object_api_ver(&cmd, major_ver, minor_ver);
+
+	return 0;
+}

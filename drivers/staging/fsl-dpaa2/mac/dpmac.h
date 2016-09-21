@@ -1,4 +1,4 @@
-/* Copyright 2013-2015 Freescale Semiconductor Inc.
+/* Copyright 2013-2016 Freescale Semiconductor Inc.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -122,46 +122,53 @@ enum dpmac_eth_if {
  *				MAC IDs for the 2nd WRIOP: 17-32.
  */
 struct dpmac_cfg {
-	int mac_id;
+	uint16_t mac_id;
 };
 
 /**
  * dpmac_create() - Create the DPMAC object.
  * @mc_io:	Pointer to MC portal's I/O object
+ * @dprc_token: Parent container token; '0' for default container
  * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
  * @cfg:	Configuration structure
- * @token:	Returned token; use in subsequent API calls
+ * @obj_id: returned object id
  *
  * Create the DPMAC object, allocate required resources and
  * perform required initialization.
  *
- * The object can be created either by declaring it in the
- * DPL file, or by calling this function.
- * This function returns a unique authentication token,
- * associated with the specific object ID and the specific MC
- * portal; this token must be used in all subsequent calls to
- * this specific object. For objects that are created using the
- * DPL file, call dpmac_open function to get an authentication
- * token first.
+ * The function accepts an authentication token of a parent
+ * container that this object should be assigned to. The token
+ * can be '0' so the object will be assigned to the default container.
+ * The newly created object can be opened with the returned
+ * object id and using the container's associated tokens and MC portals.
  *
  * Return:	'0' on Success; Error code otherwise.
  */
 int dpmac_create(struct fsl_mc_io	*mc_io,
-		 uint32_t		cmd_flags,
-		 const struct dpmac_cfg	*cfg,
-		 uint16_t		*token);
+		uint16_t	dprc_token,
+		uint32_t	cmd_flags,
+		const struct dpmac_cfg	*cfg,
+		uint32_t	*obj_id);
 
 /**
  * dpmac_destroy() - Destroy the DPMAC object and release all its resources.
  * @mc_io:	Pointer to MC portal's I/O object
+ * @dprc_token: Parent container token; '0' for default container
  * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
- * @token:	Token of DPMAC object
+ * @object_id:	The object id; it must be a valid id within the container that
+ * created this object;
+ *
+ * The function accepts the authentication token of the parent container that
+ * created the object (not the one that currently owns the object). The object
+ * is searched within parent using the provided 'object_id'.
+ * All tokens to the object must be closed before calling destroy.
  *
  * Return:	'0' on Success; error code otherwise.
  */
 int dpmac_destroy(struct fsl_mc_io	*mc_io,
-		  uint32_t		cmd_flags,
-		  uint16_t		token);
+		uint16_t	dprc_token,
+		uint32_t	cmd_flags,
+		uint32_t	object_id);
 
 /**
  * DPMAC IRQ Index and Events
@@ -345,28 +352,16 @@ int dpmac_clear_irq_status(struct fsl_mc_io	*mc_io,
 
 /**
  * struct dpmac_attr - Structure representing DPMAC attributes
- * @id:		DPMAC object ID
- * @phy_id:	PHY ID
- * @link_type: link type
- * @eth_if: Ethernet interface
+ * @id: DPMAC object ID
  * @max_rate: Maximum supported rate - in Mbps
- * @version:	DPMAC version
+ * @eth_if: Ethernet interface
+ * @link_type: link type
  */
 struct dpmac_attr {
-	int			id;
-	int			phy_id;
+	uint16_t				id;
+	uint32_t				max_rate;
+	enum dpmac_eth_if		eth_if;
 	enum dpmac_link_type	link_type;
-	enum dpmac_eth_if	eth_if;
-	uint32_t		max_rate;
-	/**
-	 * struct version - Structure representing DPMAC version
-	 * @major:	DPMAC major version
-	 * @minor:	DPMAC minor version
-	 */
-	struct {
-		uint16_t major;
-		uint16_t minor;
-	} version;
 };
 
 /**
@@ -383,47 +378,6 @@ int dpmac_get_attributes(struct fsl_mc_io	*mc_io,
 			 uint32_t		cmd_flags,
 			 uint16_t		token,
 			 struct dpmac_attr	*attr);
-
-/**
- * struct dpmac_mdio_cfg - DPMAC MDIO read/write parameters
- * @phy_addr: MDIO device address
- * @reg: Address of the register within the Clause 45 PHY device from which data
- *	is to be read
- * @data: Data read/write from/to MDIO
- */
-struct dpmac_mdio_cfg {
-	uint8_t		phy_addr;
-	uint8_t		reg;
-	uint16_t	data;
-};
-
-/**
- * dpmac_mdio_read() - Perform MDIO read transaction
- * @mc_io:	Pointer to opaque I/O object
- * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
- * @token:	Token of DPMAC object
- * @cfg:	Structure with MDIO transaction parameters
- *
- * Return:	'0' on Success; Error code otherwise.
- */
-int dpmac_mdio_read(struct fsl_mc_io		*mc_io,
-		    uint32_t			cmd_flags,
-		    uint16_t			token,
-		    struct dpmac_mdio_cfg	*cfg);
-
-/**
- * dpmac_mdio_write() - Perform MDIO write transaction
- * @mc_io:	Pointer to opaque I/O object
- * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
- * @token:	Token of DPMAC object
- * @cfg:	Structure with MDIO transaction parameters
- *
- * Return:	'0' on Success; Error code otherwise.
- */
-int dpmac_mdio_write(struct fsl_mc_io		*mc_io,
-		     uint32_t			cmd_flags,
-		     uint16_t			token,
-		     struct dpmac_mdio_cfg	*cfg);
 
 /**
  * DPMAC link configuration/state options
@@ -521,7 +475,7 @@ int dpmac_set_link_state(struct fsl_mc_io		*mc_io,
  *			      bytes long with a good CRC.
  * @DPMAC_CNT_ING_OVERSIZED: counts frames longer than the maximum frame length
  *			     specified, with a good frame check sequence.
- * @DPMAC_CNT_ING_VALID_PAUSE_FRAME: counts valid pause frames (regular and PFC)
+ * @DPMAC_CNT_ING_VALID_PAUSE_FRAME: counts valid pause frames (regular and PFC).
  * @DPMAC_CNT_EGR_VALID_PAUSE_FRAME: counts valid pause frames transmitted
  *				     (regular and PFC).
  * @DPMAC_CNT_ING_BYTE: counts bytes received except preamble for all valid
@@ -589,5 +543,36 @@ int dpmac_get_counter(struct fsl_mc_io		*mc_io,
 		      uint16_t			token,
 		      enum dpmac_counter	 type,
 		      uint64_t			*counter);
+
+/**
+ * dpmac_set_port_mac_addr() - Set a MAC address associated with the physical
+ *              port.  This is not used for filtering, MAC is always in
+ *              promiscuous mode, it is passed to DPNIs through DPNI API for
+ *              application used.
+ * @mc_io:	Pointer to opaque I/O object
+ * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
+ * @token:	Token of DPMAC object
+ * @addr:	MAC address to set
+ *
+ * Return:	The requested counter; '0' otherwise.
+ */
+int dpmac_set_port_mac_addr(struct fsl_mc_io *mc_io,
+		      uint32_t cmd_flags,
+		      uint16_t token,
+		      const uint8_t addr[6]);
+
+/**
+ * dpmac_get_api_version() - Get Data Path MAC version
+ * @mc_io:  Pointer to MC portal's I/O object
+ * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
+ * @major_ver:	Major version of data path mac API
+ * @minor_ver:	Minor version of data path mac API
+ *
+ * Return:  '0' on Success; Error code otherwise.
+ */
+int dpmac_get_api_version(struct fsl_mc_io *mc_io,
+			   uint32_t cmd_flags,
+			   uint16_t *major_ver,
+			   uint16_t *minor_ver);
 
 #endif /* __FSL_DPMAC_H */

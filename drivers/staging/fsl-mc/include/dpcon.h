@@ -1,4 +1,4 @@
-/* Copyright 2013-2015 Freescale Semiconductor Inc.
+/* Copyright 2013-2016 Freescale Semiconductor Inc.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -63,9 +63,9 @@ struct fsl_mc_io;
  * Return:	'0' on Success; Error code otherwise.
  */
 int dpcon_open(struct fsl_mc_io *mc_io,
-	       uint32_t	cmd_flags,
+	       uint32_t		cmd_flags,
 	       int		dpcon_id,
-	       uint16_t	*token);
+	       uint16_t		*token);
 
 /**
  * dpcon_close() - Close the control session of the object
@@ -78,9 +78,9 @@ int dpcon_open(struct fsl_mc_io *mc_io,
  *
  * Return:	'0' on Success; Error code otherwise.
  */
-int dpcon_close(struct fsl_mc_io *mc_io,
-		uint32_t	cmd_flags,
-		uint16_t	token);
+int dpcon_close(struct fsl_mc_io	*mc_io,
+		uint32_t		cmd_flags,
+		uint16_t		token);
 
 /**
  * struct dpcon_cfg - Structure representing DPCON configuration
@@ -93,9 +93,10 @@ struct dpcon_cfg {
 /**
  * dpcon_create() - Create the DPCON object.
  * @mc_io:	Pointer to MC portal's I/O object
+ * @dprc_token:	Parent container token; '0' for default container
  * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
  * @cfg:	Configuration structure
- * @token:	Returned token; use in subsequent API calls
+ * @obj_id: returned object id
  *
  * Create the DPCON object, allocate required resources and
  * perform required initialization.
@@ -103,31 +104,39 @@ struct dpcon_cfg {
  * The object can be created either by declaring it in the
  * DPL file, or by calling this function.
  *
- * This function returns a unique authentication token,
- * associated with the specific object ID and the specific MC
- * portal; this token must be used in all subsequent calls to
- * this specific object. For objects that are created using the
- * DPL file, call dpcon_open() function to get an authentication
- * token first.
+ * The function accepts an authentication token of a parent
+ * container that this object should be assigned to. The token
+ * can be '0' so the object will be assigned to the default container.
+ * The newly created object can be opened with the returned
+ * object id and using the container's associated tokens and MC portals.
  *
  * Return:	'0' on Success; Error code otherwise.
  */
 int dpcon_create(struct fsl_mc_io	*mc_io,
-		 uint32_t		cmd_flags,
-		 const struct dpcon_cfg *cfg,
-		 uint16_t		*token);
+		 uint16_t		dprc_token,
+		uint32_t		cmd_flags,
+		const struct dpcon_cfg	*cfg,
+		uint32_t		*obj_id);
 
 /**
  * dpcon_destroy() - Destroy the DPCON object and release all its resources.
  * @mc_io:	Pointer to MC portal's I/O object
+ * @dprc_token: Parent container token; '0' for default container
  * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
- * @token:	Token of DPCON object
+ * @object_id:	The object id; it must be a valid id within the container that
+ * created this object;
+ *
+ * The function accepts the authentication token of the parent container that
+ * created the object (not the one that currently owns the object). The object
+ * is searched within parent using the provided 'object_id'.
+ * All tokens to the object must be closed before calling destroy.
  *
  * Return:	'0' on Success; error code otherwise.
  */
 int dpcon_destroy(struct fsl_mc_io	*mc_io,
-		  uint32_t		cmd_flags,
-		  uint16_t		token);
+		  uint16_t		dprc_token,
+		uint32_t		cmd_flags,
+		uint32_t		object_id);
 
 /**
  * dpcon_enable() - Enable the DPCON
@@ -279,8 +288,8 @@ int dpcon_get_irq_enable(struct fsl_mc_io	*mc_io,
  *
  * Return:	'0' on Success; Error code otherwise.
  */
-int dpcon_set_irq_mask(struct fsl_mc_io *mc_io,
-		       uint32_t	cmd_flags,
+int dpcon_set_irq_mask(struct fsl_mc_io	*mc_io,
+		       uint32_t		cmd_flags,
 		       uint16_t		token,
 		       uint8_t		irq_index,
 		       uint32_t		mask);
@@ -298,8 +307,8 @@ int dpcon_set_irq_mask(struct fsl_mc_io *mc_io,
  *
  * Return:	'0' on Success; Error code otherwise.
  */
-int dpcon_get_irq_mask(struct fsl_mc_io *mc_io,
-		       uint32_t	cmd_flags,
+int dpcon_get_irq_mask(struct fsl_mc_io	*mc_io,
+		       uint32_t		cmd_flags,
 		       uint16_t		token,
 		       uint8_t		irq_index,
 		       uint32_t		*mask);
@@ -343,21 +352,11 @@ int dpcon_clear_irq_status(struct fsl_mc_io	*mc_io,
 /**
  * struct dpcon_attr - Structure representing DPCON attributes
  * @id: DPCON object ID
- * @version: DPCON version
  * @qbman_ch_id: Channel ID to be used by dequeue operation
  * @num_priorities: Number of priorities for the DPCON channel (1-8)
  */
 struct dpcon_attr {
 	int id;
-	/**
-	 * struct version - DPCON version
-	 * @major: DPCON major version
-	 * @minor: DPCON minor version
-	 */
-	struct {
-		uint16_t major;
-		uint16_t minor;
-	} version;
 	uint16_t qbman_ch_id;
 	uint8_t num_priorities;
 };
@@ -377,7 +376,8 @@ int dpcon_get_attributes(struct fsl_mc_io	*mc_io,
 			 struct dpcon_attr	*attr);
 
 /**
- * struct dpcon_notification_cfg - Structure representing notification parameters
+ * struct dpcon_notification_cfg - Structure representing notification
+ *					parameters
  * @dpio_id:	DPIO object ID; must be configured with a notification channel;
  *	to disable notifications set it to 'DPCON_INVALID_DPIO_ID';
  * @priority:	Priority selection within the DPIO channel; valid values
@@ -386,7 +386,7 @@ int dpcon_get_attributes(struct fsl_mc_io	*mc_io,
  */
 struct dpcon_notification_cfg {
 	int		dpio_id;
-	uint8_t	priority;
+	uint8_t		priority;
 	uint64_t	user_ctx;
 };
 
@@ -403,5 +403,19 @@ int dpcon_set_notification(struct fsl_mc_io			*mc_io,
 			   uint32_t				cmd_flags,
 			   uint16_t				token,
 			   struct dpcon_notification_cfg	*cfg);
+
+/**
+ * dpcon_get_api_version() - Get Data Path Concentrator API version
+ * @mc_io:  Pointer to MC portal's I/O object
+ * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
+ * @major_ver:	Major version of data path concentrator API
+ * @minor_ver:	Minor version of data path concentrator API
+ *
+ * Return:  '0' on Success; Error code otherwise.
+ */
+int dpcon_get_api_version(struct fsl_mc_io *mc_io,
+			  uint32_t cmd_flags,
+			  uint16_t *major_ver,
+			  uint16_t *minor_ver);
 
 #endif /* __FSL_DPCON_H */

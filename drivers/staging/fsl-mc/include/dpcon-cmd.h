@@ -1,4 +1,4 @@
-/* Copyright 2013-2015 Freescale Semiconductor Inc.
+/* Copyright 2013-2016 Freescale Semiconductor Inc.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -33,31 +33,34 @@
 #define _FSL_DPCON_CMD_H
 
 /* DPCON Version */
-#define DPCON_VER_MAJOR				2
+#define DPCON_VER_MAJOR				3
 #define DPCON_VER_MINOR				2
+#define DPCON_CMD_BASE_VERSION			1
+#define DPCON_CMD_ID_OFFSET			4
 
 /* Command IDs */
-#define DPCON_CMDID_CLOSE				0x800
-#define DPCON_CMDID_OPEN				0x808
-#define DPCON_CMDID_CREATE				0x908
-#define DPCON_CMDID_DESTROY				0x900
+#define DPCON_CMDID_CLOSE                       ((0x800 << DPCON_CMD_ID_OFFSET) | DPCON_CMD_BASE_VERSION)
+#define DPCON_CMDID_OPEN                        ((0x808 << DPCON_CMD_ID_OFFSET) | DPCON_CMD_BASE_VERSION)
+#define DPCON_CMDID_CREATE                      ((0x908 << DPCON_CMD_ID_OFFSET) | DPCON_CMD_BASE_VERSION)
+#define DPCON_CMDID_DESTROY                     ((0x988 << DPCON_CMD_ID_OFFSET) | DPCON_CMD_BASE_VERSION)
+#define DPCON_CMDID_GET_API_VERSION             ((0xa08 << DPCON_CMD_ID_OFFSET) | DPCON_CMD_BASE_VERSION)
 
-#define DPCON_CMDID_ENABLE				0x002
-#define DPCON_CMDID_DISABLE				0x003
-#define DPCON_CMDID_GET_ATTR				0x004
-#define DPCON_CMDID_RESET				0x005
-#define DPCON_CMDID_IS_ENABLED				0x006
+#define DPCON_CMDID_ENABLE                      ((0x002 << DPCON_CMD_ID_OFFSET) | DPCON_CMD_BASE_VERSION)
+#define DPCON_CMDID_DISABLE                     ((0x003 << DPCON_CMD_ID_OFFSET) | DPCON_CMD_BASE_VERSION)
+#define DPCON_CMDID_GET_ATTR                    ((0x004 << DPCON_CMD_ID_OFFSET) | DPCON_CMD_BASE_VERSION)
+#define DPCON_CMDID_RESET                       ((0x005 << DPCON_CMD_ID_OFFSET) | DPCON_CMD_BASE_VERSION)
+#define DPCON_CMDID_IS_ENABLED                  ((0x006 << DPCON_CMD_ID_OFFSET) | DPCON_CMD_BASE_VERSION)
 
-#define DPCON_CMDID_SET_IRQ				0x010
-#define DPCON_CMDID_GET_IRQ				0x011
-#define DPCON_CMDID_SET_IRQ_ENABLE			0x012
-#define DPCON_CMDID_GET_IRQ_ENABLE			0x013
-#define DPCON_CMDID_SET_IRQ_MASK			0x014
-#define DPCON_CMDID_GET_IRQ_MASK			0x015
-#define DPCON_CMDID_GET_IRQ_STATUS			0x016
-#define DPCON_CMDID_CLEAR_IRQ_STATUS			0x017
+#define DPCON_CMDID_SET_IRQ                     ((0x010 << DPCON_CMD_ID_OFFSET) | DPCON_CMD_BASE_VERSION)
+#define DPCON_CMDID_GET_IRQ                     ((0x011 << DPCON_CMD_ID_OFFSET) | DPCON_CMD_BASE_VERSION)
+#define DPCON_CMDID_SET_IRQ_ENABLE              ((0x012 << DPCON_CMD_ID_OFFSET) | DPCON_CMD_BASE_VERSION)
+#define DPCON_CMDID_GET_IRQ_ENABLE              ((0x013 << DPCON_CMD_ID_OFFSET) | DPCON_CMD_BASE_VERSION)
+#define DPCON_CMDID_SET_IRQ_MASK                ((0x014 << DPCON_CMD_ID_OFFSET) | DPCON_CMD_BASE_VERSION)
+#define DPCON_CMDID_GET_IRQ_MASK                ((0x015 << DPCON_CMD_ID_OFFSET) | DPCON_CMD_BASE_VERSION)
+#define DPCON_CMDID_GET_IRQ_STATUS              ((0x016 << DPCON_CMD_ID_OFFSET) | DPCON_CMD_BASE_VERSION)
+#define DPCON_CMDID_CLEAR_IRQ_STATUS            ((0x017 << DPCON_CMD_ID_OFFSET) | DPCON_CMD_BASE_VERSION)
 
-#define DPCON_CMDID_SET_NOTIFICATION			0x100
+#define DPCON_CMDID_SET_NOTIFICATION            ((0x100 << DPCON_CMD_ID_OFFSET) | DPCON_CMD_BASE_VERSION)
 
 /*                cmd, param, offset, width, type, arg_name */
 #define DPCON_CMD_OPEN(cmd, dpcon_id) \
@@ -147,8 +150,6 @@ do { \
 	MC_RSP_OP(cmd, 0, 0,  32, int,	    attr->id);\
 	MC_RSP_OP(cmd, 0, 32, 16, uint16_t, attr->qbman_ch_id);\
 	MC_RSP_OP(cmd, 0, 48, 8,  uint8_t,  attr->num_priorities);\
-	MC_RSP_OP(cmd, 1, 0,  16, uint16_t, attr->version.major);\
-	MC_RSP_OP(cmd, 1, 16, 16, uint16_t, attr->version.minor);\
 } while (0)
 
 /*                cmd, param, offset, width, type, arg_name */
