@@ -224,7 +224,7 @@ static inline int phy_init(struct phy *phy)
 	return -ENOSYS;
 }
 
-static int phy_reset(struct phy *phy)
+static inline int phy_reset(struct phy *phy)
 {
 	if (!phy)
 		return 0;
