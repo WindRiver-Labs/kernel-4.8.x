@@ -47,6 +47,8 @@ static inline void arch_kgdb_breakpoint(void)
 
 extern void kgdb_handle_bus_error(void);
 extern int kgdb_fault_expected;
+/* export cpu name for qcpu kgdb query */
+extern const char *ARM_cpu_name;
 
 #endif /* !__ASSEMBLY__ */
 
