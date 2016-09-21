@@ -18,6 +18,18 @@ be setup by initializing the following fields.
 -  struct drm_mode_config_funcs \*funcs;
    Mode setting functions.
 
+Plane Abstraction
+=================
+
+Plane Functions Reference
+-------------------------
+
+.. kernel-doc:: include/drm/drm_plane.h
+   :internal:
+
+.. kernel-doc:: drivers/gpu/drm/drm_plane.c
+   :export:
+
 Display Modes Function Reference
 --------------------------------
 
