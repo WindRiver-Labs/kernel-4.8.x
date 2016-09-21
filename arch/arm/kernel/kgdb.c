@@ -177,6 +177,11 @@ int kgdb_arch_handle_exception(int exception_vector, int signo,
 		uint32_t *next_addr;
 		uint32_t currentInst;
 
+		/* For a compiled break, advance the PC */
+		if (compiled_break == 1) {
+			linux_regs->ARM_pc += 4;
+			compiled_break = 0;
+		}
 		/*
 		 * Do a software step. We assume that the host
 		 * debuuger has already REMOVED the breakpoint, so if
