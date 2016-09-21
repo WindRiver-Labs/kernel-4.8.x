@@ -1055,6 +1055,9 @@ static int  ftdi_tiocmset(struct tty_struct *tty,
 static int  ftdi_ioctl(struct tty_struct *tty,
 			unsigned int cmd, unsigned long arg);
 static void ftdi_break_ctl(struct tty_struct *tty, int break_state);
+#ifdef CONFIG_CONSOLE_POLL
+static int ftdi_poll_get_char(struct usb_serial_port *port);
+#endif
 static bool ftdi_tx_empty(struct usb_serial_port *port);
 static int ftdi_get_modem_status(struct usb_serial_port *port,
 						unsigned char status[2]);
@@ -1092,6 +1095,9 @@ static struct usb_serial_driver ftdi_sio_device = {
 	.ioctl =		ftdi_ioctl,
 	.set_termios =		ftdi_set_termios,
 	.break_ctl =		ftdi_break_ctl,
+#ifdef CONFIG_CONSOLE_POLL
+	.poll_get_char = ftdi_poll_get_char,
+#endif
 	.tx_empty =		ftdi_tx_empty,
 };
 
@@ -2109,8 +2115,16 @@ static int ftdi_process_packet(struct usb_serial_port *port,
 	port->icount.rx += len;
 	ch = packet + 2;
 
-	if (port->port.console && port->sysrq) {
+	if ((port->port.console && port->sysrq)
+#ifdef CONFIG_CONSOLE_POLL
+	    || port->poll_rx_cb
+#endif /* CONFIG_CONSOLE_POLL */
+	    ) {
 		for (i = 0; i < len; i++, ch++) {
+#ifdef CONFIG_CONSOLE_POLL
+			if (port->poll_rx_cb && port->poll_rx_cb(*ch))
+				continue;
+#endif /* CONFIG_CONSOLE_POLL */
 			if (!usb_serial_handle_sysrq_char(port, *ch))
 				tty_insert_flip_char(&port->port, *ch, flag);
 		}
@@ -2512,6 +2526,14 @@ static int ftdi_ioctl(struct tty_struct *tty,
 
 	return -ENOIOCTLCMD;
 }
+
+#ifdef CONFIG_CONSOLE_POLL
+static int ftdi_poll_get_char(struct usb_serial_port *port)
+{
+	/* Indicate this driver requires high level polling */
+	return -2;
+}
+#endif /* CONFIG_CONSOLE_POLL */
 
 module_usb_serial_driver(serial_drivers, id_table_combined);
 
