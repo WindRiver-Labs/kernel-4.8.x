@@ -751,15 +751,17 @@ void kgdb_arch_set_pc(struct pt_regs *regs, unsigned long ip)
 int kgdb_arch_set_breakpoint(struct kgdb_bkpt *bpt)
 {
 	int err;
+#ifdef CONFIG_DEBUG_RODATA
 	char opc[BREAK_INSTR_SIZE];
+#endif /* CONFIG_DEBUG_RODATA */
 
-	bpt->type = BP_BREAKPOINT;
 	err = probe_kernel_read(bpt->saved_instr, (char *)bpt->bpt_addr,
 				BREAK_INSTR_SIZE);
 	if (err)
 		return err;
 	err = probe_kernel_write((char *)bpt->bpt_addr,
 				 arch_kgdb_ops.gdb_bpt_instr, BREAK_INSTR_SIZE);
+#ifdef CONFIG_DEBUG_RODATA
 	if (!err)
 		return err;
 	/*
@@ -775,33 +777,36 @@ int kgdb_arch_set_breakpoint(struct kgdb_bkpt *bpt)
 		return err;
 	if (memcmp(opc, arch_kgdb_ops.gdb_bpt_instr, BREAK_INSTR_SIZE))
 		return -EINVAL;
-	bpt->type = BP_POKE_BREAKPOINT;
-
+#endif /* CONFIG_DEBUG_RODATA */
 	return err;
 }
 
 int kgdb_arch_remove_breakpoint(struct kgdb_bkpt *bpt)
 {
 	int err;
+#ifdef CONFIG_DEBUG_RODATA
 	char opc[BREAK_INSTR_SIZE];
+#endif /* CONFIG_DEBUG_RODATA */
 
-	if (bpt->type != BP_POKE_BREAKPOINT)
-		goto knl_write;
+	err = probe_kernel_write((char *)bpt->bpt_addr,
+				 (char *)bpt->saved_instr, BREAK_INSTR_SIZE);
+#ifdef CONFIG_DEBUG_RODATA
+	if (!err)
+		return err;
 	/*
 	 * It is safe to call text_poke() because normal kernel execution
 	 * is stopped on all cores, so long as the text_mutex is not locked.
 	 */
 	if (mutex_is_locked(&text_mutex))
-		goto knl_write;
+		return -EBUSY;
 	text_poke((void *)bpt->bpt_addr, bpt->saved_instr, BREAK_INSTR_SIZE);
 	err = probe_kernel_read(opc, (char *)bpt->bpt_addr, BREAK_INSTR_SIZE);
-	if (err || memcmp(opc, bpt->saved_instr, BREAK_INSTR_SIZE))
-		goto knl_write;
+	if (err)
+		return err;
+	if (memcmp(opc, bpt->saved_instr, BREAK_INSTR_SIZE))
+		return -EINVAL;
+#endif /* CONFIG_DEBUG_RODATA */
 	return err;
-
-knl_write:
-	return probe_kernel_write((char *)bpt->bpt_addr,
-				  (char *)bpt->saved_instr, BREAK_INSTR_SIZE);
 }
 
 struct kgdb_arch arch_kgdb_ops = {
