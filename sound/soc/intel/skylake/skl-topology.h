@@ -211,6 +211,7 @@ struct skl_kpb_params {
 struct skl_module_inst_id {
 	u32 module_id;
 	u32 instance_id;
+	int pvt_id;
 };
 
 enum skl_module_pin_state {
