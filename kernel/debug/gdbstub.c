@@ -432,6 +432,8 @@ static void int_to_threadref(unsigned char *id, int value)
 
 static struct task_struct *getthread(struct pt_regs *regs, int tid)
 {
+	struct task_struct *tsk;
+
 	/*
 	 * Non-positive TIDs are remapped to the cpu shadow information
 	 */
@@ -454,7 +456,10 @@ static struct task_struct *getthread(struct pt_regs *regs, int tid)
 	 * but is nicely RCU locked - hence is a pretty resilient
 	 * thing to use:
 	 */
-	return find_task_by_pid_ns(tid, &init_pid_ns);
+	rcu_read_lock();
+	tsk = find_task_by_pid_ns(tid, &init_pid_ns);
+	rcu_read_unlock();
+	return tsk;
 }
 
 
