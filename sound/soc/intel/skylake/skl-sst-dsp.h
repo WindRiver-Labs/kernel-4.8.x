@@ -225,6 +225,10 @@ void bxt_sst_dsp_cleanup(struct device *dev, struct skl_sst *ctx);
 int snd_skl_get_module_info(struct skl_sst *ctx, u8 *uuid,
 		struct skl_dfw_module *dfw_config);
 int snd_skl_parse_uuids(struct sst_dsp *ctx, unsigned int offset);
+int skl_get_pvt_id(struct skl_sst *ctx,
+				struct skl_module_cfg *mconfig);
+int skl_put_pvt_id(struct skl_sst *ctx,
+				struct skl_module_cfg *mconfig);
 void skl_freeup_uuid_list(struct skl_sst *ctx);
 
 int skl_dsp_strip_extended_manifest(struct firmware *fw);
