@@ -58,6 +58,11 @@
 		#size-cells = <0>;
 	};
 
+
+	idle: idle-states {
+		entry-method = "arm,psci";
+	};
+
 	memory@80000000 {
 		device_type = "memory";
 		reg = <0x00000000 0x80000000 0 0x80000000>;
