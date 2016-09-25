@@ -35,6 +35,11 @@
 #include <linux/uaccess.h>
 #include <asm/cacheflush.h>
 #include <linux/sched.h>
+#include <linux/dma-buf.h>
+
+#include <linux/of.h>
+#include <linux/irq.h>
+#include <linux/of_irq.h>
 
 #include "xilinx-dma-apf.h"
 
@@ -45,6 +50,7 @@ static LIST_HEAD(dma_device_list);
 /* IO accessors */
 #define DMA_OUT(addr, val)      (iowrite32(val, addr))
 #define DMA_IN(addr)            (ioread32(addr))
+
 
 static int unpin_user_pages(struct scatterlist *sglist, unsigned int cnt);
 /* Driver functions */
@@ -768,7 +774,8 @@ int xdma_submit(struct xdma_chan *chan,
 			u32 *appwords_i,
 			unsigned int nappwords_o,
 			unsigned int user_flags,
-			struct xdma_head **dmaheadpp)
+			struct xdma_head **dmaheadpp,
+			struct xlnk_dmabuf_reg *dp)
 {
 	struct xdma_head *dmahead;
 	struct scatterlist *sglist, *sglist_dma;
@@ -779,11 +786,9 @@ int xdma_submit(struct xdma_chan *chan,
 	DEFINE_DMA_ATTRS(attrs);
 
 
-	dmahead = kmalloc(sizeof(struct xdma_head), GFP_KERNEL);
+	dmahead = kzalloc(sizeof(struct xdma_head), GFP_KERNEL);
 	if (!dmahead)
 		return -ENOMEM;
-
-	memset(dmahead, 0, sizeof(struct xdma_head));
 
 	dmahead->chan = chan;
 	dmahead->userbuf = userbuf;
@@ -791,7 +796,28 @@ int xdma_submit(struct xdma_chan *chan,
 	dmahead->dmadir = chan->direction;
 	dmahead->userflag = user_flags;
 	dmadir = chan->direction;
-	if (user_flags & CF_FLAG_PHYSICALLY_CONTIGUOUS) {
+	if (dp) {
+		if (!dp->is_mapped) {
+			dp->dbuf_attach = dma_buf_attach(dp->dbuf, chan->dev);
+			dp->dbuf_sg_table = dma_buf_map_attachment(
+				dp->dbuf_attach, chan->direction);
+
+			if (IS_ERR_OR_NULL(dp->dbuf_sg_table)) {
+				pr_err("%s unable to map sg_table for dbuf: %d\n",
+					__func__, (int)dp->dbuf_sg_table);
+				return -EINVAL;
+			}
+			dp->is_mapped = 1;
+		}
+
+		sglist_dma = dp->dbuf_sg_table->sgl;
+		sglist = dp->dbuf_sg_table->sgl;
+		sgcnt = dp->dbuf_sg_table->nents;
+		sgcnt_dma = dp->dbuf_sg_table->nents;
+
+		dmahead->userbuf = (void *)dp->dbuf_sg_table->sgl->dma_address;
+		dmahead->is_dmabuf = 1;
+	} else if (user_flags & CF_FLAG_PHYSICALLY_CONTIGUOUS) {
 		/*
 		 * convert physically contiguous buffer into
 		 * minimal length sg list
@@ -804,7 +830,6 @@ int xdma_submit(struct xdma_chan *chan,
 		sgcnt_dma = sgcnt;
 		if (user_flags & CF_FLAG_CACHE_FLUSH_INVALIDATE) {
 			kaddr = phys_to_virt((phys_addr_t)userbuf);
-			dmac_map_area(kaddr, size, DMA_TO_DEVICE);
 			if (dmadir == DMA_TO_DEVICE) {
 				outer_clean_range((phys_addr_t)userbuf,
 						(u32)userbuf + size);
@@ -884,7 +909,9 @@ int xdma_wait(struct xdma_head *dmahead, unsigned int user_flags)
 	} else
 		wait_for_completion(&dmahead->cmp);
 
-	if (!(user_flags & CF_FLAG_PHYSICALLY_CONTIGUOUS)) {
+	if (dmahead->is_dmabuf) {
+		dmahead->is_dmabuf = 0;
+	} else if (!(user_flags & CF_FLAG_PHYSICALLY_CONTIGUOUS)) {
 		if (!(user_flags & CF_FLAG_CACHE_FLUSH_INVALIDATE))
 			dma_set_attr(DMA_ATTR_SKIP_CPU_SYNC, &attrs);
 
@@ -902,7 +929,6 @@ int xdma_wait(struct xdma_head *dmahead, unsigned int user_flags)
 				outer_inv_range((phys_addr_t)paddr,
 						(u32)paddr + size);
 			}
-			dmac_unmap_area(kaddr, size, DMA_FROM_DEVICE);
 		}
 	}
 	return 0;
@@ -938,6 +964,40 @@ int xdma_setconfig(struct xdma_chan *chan,
 	return 0;
 }
 EXPORT_SYMBOL(xdma_setconfig);
+
+static struct of_device_id gic_match[] = {
+	{ .compatible = "arm,cortex-a9-gic", },
+	{ .compatible = "arm,cortex-a15-gic", },
+	{ },
+};
+
+static struct device_node *gic_node;
+
+unsigned int xlate_irq(unsigned int hwirq)
+{
+	struct of_phandle_args irq_data;
+	unsigned int irq;
+
+	if (!gic_node)
+		gic_node = of_find_matching_node(NULL, gic_match);
+
+	if (WARN_ON(!gic_node))
+		return hwirq;
+
+	irq_data.np = gic_node;
+	irq_data.args_count = 3;
+	irq_data.args[0] = 0;
+	irq_data.args[1] = hwirq - 32; /* GIC SPI offset */
+	irq_data.args[2] = IRQ_TYPE_LEVEL_HIGH;
+
+	irq = irq_create_of_mapping(&irq_data);
+	if (WARN_ON(!irq))
+		irq = hwirq;
+
+	pr_info("%s: hwirq %d, irq %d\n", __func__, hwirq, irq);
+
+	return irq;
+}
 
 /* Brute-force probing for xilinx DMA
  */
@@ -1015,7 +1075,7 @@ static int xdma_probe(struct platform_device *pdev)
 		xdev->chan[chan->id] = chan;
 
 		/* The IRQ resource */
-		chan->irq = dma_config->channel_config[i].irq;
+		chan->irq = xlate_irq(dma_config->channel_config[i].irq);
 		if (chan->irq <= 0) {
 			pr_err("get_resource for IRQ for dev %d failed\n",
 				pdev->id);
