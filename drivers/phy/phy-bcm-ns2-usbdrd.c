@@ -58,7 +58,7 @@
 #define DRD_IOCTRL_VAL		0x3dee001
 #define STRAP_CTRL_VAL		0x7ff0001
 #define GPIO_DELAY		20
-#define PHY_WQ_DELAY		msecs_to_jiffies(500)
+#define PHY_WQ_DELAY		msecs_to_jiffies(550)
 
 #define VBUS_TO_GPIO_31         (BIT(17))
 #define USB_ID_TO_GPIO_30       (BIT(16))
