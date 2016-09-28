@@ -90,14 +90,19 @@
 #define DPAA2_ETH_NEEDED_HEADROOM(p_priv) \
 	((p_priv)->tx_data_offset + DPAA2_ETH_TX_BUF_ALIGN)
 
+#define DPAA2_ETH_SKB_SIZE	\
+	(DPAA2_ETH_RX_BUF_SIZE + \
+	 SKB_DATA_ALIGN(sizeof(struct skb_shared_info)))
+
 /* Hardware only sees DPAA2_ETH_RX_BUF_SIZE, but we need to allocate ingress
  * buffers large enough to allow building an skb around them and also account
- * for alignment restrictions
+ * for alignment restrictions. rx_extra_head prevents reallocations in
+ * L3 processing.
  */
-#define DPAA2_ETH_BUF_RAW_SIZE \
-	(DPAA2_ETH_RX_BUF_SIZE + \
-	SKB_DATA_ALIGN(sizeof(struct skb_shared_info)) + \
-	DPAA2_ETH_RX_BUF_ALIGN)
+#define DPAA2_ETH_BUF_RAW_SIZE(p_priv) \
+	(DPAA2_ETH_SKB_SIZE + \
+	DPAA2_ETH_RX_BUF_ALIGN + \
+	(p_priv)->rx_extra_head)
 
 /* PTP nominal frequency 1GHz */
 #define DPAA2_PTP_NOMINAL_FREQ_PERIOD_NS 1
@@ -107,6 +112,11 @@
  * options are either 0 or 64, so we choose the latter.
  */
 #define DPAA2_ETH_SWA_SIZE		64
+
+/* Size of hardware annotation area based on the current buffer layout
+ * configuration
+ */
+#define DPAA2_ETH_HWA_SIZE		128
 
 /* Must keep this struct smaller than DPAA2_ETH_SWA_SIZE */
 struct dpaa2_eth_swa {
@@ -311,6 +321,8 @@ struct dpaa2_eth_priv {
 	 */
 	struct dpni_buffer_layout buf_layout;
 	u16 tx_data_offset;
+	/* Rx extra headroom space */
+	u16 rx_extra_head;
 
 	struct fsl_mc_device *dpbp_dev;
 	struct dpbp_attr dpbp_attrs;

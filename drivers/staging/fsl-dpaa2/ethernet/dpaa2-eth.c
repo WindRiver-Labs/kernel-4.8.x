@@ -120,12 +120,15 @@ static struct sk_buff *build_linear_skb(struct dpaa2_eth_priv *priv,
 	u16 fd_offset = dpaa2_fd_get_offset(fd);
 	u32 fd_length = dpaa2_fd_get_len(fd);
 
-	skb = build_skb(fd_vaddr, DPAA2_ETH_RX_BUF_SIZE +
-			SKB_DATA_ALIGN(sizeof(struct skb_shared_info)));
+	/* Leave enough extra space in the headroom to make sure the skb is
+	 * not realloc'd in forwarding scenarios. This has been previously
+	 * allocated when seeding the buffer pools.
+	 */
+	skb = build_skb(fd_vaddr - priv->rx_extra_head, DPAA2_ETH_SKB_SIZE);
 	if (unlikely(!skb))
 		return NULL;
 
-	skb_reserve(skb, fd_offset);
+	skb_reserve(skb, fd_offset + priv->rx_extra_head);
 	skb_put(skb, fd_length);
 
 	ch->buf_count--;
@@ -167,8 +170,7 @@ static struct sk_buff *build_frag_skb(struct dpaa2_eth_priv *priv,
 
 		if (i == 0) {
 			/* We build the skb around the first data buffer */
-			skb = build_skb(sg_vaddr, DPAA2_ETH_RX_BUF_SIZE +
-				SKB_DATA_ALIGN(sizeof(struct skb_shared_info)));
+			skb = build_skb(sg_vaddr, DPAA2_ETH_SKB_SIZE);
 			if (unlikely(!skb))
 				return NULL;
 
@@ -800,13 +802,17 @@ static int add_bufs(struct dpaa2_eth_priv *priv, u16 bpid)
 
 	for (i = 0; i < DPAA2_ETH_BUFS_PER_CMD; i++) {
 		/* Allocate buffer visible to WRIOP + skb shared info +
-		 * alignment padding
+		 * alignment padding.
 		 */
-		buf = napi_alloc_frag(DPAA2_ETH_BUF_RAW_SIZE);
+		buf = napi_alloc_frag(DPAA2_ETH_BUF_RAW_SIZE(priv));
 		if (unlikely(!buf))
 			goto err_alloc;
 
-		buf = PTR_ALIGN(buf, DPAA2_ETH_RX_BUF_ALIGN);
+		/* Leave extra IP headroom in front of the actual
+		 * area the device is using.
+		 */
+		buf = PTR_ALIGN(buf + priv->rx_extra_head,
+				      DPAA2_ETH_RX_BUF_ALIGN);
 
 		addr = dma_map_single(dev, buf, DPAA2_ETH_RX_BUF_SIZE,
 				      DMA_FROM_DEVICE);
@@ -817,7 +823,7 @@ static int add_bufs(struct dpaa2_eth_priv *priv, u16 bpid)
 
 		/* tracing point */
 		trace_dpaa2_eth_buf_seed(priv->net_dev,
-					 buf, DPAA2_ETH_BUF_RAW_SIZE,
+					 buf, DPAA2_ETH_BUF_RAW_SIZE(priv),
 					 addr, DPAA2_ETH_RX_BUF_SIZE,
 					 bpid);
 	}
@@ -2365,6 +2371,7 @@ static int netdev_init(struct net_device *net_dev)
 	struct dpaa2_eth_priv *priv = netdev_priv(net_dev);
 	u8 mac_addr[ETH_ALEN], dpni_mac_addr[ETH_ALEN];
 	u8 bcast_addr[ETH_ALEN];
+	u16 rx_headroom, rx_req_headroom;
 
 	net_dev->netdev_ops = &dpaa2_eth_ops;
 
@@ -2440,6 +2447,15 @@ static int netdev_init(struct net_device *net_dev)
 	 * NOTE: priv->tx_data_offset MUST be initialized at this point.
 	 */
 	net_dev->needed_headroom = DPAA2_ETH_NEEDED_HEADROOM(priv);
+
+	/* Required headroom for Rx skbs, to avoid reallocation on
+	 * forwarding path.
+	 */
+	rx_req_headroom = LL_RESERVED_SPACE(net_dev) - ETH_HLEN;
+	rx_headroom = ALIGN(DPAA2_ETH_HWA_SIZE + DPAA2_ETH_SWA_SIZE,
+			DPAA2_ETH_RX_BUF_ALIGN);
+	if (rx_req_headroom > rx_headroom)
+		priv->rx_extra_head = ALIGN(rx_req_headroom - rx_headroom, 4);
 
 	/* Our .ndo_init will be called herein */
 	err = register_netdev(net_dev);
