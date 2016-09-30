@@ -776,6 +776,7 @@ static int keystone_crypto_probe(struct platform_device *pdev)
 		return -ENOMEM;
 
 	dev_data->pdev = pdev;
+	dev_set_drvdata(dev, dev_data);
 
 	pm_runtime_enable(dev);
 	ret = pm_runtime_get_sync(dev);
