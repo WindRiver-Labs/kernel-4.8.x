@@ -1945,6 +1945,7 @@ struct amdgpu_ip_block_status {
 	bool valid;
 	bool sw;
 	bool hw;
+	bool late_initialized;
 	bool hang;
 };
 
