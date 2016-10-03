@@ -264,7 +264,7 @@ static int st_rproc_probe(struct platform_device *pdev)
 	return 0;
 
 free_rproc:
-	rproc_put(rproc);
+	rproc_free(rproc);
 	return ret;
 }
 
@@ -279,7 +279,7 @@ static int st_rproc_remove(struct platform_device *pdev)
 
 	of_reserved_mem_device_release(&pdev->dev);
 
-	rproc_put(rproc);
+	rproc_free(rproc);
 
 	return 0;
 }
