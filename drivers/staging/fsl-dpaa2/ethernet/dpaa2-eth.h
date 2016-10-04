@@ -309,6 +309,7 @@ struct dpaa2_eth_priv {
 	struct net_device *net_dev;
 
 	u8 num_fqs;
+	/* Tx queues are at the beginning of the array */
 	struct dpaa2_eth_fq fq[DPAA2_ETH_MAX_QUEUES];
 
 	u8 num_channels;

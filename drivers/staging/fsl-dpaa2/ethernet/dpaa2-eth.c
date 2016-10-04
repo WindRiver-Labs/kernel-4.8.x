@@ -1782,7 +1782,8 @@ static void setup_fqs(struct dpaa2_eth_priv *priv)
 {
 	int i;
 
-	/* We have one TxConf FQ per Tx flow.
+	/* We have one TxConf FQ per Tx flow. Tx queues MUST be at the
+	 * beginning of the queue array.
 	 * Number of Rx and Tx queues are the same.
 	 * We only support one traffic class for now.
 	 */
@@ -1790,7 +1791,9 @@ static void setup_fqs(struct dpaa2_eth_priv *priv)
 		priv->fq[priv->num_fqs].type = DPAA2_TX_CONF_FQ;
 		priv->fq[priv->num_fqs].consume = dpaa2_eth_tx_conf;
 		priv->fq[priv->num_fqs++].flowid = (u16)i;
+	}
 
+	for (i = 0; i < dpaa2_eth_queue_count(priv); i++) {
 		priv->fq[priv->num_fqs].type = DPAA2_RX_FQ;
 		priv->fq[priv->num_fqs].consume = dpaa2_eth_rx;
 		priv->fq[priv->num_fqs++].flowid = (u16)i;
