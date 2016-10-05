@@ -655,6 +655,7 @@
 			interrupts = <GIC_SPI 429 IRQ_TYPE_LEVEL_HIGH>;
 			phys = <&usb3_phy0>;
 			phy-names = "usb3-phy";
+			dma-coherent;
 			status = "disabled";
 		};
 
@@ -670,6 +671,7 @@
 			interrupts = <GIC_SPI 433 IRQ_TYPE_LEVEL_HIGH>;
 			phys = <&usb3_phy1>;
 			phy-names = "usb3-phy";
+			dma-coherent;
 			status = "disabled";
 		};
 
