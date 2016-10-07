@@ -885,4 +885,15 @@
 			status = "disabled";
 		};
 	};
+
+	rtc: secure_rtc {
+		compatible = "brcm,ns2-secure-rtc";
+		rtc_bbl_init = <0xC300FF04>;
+		rtc_control = <0xC300FF05>;
+		rtc_time_req = <0xC300FF06>;
+		rtc_alarm_control = <0xC300FF07>;
+		rtc_intr_stat_control = <0xC300FF08>;
+		interrupts = spru_rtc_periodic: <GIC_SPI 17 IRQ_TYPE_LEVEL_HIGH>,
+			spru_alarm:        <GIC_SPI 15 IRQ_TYPE_LEVEL_HIGH>;
+	};
 };

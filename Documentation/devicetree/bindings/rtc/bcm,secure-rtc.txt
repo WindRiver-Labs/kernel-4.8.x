@@ -1,0 +1,38 @@
+Broadcom Secure Real Time Clock
+
+Required Properties:
+- compatible: should be "brcm,ns2-secure-rtc" or "brcm,peg-secure-rtc"
+- rtc_bbl_init: smc function id for bbl init
+- rtc_control: smc function id for time control
+- rtc_time_req: smc function id for time request (get/set time)
+
+Optional Properties:
+- rtc_alarm_control: smc function id for alarm control
+- rtc_intr_stat_control: smc function id for interrupt status control
+
+- interrupts: spru_rtc_periodic : RTC Periodic interrupt
+	      spru_alarm : RTC Alarm interrupt
+
+
+Example:
+- for pegasus,
+
+	rtc: secure_rtc {
+		compatible = "brcm,peg-secure-rtc";
+		rtc_bbl_init = <0xC300FF04>;
+		rtc_control = <0xC300FF05>;
+		rtc_time_req = <0xC300FF06>;
+	};
+
+- for NS2,
+
+	rtc: secure_rtc {
+		compatible = "brcm,ns2-secure-rtc";
+		rtc_bbl_init = <0xC300FF04>;
+		rtc_control = <0xC300FF05>;
+		rtc_time_req = <0xC300FF06>;
+		rtc_alarm_control = <0xC300FF07>;
+		rtc_intr_stat_control = <0xC300FF08>;
+		interrupts = spru_rtc_periodic: <GIC_SPI 17 IRQ_TYPE_LEVEL_HIGH>,
+			     spru_alarm: 	<GIC_SPI 15 IRQ_TYPE_LEVEL_HIGH>;
+	};
