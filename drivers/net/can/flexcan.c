@@ -523,17 +523,17 @@ static int flexcan_start_xmit(struct sk_buff *skb, struct net_device *dev)
 
 	if (cf->can_dlc > 0) {
 		data = be32_to_cpup((__be32 *)&cf->data[0]);
-		priv->write(data, &regs->cantxfg[FLEXCAN_TX_BUF_ID].data[0]);
+		priv->write(data, &regs->mb[FLEXCAN_TX_BUF_ID].data[0]);
 	}
 	if (cf->can_dlc > 3) {
 		data = be32_to_cpup((__be32 *)&cf->data[4]);
-		priv->write(data, &regs->cantxfg[FLEXCAN_TX_BUF_ID].data[1]);
+		priv->write(data, &regs->mb[FLEXCAN_TX_BUF_ID].data[1]);
 	}
 
 	can_put_echo_skb(skb, dev, 0);
 
-	priv->write(can_id, &regs->cantxfg[FLEXCAN_TX_BUF_ID].can_id);
-	priv->write(ctrl, &regs->cantxfg[FLEXCAN_TX_BUF_ID].can_ctrl);
+	priv->write(can_id, &regs->mb[FLEXCAN_TX_BUF_ID].can_id);
+	priv->write(ctrl, &regs->mb[FLEXCAN_TX_BUF_ID].can_ctrl);
 
 	/* Errata ERR005829 step8:
 	 * Write twice INACTIVE(0x8) code to first MB.
@@ -683,7 +683,7 @@ static void flexcan_read_fifo(const struct net_device *dev,
 {
 	const struct flexcan_priv *priv = netdev_priv(dev);
 	struct flexcan_regs __iomem *regs = priv->base;
-	struct flexcan_mb __iomem *mb = &regs->cantxfg[0];
+	struct flexcan_mb __iomem *mb = &regs->mb[0];
 
 	flexcan_read_can_frame(priv, mb, cf);
 	/* mark as read */
@@ -696,7 +696,7 @@ static void flexcan_read_msg_buf(const struct net_device *dev,
 {
 	const struct flexcan_priv *priv = netdev_priv(dev);
 	struct flexcan_regs __iomem *regs = priv->base;
-	struct flexcan_mb __iomem *mb = &regs->cantxfg[msg_buf];
+	struct flexcan_mb __iomem *mb = &regs->mb[msg_buf];
 
 	flexcan_read_can_frame(priv, mb, cf);
 
