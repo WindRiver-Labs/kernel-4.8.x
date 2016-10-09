@@ -682,7 +682,7 @@ static void flexcan_read_fifo(const struct net_device *dev,
 			      struct can_frame *cf)
 {
 	const struct flexcan_priv *priv = netdev_priv(dev);
-	struct flexcan_regs __iomem *regs = priv->base;
+	struct flexcan_regs __iomem *regs = priv->regs;
 	struct flexcan_mb __iomem *mb = &regs->mb[0];
 
 	flexcan_read_can_frame(priv, mb, cf);
@@ -695,7 +695,7 @@ static void flexcan_read_msg_buf(const struct net_device *dev,
 				 struct can_frame *cf, u32 msg_buf)
 {
 	const struct flexcan_priv *priv = netdev_priv(dev);
-	struct flexcan_regs __iomem *regs = priv->base;
+	struct flexcan_regs __iomem *regs = priv->regs;
 	struct flexcan_mb __iomem *mb = &regs->mb[msg_buf];
 
 	flexcan_read_can_frame(priv, mb, cf);
