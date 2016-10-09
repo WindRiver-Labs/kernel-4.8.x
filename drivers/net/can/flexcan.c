@@ -705,7 +705,7 @@ static void flexcan_read_msg_buf(const struct net_device *dev,
 	priv->read(&regs->timer);
 }
 
-static int priv->read_frame(struct net_device *dev)
+static int flexcan_read_frame(struct net_device *dev)
 {
 	const struct flexcan_priv *priv = netdev_priv(dev);
 	struct net_device_stats *stats = &dev->stats;
@@ -1055,7 +1055,7 @@ static int flexcan_chip_start(struct net_device *dev)
 
 	/* print chip status */
 	netdev_dbg(dev, "%s: reading mcr=0x%08x ctrl=0x%08x\n", __func__,
-		   priv->read(&regs->mcr), flexcan_read(&regs->ctrl));
+		   priv->read(&regs->mcr), priv->read(&regs->ctrl));
 
 	return 0;
 
@@ -1279,6 +1279,8 @@ static int flexcan_probe(struct platform_device *pdev)
 	struct flexcan_regs __iomem *regs;
 	int err, irq;
 	u32 clock_freq = 0;
+	/* Default case for most ARM based FSL SoC having BE FlexCAN IP */
+	bool core_is_little = true, module_is_little = false;
 
 	reg_xceiver = devm_regulator_get(&pdev->dev, "xceiver");
 	if (PTR_ERR(reg_xceiver) == -EPROBE_DEFER)
