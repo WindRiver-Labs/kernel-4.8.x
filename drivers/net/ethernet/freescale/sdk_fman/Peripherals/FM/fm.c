@@ -50,7 +50,7 @@
 #include "fm_common.h"
 #include "fm_ipc.h"
 #include "fm.h"
-#ifndef CONFIG_ARM64
+#ifndef CONFIG_FMAN_ARM
 #include <linux/fsl/svr.h>
 #endif
 #include <linux/fsl/guts.h>
