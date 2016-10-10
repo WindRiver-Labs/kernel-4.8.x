@@ -61,7 +61,7 @@
 	};
 };
 
-&dcu0 {
+&dcu {
 	display = <&display>;
 	status = "okay";
 
@@ -88,7 +88,7 @@
 	};
 };
 
-&duart0 {
+&uart0 {
 	status = "okay";
 };
 
