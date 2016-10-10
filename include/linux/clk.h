@@ -404,6 +404,17 @@ int clk_set_parent(struct clk *clk, struct clk *parent);
 struct clk *clk_get_parent(struct clk *clk);
 
 /**
+ * clk_get_parent_by_index - get a possible parent clock by index
+ * @clk: clock source
+ * @index: index into the array of possible parents of this clock
+ *
+ * Returns struct clk corresponding to the requested possible
+ * parent clock source, or NULL.
+ */
+struct clk *clk_get_parent_by_index(struct clk *clk,
+				    unsigned int index);
+
+/**
  * clk_get_num_parents - get number of possible parents
  * @clk: clock source
  *
@@ -478,6 +489,12 @@ static inline int clk_set_parent(struct clk *clk, struct clk *parent)
 }
 
 static inline struct clk *clk_get_parent(struct clk *clk)
+{
+	return NULL;
+}
+
+struct clk *clk_get_parent_by_index(struct clk *clk,
+				    unsigned int index)
 {
 	return NULL;
 }
