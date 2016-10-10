@@ -260,6 +260,19 @@ static struct clk_core *clk_core_get_parent_by_index(struct clk_core *core,
 	return core->parents[index];
 }
 
+struct clk *clk_get_parent_by_index(struct clk *clk, unsigned int index)
+{
+	struct clk_core *parent;
+
+	if (!clk)
+		return NULL;
+
+	parent = clk_core_get_parent_by_index(clk->core, index);
+
+	return !parent ? NULL : parent->hw->clk;
+}
+EXPORT_SYMBOL_GPL(clk_get_parent_by_index);
+
 struct clk_hw *
 clk_hw_get_parent_by_index(const struct clk_hw *hw, unsigned int index)
 {
