@@ -965,7 +965,7 @@ static long ioctl_dma_map(struct file *fp, struct ctx *ctx,
 	if (i->len % PAGE_SIZE)
 		return -EINVAL;
 
-	map = kmalloc(sizeof(*map), GFP_KERNEL);
+	map = kzalloc(sizeof(*map), GFP_KERNEL);
 	if (!map)
 		return -ENOMEM;
 
@@ -1339,7 +1339,7 @@ static void portal_munmap(struct resource *res, void  *ptr)
 static long ioctl_portal_map(struct file *fp, struct ctx *ctx,
 			     struct usdpaa_ioctl_portal_map  *arg)
 {
-	struct portal_mapping *mapping = kmalloc(sizeof(*mapping), GFP_KERNEL);
+	struct portal_mapping *mapping = kzalloc(sizeof(*mapping), GFP_KERNEL);
 	int ret;
 
 	if (!mapping)
@@ -1543,7 +1543,7 @@ _iommu_domain_free:
 static long ioctl_allocate_raw_portal(struct file *fp, struct ctx *ctx,
 				      struct usdpaa_ioctl_raw_portal *arg)
 {
-	struct portal_mapping *mapping = kmalloc(sizeof(*mapping), GFP_KERNEL);
+	struct portal_mapping *mapping = kzalloc(sizeof(*mapping), GFP_KERNEL);
 	int ret;
 
 	if (!mapping)
