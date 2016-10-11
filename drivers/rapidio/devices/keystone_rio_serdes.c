@@ -2,6 +2,10 @@
  * Texas Instruments Keystone SerDes driver
  * Authors: Aurelien Jacquiot <a-jacquiot@ti.com>
  *
+ * Revisions:
+ *    2016-10-10:
+ *      Update SerDes 3g/5g initialization based on CSL 3.3.0.2c.
+ *
  * This is the Rapidio SerDes driver for Keystone devices. This is
  * required to support RapidIO functionality on K2HK devices.
  *
@@ -459,15 +463,16 @@ static void k2_rio_serdes_init_3g(void __iomem *reg)
 	reg_finsr((reg + 0x0204),  7,  0, 0x80);
 	reg_finsr((reg + 0x0204), 31, 24, 0x78);
 	reg_finsr((reg + 0x0208),  7,  0, 0x24);
+	reg_finsr((reg + 0x0208), 23, 16, 0x01);
 	reg_finsr((reg + 0x020c), 31, 24, 0x02);
 	reg_finsr((reg + 0x0210), 31, 24, 0x1b);
 	reg_finsr((reg + 0x0214),  7,  0, 0x7c);
 	reg_finsr((reg + 0x0214), 15,  8, 0x6e);
 	reg_finsr((reg + 0x0218),  7,  0, 0xe4);
 	reg_finsr((reg + 0x0218), 23, 16, 0x80);
-	reg_finsr((reg + 0x0218), 31, 24, 0x75);
+	reg_finsr((reg + 0x0218), 31, 24, 0x7a);
 	reg_finsr((reg + 0x022c), 15,  8, 0x08);
-	reg_finsr((reg + 0x022c), 23, 16, 0x20);
+	reg_finsr((reg + 0x022c), 23, 16, 0x30);
 	reg_finsr((reg + 0x0280),  7,  0, 0x70);
 	reg_finsr((reg + 0x0280), 23, 16, 0x70);
 	reg_finsr((reg + 0x0284),  7,  0, 0x85);
@@ -478,15 +483,16 @@ static void k2_rio_serdes_init_3g(void __iomem *reg)
 	reg_finsr((reg + 0x0404),  7,  0, 0x80);
 	reg_finsr((reg + 0x0404), 31, 24, 0x78);
 	reg_finsr((reg + 0x0408),  7,  0, 0x24);
+	reg_finsr((reg + 0x0408), 23, 16, 0x01);
 	reg_finsr((reg + 0x040c), 31, 24, 0x02);
 	reg_finsr((reg + 0x0410), 31, 24, 0x1b);
 	reg_finsr((reg + 0x0414),  7,  0, 0x7c);
 	reg_finsr((reg + 0x0414), 15,  8, 0x6e);
 	reg_finsr((reg + 0x0418),  7,  0, 0xe4);
 	reg_finsr((reg + 0x0418), 23, 16, 0x80);
-	reg_finsr((reg + 0x0418), 31, 24, 0x75);
+	reg_finsr((reg + 0x0418), 31, 24, 0x7a);
 	reg_finsr((reg + 0x042c), 15,  8, 0x08);
-	reg_finsr((reg + 0x042c), 23, 16, 0x20);
+	reg_finsr((reg + 0x042c), 23, 16, 0x30);
 	reg_finsr((reg + 0x0480),  7,  0, 0x70);
 	reg_finsr((reg + 0x0480), 23, 16, 0x70);
 	reg_finsr((reg + 0x0484),  7,  0, 0x85);
@@ -497,15 +503,16 @@ static void k2_rio_serdes_init_3g(void __iomem *reg)
 	reg_finsr((reg + 0x0604),  7,  0, 0x80);
 	reg_finsr((reg + 0x0604), 31, 24, 0x78);
 	reg_finsr((reg + 0x0608),  7,  0, 0x24);
+	reg_finsr((reg + 0x0608), 23, 16, 0x01);
 	reg_finsr((reg + 0x060c), 31, 24, 0x02);
 	reg_finsr((reg + 0x0610), 31, 24, 0x1b);
 	reg_finsr((reg + 0x0614),  7,  0, 0x7c);
 	reg_finsr((reg + 0x0614), 15,  8, 0x6e);
 	reg_finsr((reg + 0x0618),  7,  0, 0xe4);
 	reg_finsr((reg + 0x0618), 23, 16, 0x80);
-	reg_finsr((reg + 0x0618), 31, 24, 0x75);
+	reg_finsr((reg + 0x0618), 31, 24, 0x7a);
 	reg_finsr((reg + 0x062c), 15,  8, 0x08);
-	reg_finsr((reg + 0x062c), 23, 16, 0x20);
+	reg_finsr((reg + 0x062c), 23, 16, 0x30);
 	reg_finsr((reg + 0x0680),  7,  0, 0x70);
 	reg_finsr((reg + 0x0680), 23, 16, 0x70);
 	reg_finsr((reg + 0x0684),  7,  0, 0x85);
@@ -516,15 +523,16 @@ static void k2_rio_serdes_init_3g(void __iomem *reg)
 	reg_finsr((reg + 0x0804),  7,  0, 0x80);
 	reg_finsr((reg + 0x0804), 31, 24, 0x78);
 	reg_finsr((reg + 0x0808),  7,  0, 0x24);
+	reg_finsr((reg + 0x0808), 23, 16, 0x01);
 	reg_finsr((reg + 0x080c), 31, 24, 0x02);
 	reg_finsr((reg + 0x0810), 31, 24, 0x1b);
 	reg_finsr((reg + 0x0814),  7,  0, 0x7c);
 	reg_finsr((reg + 0x0814), 15,  8, 0x6e);
 	reg_finsr((reg + 0x0818),  7,  0, 0xe4);
 	reg_finsr((reg + 0x0818), 23, 16, 0x80);
-	reg_finsr((reg + 0x0818), 31, 24, 0x75);
+	reg_finsr((reg + 0x0818), 31, 24, 0x7a);
 	reg_finsr((reg + 0x082c), 15,  8, 0x08);
-	reg_finsr((reg + 0x082c), 23, 16, 0x20);
+	reg_finsr((reg + 0x082c), 23, 16, 0x30);
 	reg_finsr((reg + 0x0880),  7,  0, 0x70);
 	reg_finsr((reg + 0x0880), 23, 16, 0x70);
 	reg_finsr((reg + 0x0884),  7,  0, 0x85);
@@ -537,7 +545,7 @@ static void k2_rio_serdes_init_3g(void __iomem *reg)
 	reg_finsr((reg + 0x0a08), 31, 24, 0x37);
 	reg_finsr((reg + 0x0a30), 15,  8, 0x77);
 	reg_finsr((reg + 0x0a30), 23, 16, 0x77);
-	reg_finsr((reg + 0x0a84), 15,  8, 0x06);
+	reg_finsr((reg + 0x0a84), 15,  8, 0x07);
 	reg_finsr((reg + 0x0a94), 31, 24, 0x10);
 	reg_finsr((reg + 0x0aa0), 31, 24, 0x81);
 	reg_finsr((reg + 0x0abc), 31, 24, 0xff);
@@ -597,14 +605,15 @@ static void k2_rio_serdes_init_5g(void __iomem *reg)
 	reg_finsr((reg + 0x0204),  7,  0, 0x80);
 	reg_finsr((reg + 0x0204), 31, 24, 0x78);
 	reg_finsr((reg + 0x0208),  7,  0, 0x26);
+	reg_finsr((reg + 0x0208), 23, 16, 0x01);
 	reg_finsr((reg + 0x020c), 31, 24, 0x02);
 	reg_finsr((reg + 0x0214),  7,  0, 0x38);
 	reg_finsr((reg + 0x0214), 15,  8, 0x6f);
 	reg_finsr((reg + 0x0218),  7,  0, 0xe4);
 	reg_finsr((reg + 0x0218), 23, 16, 0x80);
-	reg_finsr((reg + 0x0218), 31, 24, 0x75);
+	reg_finsr((reg + 0x0218), 31, 24, 0x7a);
 	reg_finsr((reg + 0x022c), 15,  8, 0x08);
-	reg_finsr((reg + 0x022c), 23, 16, 0x20);
+	reg_finsr((reg + 0x022c), 23, 16, 0x30);
 	reg_finsr((reg + 0x0280),  7,  0, 0x86);
 	reg_finsr((reg + 0x0280), 23, 16, 0x86);
 	reg_finsr((reg + 0x0284),  7,  0, 0x85);
@@ -615,14 +624,15 @@ static void k2_rio_serdes_init_5g(void __iomem *reg)
 	reg_finsr((reg + 0x0404),  7,  0, 0x80);
 	reg_finsr((reg + 0x0404), 31, 24, 0x78);
 	reg_finsr((reg + 0x0408),  7,  0, 0x26);
+	reg_finsr((reg + 0x0408), 23, 16, 0x01);
 	reg_finsr((reg + 0x040c), 31, 24, 0x02);
 	reg_finsr((reg + 0x0414),  7,  0, 0x38);
 	reg_finsr((reg + 0x0414), 15,  8, 0x6f);
 	reg_finsr((reg + 0x0418),  7,  0, 0xe4);
 	reg_finsr((reg + 0x0418), 23, 16, 0x80);
-	reg_finsr((reg + 0x0418), 31, 24, 0x75);
+	reg_finsr((reg + 0x0418), 31, 24, 0x7a);
 	reg_finsr((reg + 0x042c), 15,  8, 0x08);
-	reg_finsr((reg + 0x042c), 23, 16, 0x20);
+	reg_finsr((reg + 0x042c), 23, 16, 0x30);
 	reg_finsr((reg + 0x0480),  7,  0, 0x86);
 	reg_finsr((reg + 0x0480), 23, 16, 0x86);
 	reg_finsr((reg + 0x0484),  7,  0, 0x85);
@@ -633,14 +643,15 @@ static void k2_rio_serdes_init_5g(void __iomem *reg)
 	reg_finsr((reg + 0x0604),  7,  0, 0x80);
 	reg_finsr((reg + 0x0604), 31, 24, 0x78);
 	reg_finsr((reg + 0x0608),  7,  0, 0x26);
+	reg_finsr((reg + 0x0608), 23, 16, 0x01);
 	reg_finsr((reg + 0x060c), 31, 24, 0x02);
 	reg_finsr((reg + 0x0614),  7,  0, 0x38);
 	reg_finsr((reg + 0x0614), 15,  8, 0x6f);
 	reg_finsr((reg + 0x0618),  7,  0, 0xe4);
 	reg_finsr((reg + 0x0618), 23, 16, 0x80);
-	reg_finsr((reg + 0x0618), 31, 24, 0x75);
+	reg_finsr((reg + 0x0618), 31, 24, 0x7a);
 	reg_finsr((reg + 0x062c), 15,  8, 0x08);
-	reg_finsr((reg + 0x062c), 23, 16, 0x20);
+	reg_finsr((reg + 0x062c), 23, 16, 0x30);
 	reg_finsr((reg + 0x0680),  7,  0, 0x86);
 	reg_finsr((reg + 0x0680), 23, 16, 0x86);
 	reg_finsr((reg + 0x0684),  7,  0, 0x85);
@@ -651,14 +662,15 @@ static void k2_rio_serdes_init_5g(void __iomem *reg)
 	reg_finsr((reg + 0x0804),  7,  0, 0x80);
 	reg_finsr((reg + 0x0804), 31, 24, 0x78);
 	reg_finsr((reg + 0x0808),  7,  0, 0x26);
+	reg_finsr((reg + 0x0808), 23, 16, 0x01);
 	reg_finsr((reg + 0x080c), 31, 24, 0x02);
 	reg_finsr((reg + 0x0814),  7,  0, 0x38);
 	reg_finsr((reg + 0x0814), 15,  8, 0x6f);
 	reg_finsr((reg + 0x0818),  7,  0, 0xe4);
 	reg_finsr((reg + 0x0818), 23, 16, 0x80);
-	reg_finsr((reg + 0x0818), 31, 24, 0x75);
+	reg_finsr((reg + 0x0818), 31, 24, 0x7a);
 	reg_finsr((reg + 0x082c), 15,  8, 0x08);
-	reg_finsr((reg + 0x082c), 23, 16, 0x20);
+	reg_finsr((reg + 0x082c), 23, 16, 0x30);
 	reg_finsr((reg + 0x0880),  7,  0, 0x86);
 	reg_finsr((reg + 0x0880), 23, 16, 0x86);
 	reg_finsr((reg + 0x0884),  7,  0, 0x85);
@@ -671,7 +683,7 @@ static void k2_rio_serdes_init_5g(void __iomem *reg)
 	reg_finsr((reg + 0x0a08), 31, 24, 0x38);
 	reg_finsr((reg + 0x0a30), 15,  8, 0x8d);
 	reg_finsr((reg + 0x0a30), 23, 16, 0x8d);
-	reg_finsr((reg + 0x0a84), 15,  8, 0x06);
+	reg_finsr((reg + 0x0a84), 15,  8, 0x07);
 	reg_finsr((reg + 0x0a94), 31, 24, 0x10);
 	reg_finsr((reg + 0x0aa0), 31, 24, 0x81);
 	reg_finsr((reg + 0x0abc), 31, 24, 0xff);
