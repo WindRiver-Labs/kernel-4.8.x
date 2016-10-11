@@ -378,7 +378,7 @@ static struct qm_portal_config * __init parse_pcfg(struct device_node *node)
 	int irq, ret;
 	resource_size_t len;
 
-	pcfg = kmalloc(sizeof(*pcfg), GFP_KERNEL);
+	pcfg = kzalloc(sizeof(*pcfg), GFP_KERNEL);
 	if (!pcfg) {
 		pr_err("can't allocate portal config");
 		return NULL;
