@@ -1300,7 +1300,8 @@ extern void vmr_do_fput(struct vm_region *, const char[], int);
 #define vmr_fput(region)		vmr_do_fput(region, __func__, __LINE__)
 #endif /* !CONFIG_MMU */
 
-extern int access_process_vm(struct task_struct *tsk, unsigned long addr, void *buf, int len, int write);
+extern int access_process_vm(struct task_struct *tsk, unsigned long addr, void *buf, int len,
+		unsigned int gup_flags);
 extern int access_remote_vm(struct mm_struct *mm, unsigned long addr,
 		void *buf, int len, unsigned int gup_flags);
 
