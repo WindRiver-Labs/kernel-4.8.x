@@ -90,19 +90,19 @@
 #define DPAA2_ETH_NEEDED_HEADROOM(p_priv) \
 	((p_priv)->tx_data_offset + DPAA2_ETH_TX_BUF_ALIGN)
 
-#define DPAA2_ETH_SKB_SIZE	\
+/* rx_extra_head prevents reallocations in L3 processing. */
+#define DPAA2_ETH_SKB_SIZE(p_priv) \
 	(DPAA2_ETH_RX_BUF_SIZE + \
+	 (p_priv)->rx_extra_head + \
 	 SKB_DATA_ALIGN(sizeof(struct skb_shared_info)))
 
 /* Hardware only sees DPAA2_ETH_RX_BUF_SIZE, but we need to allocate ingress
  * buffers large enough to allow building an skb around them and also account
- * for alignment restrictions. rx_extra_head prevents reallocations in
- * L3 processing.
+ * for alignment restrictions.
  */
 #define DPAA2_ETH_BUF_RAW_SIZE(p_priv) \
-	(DPAA2_ETH_SKB_SIZE + \
-	DPAA2_ETH_RX_BUF_ALIGN + \
-	(p_priv)->rx_extra_head)
+	(DPAA2_ETH_SKB_SIZE(p_priv) + \
+	DPAA2_ETH_RX_BUF_ALIGN)
 
 /* PTP nominal frequency 1GHz */
 #define DPAA2_PTP_NOMINAL_FREQ_PERIOD_NS 1

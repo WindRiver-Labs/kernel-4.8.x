@@ -124,7 +124,8 @@ static struct sk_buff *build_linear_skb(struct dpaa2_eth_priv *priv,
 	 * not realloc'd in forwarding scenarios. This has been previously
 	 * allocated when seeding the buffer pools.
 	 */
-	skb = build_skb(fd_vaddr - priv->rx_extra_head, DPAA2_ETH_SKB_SIZE);
+	skb = build_skb(fd_vaddr - priv->rx_extra_head,
+			DPAA2_ETH_SKB_SIZE(priv));
 	if (unlikely(!skb))
 		return NULL;
 
@@ -170,7 +171,7 @@ static struct sk_buff *build_frag_skb(struct dpaa2_eth_priv *priv,
 
 		if (i == 0) {
 			/* We build the skb around the first data buffer */
-			skb = build_skb(sg_vaddr, DPAA2_ETH_SKB_SIZE);
+			skb = build_skb(sg_vaddr, DPAA2_ETH_SKB_SIZE(priv));
 			if (unlikely(!skb))
 				return NULL;
 
