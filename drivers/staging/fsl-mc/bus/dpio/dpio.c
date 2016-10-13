@@ -112,7 +112,7 @@ int dpio_destroy(struct fsl_mc_io	*mc_io,
 			cmd_flags,
 			dprc_token);
 	/* set object id to destroy */
-	cmd.params[0] = mc_enc(0, sizeof(object_id), object_id);
+	set_mc_cmd_destroy_object_id(&cmd, object_id);
 	/* send command to mc*/
 	return mc_send_command(mc_io, &cmd);
 }

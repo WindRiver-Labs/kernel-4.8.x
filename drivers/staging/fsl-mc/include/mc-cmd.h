@@ -102,8 +102,8 @@ enum mc_cmd_status {
 #define MC_CMD_HDR_FLAGS_S     32      /* Flags field size*/
 #define MC_CMD_HDR_FLAGS_MASK  0xFF00FF00 /* Command flags mask */
 
-#define MC_CMD_CREATE_OBJ_ID_O	0 	/* Object id field offset */
-#define MC_CMD_CREATE_OBJ_ID_S	32 	/* Object id field size */
+#define MC_CMD_OBJ_ID_O		0	/* Object id field offset */
+#define MC_CMD_OBJ_ID_S		32	/* Object id field size */
 
 #define MC_CMD_OBJ_VERSION_MAJ_O	0 	/* Object major version offset */
 #define MC_CMD_OBJ_VERSION_MIN_O	16 	/* Object minor version offset */
@@ -150,8 +150,14 @@ static inline void get_mc_cmd_object_api_ver(struct mc_command *mc_cmd,
 static inline uint32_t get_mc_cmd_create_object_id(struct mc_command *cmd)
 {
 	return (uint32_t) mc_dec(cmd->params[0],
-			MC_CMD_CREATE_OBJ_ID_O,
-			MC_CMD_CREATE_OBJ_ID_S);
+			MC_CMD_OBJ_ID_O, MC_CMD_OBJ_ID_S);
+}
+
+
+static inline void set_mc_cmd_destroy_object_id(struct mc_command *cmd,
+		uint32_t object_id)
+{
+	cmd->params[0] = mc_enc(MC_CMD_OBJ_ID_O, MC_CMD_OBJ_ID_S, object_id);
 }
 
 static inline uint16_t get_mc_cmd_hdr_token(uint64_t mcp_header)
