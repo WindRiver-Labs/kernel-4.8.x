@@ -535,6 +535,8 @@ static int sdhci_arasan_probe(struct platform_device *pdev)
 
 	if (of_device_is_compatible(pdev->dev.of_node, "arasan,sdhci-8.9a")) {
 		host->quirks2 |= SDHCI_QUIRK2_CLOCK_STANDARD_25_BROKEN;
+		if (of_get_property(pdev->dev.of_node, "broken-adma2", NULL))
+			host->quirks |= SDHCI_QUIRK_BROKEN_ADMA;
 	}
 
 	ret = mmc_of_parse(host->mmc);
