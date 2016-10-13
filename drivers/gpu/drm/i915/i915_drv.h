@@ -2639,7 +2639,7 @@ struct drm_i915_cmd_table {
  *
  * Use GEN_FOREVER for unbound start and or end.
  */
-#define IS_GEN(p, s, e) ({ \
+#define IS_GEN(dev_priv, s, e) ({ \
 	unsigned int __s = (s), __e = (e); \
 	BUILD_BUG_ON(!__builtin_constant_p(s)); \
 	BUILD_BUG_ON(!__builtin_constant_p(e)); \
@@ -2649,7 +2649,7 @@ struct drm_i915_cmd_table {
 		__e = BITS_PER_LONG - 1; \
 	else \
 		__e = (e) - 1; \
-	!!(INTEL_INFO(p)->gen_mask & GENMASK((__e), (__s))); \
+	!!((dev_priv)->info.gen_mask & GENMASK((__e), (__s))); \
 })
 
 /*
