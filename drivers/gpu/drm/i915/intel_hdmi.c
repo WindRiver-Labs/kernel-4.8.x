@@ -1526,7 +1526,7 @@ static bool intel_hdmi_live_status(struct drm_connector *connector)
 
 	if (INTEL_INFO(dev)->gen > 6) {
 		/* Todo: Implement for other Gen 6+ archs*/
-		if (IS_VALLEYVIEW(dev))
+		if (IS_VALLEYVIEW(to_i915(dev)))
 			return vlv_hdmi_live_status(dev, intel_hdmi);
 	}
 
@@ -1652,7 +1652,7 @@ intel_hdmi_detect(struct drm_connector *connector, bool force)
 		}
 	}
 
-	if (IS_VALLEYVIEW(dev))
+	if (IS_VALLEYVIEW(dev_priv))
 		i915_hdmi_state = status;
 
 	return status;
@@ -2160,7 +2160,7 @@ void intel_hdmi_init(struct drm_device *dev,
 		intel_encoder->enable = vlv_enable_hdmi;
 		intel_encoder->post_disable = chv_hdmi_post_disable;
 		intel_encoder->post_pll_disable = chv_hdmi_post_pll_disable;
-	} else if (IS_VALLEYVIEW(dev)) {
+	} else if (IS_VALLEYVIEW(dev_priv)) {
 		intel_encoder->pre_pll_enable = vlv_hdmi_pre_pll_enable;
 		intel_encoder->pre_enable = vlv_hdmi_pre_enable;
 		intel_encoder->enable = vlv_enable_hdmi;
