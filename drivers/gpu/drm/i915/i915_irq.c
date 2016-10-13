@@ -1096,8 +1096,9 @@ static u32 vlv_wa_c0_ei(struct drm_i915_private *dev_priv, u32 pm_iir)
 static bool any_waiters(struct drm_i915_private *dev_priv)
 {
 	struct intel_engine_cs *engine;
+	enum intel_engine_id id;
 
-	for_each_engine(engine, dev_priv)
+	for_each_engine(engine, dev_priv, id)
 		if (intel_engine_has_waiter(engine))
 			return true;
 
@@ -1295,20 +1296,20 @@ static void ilk_gt_irq_handler(struct drm_i915_private *dev_priv,
 			       u32 gt_iir)
 {
 	if (gt_iir & GT_RENDER_USER_INTERRUPT)
-		notify_ring(&dev_priv->engine[RCS]);
+		notify_ring(dev_priv->engine[RCS]);
 	if (gt_iir & ILK_BSD_USER_INTERRUPT)
-		notify_ring(&dev_priv->engine[VCS]);
+		notify_ring(dev_priv->engine[VCS]);
 }
 
 static void snb_gt_irq_handler(struct drm_i915_private *dev_priv,
 			       u32 gt_iir)
 {
 	if (gt_iir & GT_RENDER_USER_INTERRUPT)
-		notify_ring(&dev_priv->engine[RCS]);
+		notify_ring(dev_priv->engine[RCS]);
 	if (gt_iir & GT_BSD_USER_INTERRUPT)
-		notify_ring(&dev_priv->engine[VCS]);
+		notify_ring(dev_priv->engine[VCS]);
 	if (gt_iir & GT_BLT_USER_INTERRUPT)
-		notify_ring(&dev_priv->engine[BCS]);
+		notify_ring(dev_priv->engine[BCS]);
 
 	if (gt_iir & (GT_BLT_CS_ERROR_INTERRUPT |
 		      GT_BSD_CS_ERROR_INTERRUPT |
@@ -1378,21 +1379,21 @@ static void gen8_gt_irq_handler(struct drm_i915_private *dev_priv,
 				u32 gt_iir[4])
 {
 	if (gt_iir[0]) {
-		gen8_cs_irq_handler(&dev_priv->engine[RCS],
+		gen8_cs_irq_handler(dev_priv->engine[RCS],
 				    gt_iir[0], GEN8_RCS_IRQ_SHIFT);
-		gen8_cs_irq_handler(&dev_priv->engine[BCS],
+		gen8_cs_irq_handler(dev_priv->engine[BCS],
 				    gt_iir[0], GEN8_BCS_IRQ_SHIFT);
 	}
 
 	if (gt_iir[1]) {
-		gen8_cs_irq_handler(&dev_priv->engine[VCS],
+		gen8_cs_irq_handler(dev_priv->engine[VCS],
 				    gt_iir[1], GEN8_VCS1_IRQ_SHIFT);
-		gen8_cs_irq_handler(&dev_priv->engine[VCS2],
+		gen8_cs_irq_handler(dev_priv->engine[VCS2],
 				    gt_iir[1], GEN8_VCS2_IRQ_SHIFT);
 	}
 
 	if (gt_iir[3])
-		gen8_cs_irq_handler(&dev_priv->engine[VECS],
+		gen8_cs_irq_handler(dev_priv->engine[VECS],
 				    gt_iir[3], GEN8_VECS_IRQ_SHIFT);
 
 	if (gt_iir[2] & dev_priv->pm_rps_events)
@@ -1636,7 +1637,7 @@ static void gen6_rps_irq_handler(struct drm_i915_private *dev_priv, u32 pm_iir)
 
 	if (HAS_VEBOX(dev_priv)) {
 		if (pm_iir & PM_VEBOX_USER_INTERRUPT)
-			notify_ring(&dev_priv->engine[VECS]);
+			notify_ring(dev_priv->engine[VECS]);
 
 		if (pm_iir & PM_VEBOX_CS_ERROR_INTERRUPT)
 			DRM_DEBUG("Command parser error, pm_iir 0x%08x\n", pm_iir);
@@ -2678,7 +2679,7 @@ static void i915_report_and_clear_eir(struct drm_i915_private *dev_priv)
 
 	pr_err("render error detected, EIR: 0x%08x\n", eir);
 
-	intel_engine_get_instdone(&dev_priv->engine[RCS], &instdone);
+	intel_engine_get_instdone(dev_priv->engine[RCS], &instdone);
 
 	if (IS_G4X(dev_priv)) {
 		if (eir & (GM45_ERROR_MEM_PRIV | GM45_ERROR_CP_PRIV)) {
@@ -2989,9 +2990,10 @@ semaphore_wait_to_signaller_ring(struct intel_engine_cs *engine, u32 ipehr,
 {
 	struct drm_i915_private *dev_priv = engine->i915;
 	struct intel_engine_cs *signaller;
+	enum intel_engine_id id;
 
 	if (INTEL_GEN(dev_priv) >= 8) {
-		for_each_engine(signaller, dev_priv) {
+		for_each_engine(signaller, dev_priv, id) {
 			if (engine == signaller)
 				continue;
 
@@ -3001,7 +3003,7 @@ semaphore_wait_to_signaller_ring(struct intel_engine_cs *engine, u32 ipehr,
 	} else {
 		u32 sync_bits = ipehr & MI_SEMAPHORE_SYNC_MASK;
 
-		for_each_engine(signaller, dev_priv) {
+		for_each_engine(signaller, dev_priv, id) {
 			if(engine == signaller)
 				continue;
 
@@ -3122,8 +3124,9 @@ static int semaphore_passed(struct intel_engine_cs *engine)
 static void semaphore_clear_deadlocks(struct drm_i915_private *dev_priv)
 {
 	struct intel_engine_cs *engine;
+	enum intel_engine_id id;
 
-	for_each_engine(engine, dev_priv)
+	for_each_engine(engine, dev_priv, id)
 		engine->hangcheck.deadlock = 0;
 }
 
@@ -3250,6 +3253,7 @@ static void i915_hangcheck_elapsed(struct work_struct *work)
 		container_of(work, typeof(*dev_priv),
 			     gpu_error.hangcheck_work.work);
 	struct intel_engine_cs *engine;
+	enum intel_engine_id id;
 	unsigned int hung = 0, stuck = 0;
 	int busy_count = 0;
 #define BUSY 1
@@ -3269,7 +3273,7 @@ static void i915_hangcheck_elapsed(struct work_struct *work)
 	 */
 	intel_uncore_arm_unclaimed_mmio_detection(dev_priv);
 
-	for_each_engine(engine, dev_priv) {
+	for_each_engine(engine, dev_priv, id) {
 		bool busy = intel_engine_has_waiter(engine);
 		u64 acthd;
 		u32 seqno;
@@ -4173,7 +4177,7 @@ static irqreturn_t i8xx_irq_handler(int irq, void *arg)
 		new_iir = I915_READ16(IIR); /* Flush posted writes */
 
 		if (iir & I915_USER_INTERRUPT)
-			notify_ring(&dev_priv->engine[RCS]);
+			notify_ring(dev_priv->engine[RCS]);
 
 		for_each_pipe(dev_priv, pipe) {
 			int plane = pipe;
@@ -4370,7 +4374,7 @@ static irqreturn_t i915_irq_handler(int irq, void *arg)
 		new_iir = I915_READ(IIR); /* Flush posted writes */
 
 		if (iir & I915_USER_INTERRUPT)
-			notify_ring(&dev_priv->engine[RCS]);
+			notify_ring(dev_priv->engine[RCS]);
 
 		for_each_pipe(dev_priv, pipe) {
 			int plane = pipe;
@@ -4602,9 +4606,9 @@ static irqreturn_t i965_irq_handler(int irq, void *arg)
 		new_iir = I915_READ(IIR); /* Flush posted writes */
 
 		if (iir & I915_USER_INTERRUPT)
-			notify_ring(&dev_priv->engine[RCS]);
+			notify_ring(dev_priv->engine[RCS]);
 		if (iir & I915_BSD_USER_INTERRUPT)
-			notify_ring(&dev_priv->engine[VCS]);
+			notify_ring(dev_priv->engine[VCS]);
 
 		for_each_pipe(dev_priv, pipe) {
 			if (pipe_stats[pipe] & PIPE_START_VBLANK_INTERRUPT_STATUS &&
