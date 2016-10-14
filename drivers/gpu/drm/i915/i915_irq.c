@@ -1872,7 +1872,7 @@ static irqreturn_t valleyview_irq_handler(int irq, void *arg)
 
 		valleyview_pipestat_irq_handler(dev_priv, pipe_stats);
 
-		if (IS_CHERRYVIEW(dev)) {
+		if (IS_CHERRYVIEW(dev_priv)) {
 			// FIXME: plb: why are pipes and status mapped this way?
 			if (iir & I915_LPE_PIPE_C_INTERRUPT)
 				i915_notify_audio_buffer_status(dev,
@@ -1966,7 +1966,7 @@ static irqreturn_t cherryview_irq_handler(int irq, void *arg)
 
 		valleyview_pipestat_irq_handler(dev_priv, pipe_stats);
 
-		if (IS_CHERRYVIEW(dev)) {
+		if (IS_CHERRYVIEW(dev_priv)) {
 			// FIXME: plb: why are pipes and status mapped this way?
 			if (iir & I915_LPE_PIPE_C_INTERRUPT)
 				i915_notify_audio_buffer_status(dev,
