@@ -82,7 +82,7 @@ static void rsrc_card_shutdown(struct snd_pcm_substream *substream)
 	clk_disable_unprepare(dai_props->clk);
 }
 
-static struct snd_soc_ops rsrc_card_ops = {
+static const struct snd_soc_ops rsrc_card_ops = {
 	.startup = rsrc_card_startup,
 	.shutdown = rsrc_card_shutdown,
 };
