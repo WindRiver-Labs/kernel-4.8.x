@@ -171,7 +171,7 @@ err:
 	return ret;
 }
 
-static struct snd_soc_ops asoc_simple_card_ops = {
+static const struct snd_soc_ops asoc_simple_card_ops = {
 	.startup = asoc_simple_card_startup,
 	.shutdown = asoc_simple_card_shutdown,
 	.hw_params = asoc_simple_card_hw_params,
