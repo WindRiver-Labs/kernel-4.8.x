@@ -318,6 +318,7 @@ static const struct of_device_id sdhci_arasan_of_match[] = {
 	{ .compatible = "arasan,sdhci-8.9a" },
 	{ .compatible = "arasan,sdhci-5.1" },
 	{ .compatible = "arasan,sdhci-4.9a" },
+	{ .compatible = "xlnx,zynqmp-8.9a" },
 
 	{ /* sentinel */ }
 };
@@ -541,7 +542,8 @@ static int sdhci_arasan_probe(struct platform_device *pdev)
 		goto unreg_clk;
 	}
 
-	if (of_device_is_compatible(pdev->dev.of_node, "arasan,sdhci-8.9a")) {
+	if (of_device_is_compatible(pdev->dev.of_node, "xlnx,zynqmp-8.9a") ||
+	    of_device_is_compatible(pdev->dev.of_node, "arasan,sdhci-8.9a")) {
 		host->quirks |= SDHCI_QUIRK_MULTIBLOCK_READ_ACMD12;
 		host->quirks2 |= SDHCI_QUIRK2_CLOCK_STANDARD_25_BROKEN;
 	}
