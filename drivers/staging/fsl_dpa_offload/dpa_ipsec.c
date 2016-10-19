@@ -3006,7 +3006,7 @@ static int store_policy_param_to_sa_pol_list(struct dpa_ipsec_sa *sa,
 	return 0;
 }
 
-static inline int addr_match(struct dpa_offload_ip_address *addr1,
+static inline int dpa_addr_match(struct dpa_offload_ip_address *addr1,
 			     struct dpa_offload_ip_address *addr2)
 {
 	if (addr1->version != addr2->version)
@@ -3060,8 +3060,8 @@ static int find_policy(struct dpa_ipsec_sa *sa,
 
 		if (cpol->dest_prefix_len != pol->dest_prefix_len ||
 		    cpol->src_prefix_len != pol->src_prefix_len ||
-		    !addr_match(&cpol->dest_addr, &pol->dest_addr) ||
-		    !addr_match(&cpol->src_addr, &pol->src_addr) ||
+		    !dpa_addr_match(&cpol->dest_addr, &pol->dest_addr) ||
+		    !dpa_addr_match(&cpol->src_addr, &pol->src_addr) ||
 		    cpol->protocol != pol->protocol ||
 		    cpol->masked_proto != pol->masked_proto ||
 		    cpol->priority != pol->priority)
