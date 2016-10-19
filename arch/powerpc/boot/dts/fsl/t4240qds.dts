@@ -1,7 +1,7 @@
 /*
  * T4240QDS Device Tree Source
  *
- * Copyright 2012 - 2015 Freescale Semiconductor Inc.
+ * Copyright 2012 - 2014 Freescale Semiconductor Inc.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -41,7 +41,7 @@
 	#size-cells = <2>;
 	interrupt-parent = <&mpic>;
 
-	aliases{
+	aliases {
 		phy_rgmii1 = &phyrgmii1;
 		phy_rgmii2 = &phyrgmii2;
 		phy_sgmii3 = &phy3;
@@ -641,184 +641,6 @@
 
 		sdhc@114000 {
 			voltage-ranges = <1800 1800 3300 3300>;
-		};
-
-		fman@400000 {
-			port@83000 {
-				status = "disabled";
-			};
-
-			port@84000 {
-				status = "disabled";
-			};
-
-			port@85000 {
-				status = "disabled";
-			};
-
-			port@86000 {
-				status = "disabled";
-			};
-
-			port@87000 {
-				status = "disabled";
-			};
-
-			ethernet@e0000 {
-				phy-handle = <&phy5>;
-				phy-connection-type = "sgmii";
-			};
-
-			ethernet@e2000 {
-				phy-handle = <&phy6>;
-				phy-connection-type = "sgmii";
-			};
-
-			ethernet@e4000 {
-				phy-handle = <&phy7>;
-				phy-connection-type = "sgmii";
-			};
-
-			ethernet@e6000 {
-				phy-handle = <&phy8>;
-				phy-connection-type = "sgmii";
-			};
-
-			ethernet@e8000 {
-				phy-handle = <&phyrgmii2>;
-				phy-connection-type = "rgmii";
-			};
-
-			ethernet@ea000 {
-				phy-handle = <&phy2>;
-				phy-connection-type = "sgmii";
-			};
-
-			ethernet@f0000 {
-				phy-handle = <&xauiphy1>;
-				phy-connection-type = "xgmii";
-			};
-
-			ethernet@f2000 {
-				phy-handle = <&xauiphy2>;
-				phy-connection-type = "xgmii";
-			};
-
-			xfimdio0: mdio@f1000 {
-				status = "disabled";
-
-				xfiphy1: ethernet-phy@0 {
-					compatible = "ethernet-phy-ieee802.3-c45";
-					reg = <0x0>;
-				};
-			};
-
-			xfimdio1: mdio@f3000 {
-				status = "disabled";
-
-				xfiphy2: ethernet-phy@0 {
-					compatible = "ethernet-phy-ieee802.3-c45";
-					reg = <0x0>;
-				};
-			};
-		};
-
-		fman@500000 {
-			port@84000 {
-				status = "disabled";
-			};
-
-			port@85000 {
-				status = "disabled";
-			};
-
-			port@86000 {
-				status = "disabled";
-			};
-
-			port@87000 {
-				status = "disabled";
-			};
-
-			ethernet@e0000 {
-				phy-handle = <&phy13>;
-				phy-connection-type = "sgmii";
-			};
-
-			ethernet@e2000 {
-				phy-handle = <&phy14>;
-				phy-connection-type = "sgmii";
-			};
-
-			ethernet@e4000 {
-				phy-handle = <&phy15>;
-				phy-connection-type = "sgmii";
-			};
-
-			ethernet@e6000 {
-				phy-handle = <&phy16>;
-				phy-connection-type = "sgmii";
-			};
-
-			ethernet@e8000 {
-				phy-handle = <&phyrgmii1>;
-				phy-connection-type = "rgmii";
-			};
-
-			ethernet@ea000 {
-				phy-handle = <&phy10>;
-				phy-connection-type = "sgmii";
-			};
-
-			ethernet@f0000 {
-				phy-handle = <&xauiphy3>;
-				phy-connection-type = "xgmii";
-			};
-
-			ethernet@f2000 {
-				phy-handle = <&xauiphy4>;
-				phy-connection-type = "xgmii";
-			};
-
-			xfimdio2: mdio@f1000 {
-				status = "disabled";
-
-				xfiphy3: ethernet-phy@0 {
-					compatible = "ethernet-phy-ieee802.3-c45";
-					reg = <0x0>;
-				};
-			};
-
-			xfimdio3: mdio@f3000 {
-				status = "disabled";
-
-				xfiphy4: ethernet-phy@0 {
-					compatible = "ethernet-phy-ieee802.3-c45";
-					reg = <0x0>;
-				};
-			};
-
-			mdio@fd000 {
-				xauiphy1: ethernet-phy@0 {
-					compatible = "ethernet-phy-ieee802.3-c45";
-					reg = <0x0>;
-				};
-
-				xauiphy2: ethernet-phy@1 {
-					compatible = "ethernet-phy-ieee802.3-c45";
-					reg = <0x1>;
-				};
-
-				xauiphy3: ethernet-phy@2 {
-					compatible = "ethernet-phy-ieee802.3-c45";
-					reg = <0x2>;
-				};
-
-				xauiphy4: ethernet-phy@3 {
-					compatible = "ethernet-phy-ieee802.3-c45";
-					reg = <0x3>;
-				};
-			};
 		};
 	};
 
