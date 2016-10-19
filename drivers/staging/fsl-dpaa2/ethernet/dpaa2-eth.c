@@ -89,6 +89,9 @@ static void free_rx_fd(struct dpaa2_eth_priv *priv,
 	/* If single buffer frame, just free the data buffer */
 	if (fd_format == dpaa2_fd_single)
 		goto free_buf;
+	else if (fd_format != dpaa2_fd_sg)
+		/* we don't support any other format */
+		return;
 
 	/* For S/G frames, we first need to free all SG entries */
 	sgt = vaddr + dpaa2_fd_get_offset(fd);
@@ -220,6 +223,7 @@ static void dpaa2_eth_rx(struct dpaa2_eth_priv *priv,
 	struct rtnl_link_stats64 *percpu_stats;
 	struct dpaa2_eth_drv_stats *percpu_extras;
 	struct device *dev = priv->net_dev->dev.parent;
+	struct dpaa2_sg_entry *sgt;
 	struct dpaa2_fas *fas;
 	u32 status = 0;
 
@@ -237,11 +241,12 @@ static void dpaa2_eth_rx(struct dpaa2_eth_priv *priv,
 	percpu_stats = this_cpu_ptr(priv->percpu_stats);
 	percpu_extras = this_cpu_ptr(priv->percpu_extras);
 
-	if (fd_format == dpaa2_fd_single) {
+	switch (fd_format) {
+	case dpaa2_fd_single:
 		skb = build_linear_skb(priv, ch, fd, vaddr);
-	} else if (fd_format == dpaa2_fd_sg) {
-		struct dpaa2_sg_entry *sgt =
-				vaddr + dpaa2_fd_get_offset(fd);
+		break;
+	case dpaa2_fd_sg:
+		sgt = vaddr + dpaa2_fd_get_offset(fd);
 		skb = build_frag_skb(priv, ch, sgt);
 
 		/* prefetch newly built skb data */
@@ -250,7 +255,8 @@ static void dpaa2_eth_rx(struct dpaa2_eth_priv *priv,
 		put_page(virt_to_head_page(vaddr));
 		percpu_extras->rx_sg_frames++;
 		percpu_extras->rx_sg_bytes += dpaa2_fd_get_len(fd);
-	} else {
+		break;
+	default:
 		/* We don't support any other format */
 		goto err_frame_format;
 	}
@@ -295,9 +301,10 @@ static void dpaa2_eth_rx(struct dpaa2_eth_priv *priv,
 		netif_receive_skb(skb);
 
 	return;
-err_frame_format:
+
 err_build_skb:
 	free_rx_fd(priv, fd, vaddr);
+err_frame_format:
 	percpu_stats->rx_dropped++;
 }
 
@@ -601,17 +608,17 @@ static void free_tx_fd(const struct dpaa2_eth_priv *priv,
 	struct scatterlist *scl;
 	int num_sg, num_dma_bufs;
 	struct dpaa2_eth_swa *swa;
-	bool fd_single;
+	u8 fd_format = dpaa2_fd_get_format(fd);
 	struct dpaa2_fas *fas;
 
 	fd_addr = dpaa2_fd_get_addr(fd);
 	skbh = phys_to_virt(fd_addr);
-	fd_single = (dpaa2_fd_get_format(fd) == dpaa2_fd_single);
 
 	/* HWA - FAS, timestamp (for Tx confirmation frames) */
 	prefetch((void *) skbh + priv->buf_layout.private_data_size);
 
-	if (fd_single) {
+	switch (fd_format) {
+	case dpaa2_fd_single:
 		skb = *skbh;
 		buffer_start = (unsigned char *)skbh;
 		/* Accessing the skb buffer is safe before dma unmap, because
@@ -620,7 +627,8 @@ static void free_tx_fd(const struct dpaa2_eth_priv *priv,
 		dma_unmap_single(dev, fd_addr,
 				 skb_tail_pointer(skb) - buffer_start,
 				 DMA_TO_DEVICE);
-	} else {
+		break;
+	case dpaa2_fd_sg:
 		swa = (struct dpaa2_eth_swa *)skbh;
 		skb = swa->skb;
 		scl = swa->scl;
@@ -635,6 +643,12 @@ static void free_tx_fd(const struct dpaa2_eth_priv *priv,
 		unmap_size = priv->tx_data_offset +
 		       sizeof(struct dpaa2_sg_entry) * (1 + num_dma_bufs);
 		dma_unmap_single(dev, fd_addr, unmap_size, DMA_TO_DEVICE);
+		break;
+	default:
+		/* Unsupported format, mark it as errored and give up */
+		if (status)
+			*status = ~0;
+		return;
 	}
 
 	/* Get the timestamp value */
@@ -663,7 +677,7 @@ static void free_tx_fd(const struct dpaa2_eth_priv *priv,
 	}
 
 	/* Free SGT buffer kmalloc'ed on tx */
-	if (!fd_single)
+	if (fd_format != dpaa2_fd_single)
 		kfree(skbh);
 
 	/* Move on with skb release */
