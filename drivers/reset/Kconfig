@@ -27,6 +27,16 @@ config TI_SYSCON_RESET
 	  you wish to use the reset framework for such memory-mapped devices,
 	  say Y here. Otherwise, say N.
 
+config ZYNQMP_RESET_CONTROLLER
+	bool "Xilinx ZYNQMP Reset Controller Support"
+        help
+	 ZYNQMP Reset Controller support.
+
+         This framework is designed to abstract reset handling of devices
+         via SoC-internal reset controller modules.
+
+         If sure, say yes.If unsure, say no.
+
 source "drivers/reset/sti/Kconfig"
 source "drivers/reset/hisilicon/Kconfig"
 
