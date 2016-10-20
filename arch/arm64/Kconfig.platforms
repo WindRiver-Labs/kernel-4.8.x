@@ -206,6 +206,7 @@ config ARCH_XGENE
 
 config ARCH_ZYNQMP
 	bool "Xilinx ZynqMP Family"
+	select XILINX_INTC
 	help
 	  This enables support for Xilinx ZynqMP Family
 
