@@ -926,6 +926,9 @@ struct macb {
 	unsigned int		ns_incr;
 	unsigned int		subns_incr;
 #endif
+#if defined(CONFIG_ARCH_ZYNQMP) || defined(CONFIG_ARCH_ZYNQ)
+	struct tasklet_struct   hresp_err_tasklet;
+#endif
 };
 
 static inline bool macb_is_gem(struct macb *bp)
