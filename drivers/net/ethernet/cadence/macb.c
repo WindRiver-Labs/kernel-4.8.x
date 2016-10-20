@@ -2804,7 +2804,11 @@ static const struct macb_config at91sam9260_config = {
 };
 
 static const struct macb_config pc302gem_config = {
+#if defined(CONFIG_ARCH_ZYNQ)
+	.caps = MACB_CAPS_GIGABIT_MODE_AVAILABLE,
+#else
 	.caps = MACB_CAPS_SG_DISABLED | MACB_CAPS_GIGABIT_MODE_AVAILABLE,
+#endif
 	.dma_burst_length = 16,
 	.clk_init = macb_clk_init,
 	.init = macb_init,
