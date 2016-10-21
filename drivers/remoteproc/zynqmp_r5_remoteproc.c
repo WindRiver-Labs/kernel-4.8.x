@@ -404,26 +404,10 @@ static int zynqmp_r5_rproc_stop(struct rproc *rproc)
 	return 0;
 }
 
-static void *zynqmp_r5_kva_to_guest_addr_kva(struct rproc *rproc,
-				void *va, struct virtqueue *vq)
-{
-	struct rproc_vring *rvring;
-
-	rvring = (struct rproc_vring *)(vq->priv);
-
-	/*
-	 * Remoteproc uses dma_alloc_coherent to set up the address of vring.
-	 * It assumes the remote has the same memory address mapping for
-	 * vring.
-	 */
-	return (void *)(phys_to_virt(rvring->dma) + (va - rvring->va));
-}
-
 static struct rproc_ops zynqmp_r5_rproc_ops = {
 	.start		= zynqmp_r5_rproc_start,
 	.stop		= zynqmp_r5_rproc_stop,
 	.kick		= zynqmp_r5_rproc_kick,
-	.kva_to_guest_addr_kva = zynqmp_r5_kva_to_guest_addr_kva,
 };
 
 /* Release R5 from reset and make it halted.
@@ -468,7 +452,6 @@ static int zynqmp_r5_remoteproc_probe(struct platform_device *pdev)
 	const unsigned char *prop;
 	struct resource *res;
 	int ret = 0;
-	int method = 0;
 	char *rproc_firmware = 0;
 	struct zynqmp_r5_rproc_pdata *local;
 
