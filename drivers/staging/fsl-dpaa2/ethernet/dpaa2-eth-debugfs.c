@@ -216,7 +216,7 @@ static ssize_t dpaa2_dbg_reset_write(struct file *file, const char __user *buf,
 		memset(&fq->stats, 0, sizeof(fq->stats));
 	}
 
-	for_each_cpu(i, &priv->dpio_cpumask) {
+	for (i = 0; i < priv->num_channels; i++) {
 		ch = priv->channel[i];
 		memset(&ch->stats, 0, sizeof(ch->stats));
 	}

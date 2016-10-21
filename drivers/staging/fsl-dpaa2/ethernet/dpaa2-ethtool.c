@@ -264,7 +264,7 @@ static void dpaa2_eth_get_ethtool_stats(struct net_device *net_dev,
 	i += j;
 
 	/* We may be using fewer DPIOs than actual CPUs */
-	for_each_cpu(j, &priv->dpio_cpumask) {
+	for (j = 0; j < priv->num_channels; j++) {
 		ch_stats = &priv->channel[j]->stats;
 		cdan += ch_stats->cdan;
 		portal_busy += ch_stats->dequeue_portal_busy;
