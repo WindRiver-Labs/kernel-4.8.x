@@ -46,8 +46,13 @@
 	};
 
 	sound {
-		compatible = "fsl,vf610-sgtl5000";
-		simple-audio-card,name = "FSL-VF610-TWR-BOARD";
+		compatible = "simple-audio-card";
+		simple-audio-card,format = "i2s";
+		simple-audio-card,widgets =
+			"Microphone", "Microphone Jack",
+			"Headphone", "Headphone Jack",
+			"Speaker", "Speaker Ext",
+			"Line", "Line In Jack";
 		simple-audio-card,routing =
 			"MIC_IN", "Microphone Jack",
 			"Microphone Jack", "Mic Bias",
@@ -55,9 +60,17 @@
 			"Headphone Jack", "HP_OUT",
 			"Speaker Ext", "LINE_OUT";
 
-		simple-audio-card,cpu = <&sai2>;
+		simple-audio-card,cpu {
+			sound-dai = <&sai2>;
+			frame-master;
+			bitclock-master;
+		};
 
-		simple-audio-card,codec = <&codec>;
+		simple-audio-card,codec {
+			sound-dai = <&codec>;
+			frame-master;
+			bitclock-master;
+		};
 	};
 };
 
@@ -123,6 +136,7 @@
 	};
 
 	codec: sgtl5000@2a {
+		#sound-dai-cells = <0>;
 		compatible = "fsl,sgtl5000";
 		reg = <0x2a>;
 		VDDA-supply = <&reg_3p3v>;
