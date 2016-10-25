@@ -1,2 +1,2 @@
-obj-y := dma-buf.o fence.o reservation.o seqno-fence.o fence-array.o
+obj-y := dma-buf.o dma-fence.o dma-fence-array.o reservation.o seqno-fence.o
 obj-$(CONFIG_SYNC_FILE)		+= sync_file.o
