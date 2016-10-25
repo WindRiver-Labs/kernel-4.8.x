@@ -388,16 +388,6 @@ static struct sk_buff *__hot contig_fd_to_skb(const struct dpa_priv_s *priv,
 	 */
 	DPA_READ_SKB_PTR(skb, skbh, vaddr, -1);
 
-#ifdef CONFIG_FSL_DPAA_ETH_JUMBO_FRAME
-	/* When using jumbo Rx buffers, we risk having frames dropped due to
-	 * the socket backlog reaching its maximum allowed size.
-	 * Use the frame length for the skb truesize instead of the buffer
-	 * size, as this is the size of the data that actually gets copied to
-	 * userspace.
-	 */
-	skb->truesize = SKB_TRUESIZE(dpa_fd_length(fd));
-#endif
-
 	DPA_BUG_ON(fd_off != priv->rx_headroom);
 	skb_reserve(skb, fd_off);
 	skb_put(skb, dpa_fd_length(fd));
