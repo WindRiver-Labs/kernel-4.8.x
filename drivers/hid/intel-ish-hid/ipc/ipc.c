@@ -741,8 +741,22 @@ struct ishtp_device *ish_dev_init(struct pci_dev *pdev)
 	return dev;
 }
 
-void	ish_device_disable(struct ishtp_device *dev)
+void ish_device_disable(struct ishtp_device *dev)
 {
+	struct pci_dev *pdev = dev->pdev;
+
+	if (!pdev)
+		return;
+
+	/* Must disable dma before disable ish device */
+	if (ish_disable_dma(dev)) {
+		dev_err(&pdev->dev,
+			"Can't disable - stuck with DMA in-progress\n");
+		return;
+	}
+
+	pci_set_power_state(pdev, PCI_D3hot);
+
 	dev->dev_state = ISHTP_DEV_DISABLED;
 	ish_clr_host_rdy(dev);
 }
