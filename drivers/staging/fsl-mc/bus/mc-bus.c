@@ -163,7 +163,7 @@ static ssize_t rescan_store(struct device *dev,
 
 	if (val) {
 		mutex_lock(&root_mc_bus->scan_mutex);
-		dprc_scan_objects(root_mc_dev, NULL, &irq_count);
+		dprc_scan_objects(root_mc_dev, NULL, &irq_count, 0);
 		mutex_unlock(&root_mc_bus->scan_mutex);
 	}
 
@@ -208,7 +208,7 @@ static int scan_fsl_mc_bus(struct device *dev, void *data)
 		root_mc_dev = to_fsl_mc_device(dev);
 		root_mc_bus = to_fsl_mc_bus(root_mc_dev);
 		mutex_lock(&root_mc_bus->scan_mutex);
-		dprc_scan_objects(root_mc_dev, NULL, &irq_count);
+		dprc_scan_objects(root_mc_dev, NULL, &irq_count, 0);
 		mutex_unlock(&root_mc_bus->scan_mutex);
 	}
 
