@@ -255,6 +255,9 @@ void dprc_cleanup_all_resource_pools(struct fsl_mc_device *mc_bus_dev)
  * @driver_override: driver override to apply to new objects found in the DPRC,
  * or NULL, if none.
  * @total_irq_count: total number of IRQs needed by objects in the DPRC.
+ * @scan_options: options regarding object discovery. Current options include:
+ *  - FSL_MC_SCAN_DPRC_POPULATE_IRQ_POOL: initialize IRQ pool before adding
+ *  new objects; the option is ignored if the IRQ pool was already initialized.
  *
  * Detects objects added and removed from a DPRC and synchronizes the
  * state of the Linux bus driver, MC by adding and removing
@@ -270,13 +273,20 @@ void dprc_cleanup_all_resource_pools(struct fsl_mc_device *mc_bus_dev)
  */
 int dprc_scan_objects(struct fsl_mc_device *mc_bus_dev,
 		      const char *driver_override,
-		      unsigned int *total_irq_count)
+		      unsigned int *total_irq_count,
+		      unsigned int scan_options)
 {
 	int num_child_objects;
 	int dprc_get_obj_failures;
 	int error;
 	unsigned int irq_count = mc_bus_dev->obj_desc.irq_count;
 	struct dprc_obj_desc *child_obj_desc_array = NULL;
+	struct fsl_mc_bus *mc_bus;
+
+	if (WARN_ON(!total_irq_count)) {
+		dev_err(&mc_bus_dev->dev, "invalid input parameter: irq count\n");
+		return -EINVAL;
+	}
 
 	error = dprc_get_obj_count(mc_bus_dev->mc_io,
 				   0,
@@ -318,7 +328,7 @@ int dprc_scan_objects(struct fsl_mc_device *mc_bus_dev,
 			 *  abort the current scan.
 			 */
 			if (error == -ENXIO)
-				return error;
+				goto error;
 
 			if (error < 0) {
 				dev_err(&mc_bus_dev->dev,
@@ -360,7 +370,21 @@ int dprc_scan_objects(struct fsl_mc_device *mc_bus_dev,
 	*total_irq_count = irq_count;
 	dprc_remove_devices(mc_bus_dev, child_obj_desc_array,
 			    num_child_objects);
-
+	/* populate the irq pool before adding new devices */
+	if ((scan_options & FSL_MC_SCAN_DPRC_POPULATE_IRQ_POOL) != 0 &&
+		fsl_mc_interrupts_supported()) {
+		mc_bus = to_fsl_mc_bus(mc_bus_dev);
+		/* check if the irq resources were not already initialized */
+		if (!mc_bus->irq_resources) {
+			error = fsl_mc_populate_irq_pool(mc_bus, irq_count);
+			if (error < 0) {
+				dev_err(&mc_bus_dev->dev,
+						"%s: Failed to populate irq-pool\n",
+						__func__);
+				goto error;
+			}
+		}
+	}
 	dprc_add_new_devices(mc_bus_dev, driver_override, child_obj_desc_array,
 			     num_child_objects);
 
@@ -368,6 +392,10 @@ int dprc_scan_objects(struct fsl_mc_device *mc_bus_dev,
 		devm_kfree(&mc_bus_dev->dev, child_obj_desc_array);
 
 	return 0;
+error:
+	if (child_obj_desc_array)
+		devm_kfree(&mc_bus_dev->dev, child_obj_desc_array);
+	return error;
 }
 EXPORT_SYMBOL_GPL(dprc_scan_objects);
 
@@ -392,7 +420,7 @@ int dprc_scan_container(struct fsl_mc_device *mc_bus_dev)
 	 * Discover objects in the DPRC:
 	 */
 	mutex_lock(&mc_bus->scan_mutex);
-	error = dprc_scan_objects(mc_bus_dev, NULL, &irq_count);
+	error = dprc_scan_objects(mc_bus_dev, NULL, &irq_count, 0);
 	mutex_unlock(&mc_bus->scan_mutex);
 	if (error < 0)
 		goto error;
@@ -480,7 +508,7 @@ static irqreturn_t dprc_irq0_handler_thread(int irq_num, void *arg)
 		      DPRC_IRQ_EVENT_OBJ_CREATED)) {
 		unsigned int irq_count;
 
-		error = dprc_scan_objects(mc_dev, NULL, &irq_count);
+		error = dprc_scan_objects(mc_dev, NULL, &irq_count, 0);
 		if (error < 0) {
 			/*
 			 * If the error is -ENXIO, we ignore it, as it indicates
