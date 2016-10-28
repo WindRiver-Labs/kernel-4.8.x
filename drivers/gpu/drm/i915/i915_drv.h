@@ -63,6 +63,7 @@
 #include "i915_gem_gtt.h"
 #include "i915_gem_render_state.h"
 #include "i915_gem_request.h"
+#include "i915_gem_timeline.h"
 
 #include "intel_gvt.h"
 
@@ -1844,7 +1845,6 @@ struct drm_i915_private {
 	struct i915_gem_context *kernel_context;
 	struct intel_engine_cs *engine[I915_NUM_ENGINES];
 	struct i915_vma *semaphore;
-	u32 next_seqno;
 
 	struct drm_dma_handle *status_page_dmah;
 	struct resource mch_res;
@@ -2103,6 +2103,9 @@ struct drm_i915_private {
 	struct {
 		void (*resume)(struct drm_i915_private *);
 		void (*cleanup_engine)(struct intel_engine_cs *engine);
+
+		struct list_head timelines;
+		struct i915_gem_timeline global_timeline;
 
 		/**
 		 * Is the GPU currently considered idle, or busy executing
@@ -3202,7 +3205,7 @@ int i915_gem_get_aperture_ioctl(struct drm_device *dev, void *data,
 				struct drm_file *file_priv);
 int i915_gem_wait_ioctl(struct drm_device *dev, void *data,
 			struct drm_file *file_priv);
-void i915_gem_load_init(struct drm_device *dev);
+int i915_gem_load_init(struct drm_device *dev);
 void i915_gem_load_cleanup(struct drm_device *dev);
 void i915_gem_load_init_fences(struct drm_i915_private *dev_priv);
 int i915_gem_freeze(struct drm_i915_private *dev_priv);
@@ -3374,7 +3377,7 @@ void i915_gem_track_fb(struct drm_i915_gem_object *old,
 		       struct drm_i915_gem_object *new,
 		       unsigned frontbuffer_bits);
 
-int __must_check i915_gem_set_seqno(struct drm_device *dev, u32 seqno);
+int __must_check i915_gem_set_global_seqno(struct drm_device *dev, u32 seqno);
 
 struct drm_i915_gem_request *
 i915_gem_find_active_request(struct intel_engine_cs *engine);
