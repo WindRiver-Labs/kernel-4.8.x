@@ -324,16 +324,9 @@ static void cpts_overflow_check(struct work_struct *work)
 	struct cpts *cpts = container_of(work, struct cpts, overflow_work.work);
 	struct timespec64 ts;
 	unsigned long flags;
-	u32 v;
 
 	spin_lock_irqsave(&cpts->lock, flags);
-
-	v = cpts_read32(cpts, control);
-	cpts_write32(cpts, v | CPTS_EN, control);
-	cpts_write32(cpts, TS_PEND_EN, int_enable);
-
 	ts = ns_to_timespec64(timecounter_read(&cpts->tc));
-
 	spin_unlock_irqrestore(&cpts->lock, flags);
 
 	if (cpts->hw_ts_enable)
