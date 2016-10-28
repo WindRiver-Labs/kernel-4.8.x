@@ -2,7 +2,7 @@ This document describes the device tree bindings associated with the
 keystone network coprocessor(NetCP) driver support.
 
 The network coprocessor (NetCP) is a hardware accelerator that processes
-Ethernet packets. NetCP has a gigabit Ethernet (GbE) subsystem with a ethernet
+Ethernet packets. NetCP has a gigabit Ethernet (GbE) subsytem with a ethernet
 switch sub-module to send and receive packets. NetCP also includes a packet
 accelerator (PA) module to perform packet classification operations such as
 header matching, and packet modification operations such as checksum
@@ -134,6 +134,20 @@ Optional properties:
 
 		Defaults: clock_mult, clock_shift = calculated from
 		CPTS refclk
+	- cpts-ext-ts-inputs:
+		The number of external time stamp channels.
+		The different CPTS versions might support up 8
+		external time stamp channels. if absent - unsupported.
+	- cpts-ts-comp-length:
+		Enable time stamp comparison event and TS_COMP signal output
+		generation when CPTS counter reaches a value written to
+		the TS_COMP_VAL register.
+		The generated pulse width is 3 refclk cycles if this property
+		has no value (empty) or, otherwise, it should specify desired
+		pulse width in number of refclk periods - max value 2^16.
+		TS_COMP functionality will be disabled if not present.
+	- cpts-ts-comp-polarity-low:
+		Set polarity of TS_COMP signal to low. Default is hight.
 
 NetCP interface properties: Interface specification for NetCP sub-modules.
 Required properties:
