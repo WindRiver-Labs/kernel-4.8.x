@@ -403,23 +403,17 @@ static int vfio_fsl_mc_probe(struct fsl_mc_device *mc_dev)
 			goto clean_resource_pool;
 		}
 
-		if (fsl_mc_interrupts_supported() && !mc_bus->irq_resources) {
-			irq_count = FSL_MC_IRQ_POOL_MAX_EXTRA_IRQS;
-			ret = fsl_mc_populate_irq_pool(mc_bus, irq_count);
-			if (ret < 0) {
-				dev_err(dev, "%s: Failed to init irq-pool\n",
-				__func__);
-				goto free_open_dprc;
-			}
-		}
-
 		mutex_lock(&mc_bus->scan_mutex);
+		/* scan container and initialize IRQ pool
+		 * before adding devices */
 		ret = dprc_scan_objects(mc_dev, mc_dev->driver_override,
-					&irq_count);
+					&irq_count,
+					FSL_MC_SCAN_DPRC_POPULATE_IRQ_POOL);
 		mutex_unlock(&mc_bus->scan_mutex);
+
 		if (ret) {
 			dev_err(dev, "dprc_scan_objects() fails (%d)\n", ret);
-			goto clean_irq_pool;
+			goto dprc_clean_scan_objects;
 		}
 
 		ret = vfio_add_group_dev(dev, &vfio_fsl_mc_ops, vdev);
@@ -465,12 +459,6 @@ static int vfio_fsl_mc_probe(struct fsl_mc_device *mc_dev)
 dprc_clean_scan_objects:
 	fsl_mc_cleanup_irq_pool(mc_bus);
 	device_for_each_child(&mc_dev->dev, NULL, vfio_fsl_mc_device_remove);
-
-clean_irq_pool:
-	fsl_mc_cleanup_irq_pool(mc_bus);
-
-free_open_dprc:
-	dprc_close(vfio_atomic_mc_io, 0, mc_dev->mc_handle);
 
 clean_resource_pool:
 	dprc_cleanup_all_resource_pools(mc_dev);
