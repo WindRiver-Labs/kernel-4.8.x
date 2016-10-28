@@ -40,6 +40,12 @@ struct irq_domain;
 struct msi_domain_info;
 
 /**
+ * dprc_scan_objects option to populate the mc bus IRQ resource pool before
+ * adding new devices
+ */
+#define FSL_MC_SCAN_DPRC_POPULATE_IRQ_POOL 1
+
+/**
  * struct fsl_mc - Private data of a "fsl,qoriq-mc" platform device
  * @root_mc_bus_dev: MC object device representing the root DPRC
  * @gic_supported: boolean flag that indicates if the GIC interrupt controller
@@ -127,7 +133,8 @@ int dprc_scan_container(struct fsl_mc_device *mc_bus_dev);
 
 int dprc_scan_objects(struct fsl_mc_device *mc_bus_dev,
                      const char *driver_override,
-		      unsigned int *total_irq_count);
+		      unsigned int *total_irq_count,
+		      unsigned int scan_options);
 
 int __init dprc_driver_init(void);
 
