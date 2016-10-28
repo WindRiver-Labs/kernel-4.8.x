@@ -31,8 +31,12 @@
 
 #include "cpts.h"
 
+#define CPTS_TS_COMP_PULSE_LENGTH_DEF	3
+
 #define cpts_read32(c, r)	readl_relaxed(&c->reg->r)
 #define cpts_write32(c, v, r)	writel_relaxed(v, &c->reg->r)
+
+static int cpts_report_ts_events(struct cpts *cpts, bool pps_reload);
 
 static int cpts_event_port(struct cpts_event *event)
 {
@@ -108,7 +112,9 @@ static int cpts_fifo_read(struct cpts *cpts, int match)
 		type = event_type(event);
 		switch (type) {
 		case CPTS_EV_HW:
-			event->tmo = CPTS_EVENT_HWSTAMP_TIMEOUT;
+		case CPTS_EV_COMP:
+			event->tmo +=
+				msecs_to_jiffies(CPTS_EVENT_HWSTAMP_TIMEOUT);
 		case CPTS_EV_PUSH:
 		case CPTS_EV_RX:
 		case CPTS_EV_TX:
@@ -152,6 +158,60 @@ static cycle_t cpts_systim_read(const struct cyclecounter *cc)
 	return val;
 }
 
+static cycle_t cpts_cc_ns2cyc(struct cpts *cpts, u64 nsecs)
+{
+	cycle_t cyc = (nsecs << cpts->cc.shift) + nsecs;
+
+	do_div(cyc, cpts->cc.mult);
+
+	return cyc;
+}
+
+static void cpts_ts_comp_disable(struct cpts *cpts)
+{
+	cpts_write32(cpts, 0, ts_comp_length);
+}
+
+static void cpts_ts_comp_enable(struct cpts *cpts)
+{
+	/* TS_COMP_LENGTH should be 0 while the TS_COMP_VAL value is
+	 * being written
+	 */
+	cpts_write32(cpts, 0, ts_comp_length);
+	cpts_write32(cpts, cpts->ts_comp_next, ts_comp_val);
+	cpts_write32(cpts, cpts->ts_comp_length, ts_comp_length);
+}
+
+static void cpts_ts_comp_add_ns(struct cpts *cpts, s64 add_ns)
+{
+	cycle_t cyc_next;
+
+	if (add_ns == NSEC_PER_SEC)
+		/* avoid calculation */
+		cyc_next = cpts->ts_comp_one_sec_cycs;
+	else
+		cyc_next = cpts_cc_ns2cyc(cpts, add_ns);
+
+	cyc_next += cpts->ts_comp_next;
+	cpts->ts_comp_next = cyc_next & cpts->cc.mask;
+	pr_debug("cpts comp ts_comp_next: %u\n", cpts->ts_comp_next);
+}
+
+static void cpts_ts_comp_settime(struct cpts *cpts, s64 now_ns)
+{
+	struct timespec64 ts;
+
+	if (cpts->ts_comp_enabled) {
+		ts = ns_to_timespec64(now_ns);
+
+		/* align pulse to next sec boundary and add one sec */
+		cpts_ts_comp_add_ns(cpts, NSEC_PER_SEC - ts.tv_nsec);
+
+		/* enable ts_comp pulse */
+		cpts_ts_comp_enable(cpts);
+	}
+}
+
 /* PTP clock operations */
 
 static int cpts_ptp_adjfreq(struct ptp_clock_info *ptp, s32 ppb)
@@ -161,6 +221,7 @@ static int cpts_ptp_adjfreq(struct ptp_clock_info *ptp, s32 ppb)
 	int neg_adj = 0;
 	unsigned long flags;
 	struct cpts *cpts = container_of(ptp, struct cpts, info);
+	u64 ns;
 
 	if (ppb < 0) {
 		neg_adj = 1;
@@ -171,13 +232,30 @@ static int cpts_ptp_adjfreq(struct ptp_clock_info *ptp, s32 ppb)
 	adj *= ppb;
 	diff = div_u64(adj, 1000000000ULL);
 
+	mutex_lock(&cpts->ptp_clk_mutex);
+
 	spin_lock_irqsave(&cpts->lock, flags);
+	if (cpts->ts_comp_enabled) {
+		cpts_ts_comp_disable(cpts);
+		/* if any, report existing pulse before adj */
+		cpts_fifo_read(cpts, CPTS_EV_COMP);
+		/* if any, report existing pulse before adj */
+		cpts_report_ts_events(cpts, false);
+	}
 
 	timecounter_read(&cpts->tc);
 
 	cpts->cc.mult = neg_adj ? mult - diff : mult + diff;
-
+	/* get updated time with adj */
+	ns = timecounter_read(&cpts->tc);
+	cpts->ts_comp_next = cpts->tc.cycle_last;
 	spin_unlock_irqrestore(&cpts->lock, flags);
+
+	if (cpts->ts_comp_enabled)
+		cpts->ts_comp_one_sec_cycs = cpts_cc_ns2cyc(cpts, NSEC_PER_SEC);
+	cpts_ts_comp_settime(cpts, ns);
+
+	mutex_unlock(&cpts->ptp_clk_mutex);
 
 	return 0;
 }
@@ -186,10 +264,27 @@ static int cpts_ptp_adjtime(struct ptp_clock_info *ptp, s64 delta)
 {
 	unsigned long flags;
 	struct cpts *cpts = container_of(ptp, struct cpts, info);
+	u64 ns;
+
+	mutex_lock(&cpts->ptp_clk_mutex);
 
 	spin_lock_irqsave(&cpts->lock, flags);
+	if (cpts->ts_comp_enabled) {
+		cpts_ts_comp_disable(cpts);
+		/* if any, report existing pulse before adj */
+		cpts_fifo_read(cpts, CPTS_EV_COMP);
+		/* if any, report existing pulse before adj */
+		cpts_report_ts_events(cpts, false);
+	}
+
 	timecounter_adjtime(&cpts->tc, delta);
+	ns = timecounter_read(&cpts->tc);
+	cpts->ts_comp_next = cpts->tc.cycle_last;
 	spin_unlock_irqrestore(&cpts->lock, flags);
+
+	cpts_ts_comp_settime(cpts, ns);
+
+	mutex_unlock(&cpts->ptp_clk_mutex);
 
 	return 0;
 }
@@ -212,25 +307,91 @@ static int cpts_ptp_gettime(struct ptp_clock_info *ptp, struct timespec64 *ts)
 static int cpts_ptp_settime(struct ptp_clock_info *ptp,
 			    const struct timespec64 *ts)
 {
-	u64 ns;
-	unsigned long flags;
 	struct cpts *cpts = container_of(ptp, struct cpts, info);
+	unsigned long flags;
+	u64 ns;
 
 	ns = timespec64_to_ns(ts);
 
+	mutex_lock(&cpts->ptp_clk_mutex);
+
 	spin_lock_irqsave(&cpts->lock, flags);
+	if (cpts->ts_comp_enabled) {
+		cpts_ts_comp_disable(cpts);
+		/* if any, get existing pulse event before adj */
+		cpts_fifo_read(cpts, CPTS_EV_COMP);
+		/* if any, report existing pulse before adj */
+		cpts_report_ts_events(cpts, false);
+	}
+
 	timecounter_init(&cpts->tc, &cpts->cc, ns);
+	cpts->ts_comp_next = cpts->tc.cycle_last;
 	spin_unlock_irqrestore(&cpts->lock, flags);
+
+	cpts_ts_comp_settime(cpts, ns);
+
+	mutex_unlock(&cpts->ptp_clk_mutex);
 
 	return 0;
 }
 
-static int cpts_report_ts_events(struct cpts *cpts)
+static int cpts_pps_enable(struct cpts *cpts, int on)
+{
+	struct timespec64 ts;
+	unsigned long flags;
+	u64 ns;
+
+	if (cpts->ts_comp_enabled == on)
+		return 0;
+
+	mutex_lock(&cpts->ptp_clk_mutex);
+	cpts->ts_comp_enabled = on;
+
+	if (!on) {
+		cpts_ts_comp_disable(cpts);
+		mutex_unlock(&cpts->ptp_clk_mutex);
+		return 0;
+	}
+
+	/* get current counter value */
+	spin_lock_irqsave(&cpts->lock, flags);
+	ns = timecounter_read(&cpts->tc);
+	cpts->ts_comp_next = cpts->tc.cycle_last;
+	spin_unlock_irqrestore(&cpts->lock, flags);
+
+	ts = ns_to_timespec64(ns);
+	/* align to next sec boundary and add one sec to avoid the situation
+	 * when the current time is very close to the next second point and
+	 * it might be possible that ts_comp_val will be configured to
+	 * the time in the past.
+	 */
+	cpts_ts_comp_add_ns(cpts, 2 * NSEC_PER_SEC - ts.tv_nsec);
+
+	/* enable ts_comp pulse */
+	cpts_ts_comp_enable(cpts);
+
+	if (cpts->ts_comp_enabled)
+		/* poll for events faster - evry 200 ms */
+		cpts->ov_check_period =
+			msecs_to_jiffies(CPTS_EVENT_HWSTAMP_TIMEOUT);
+	else if (!cpts->hw_ts_enable)
+		cpts->ov_check_period = cpts->ov_check_period_slow;
+
+	mod_delayed_work(system_wq, &cpts->overflow_work,
+			 cpts->ov_check_period);
+
+	mutex_unlock(&cpts->ptp_clk_mutex);
+
+	return 0;
+}
+
+static int cpts_report_ts_events(struct cpts *cpts, bool pps_reload)
 {
 	struct list_head *this, *next;
 	struct ptp_clock_event pevent;
 	struct cpts_event *event;
 	int reported = 0, ev;
+	u64 ns;
 
 	list_for_each_safe(this, next, &cpts->events) {
 		event = list_entry(this, struct cpts_event, list);
@@ -244,6 +405,33 @@ static int cpts_report_ts_events(struct cpts *cpts)
 			pevent.type = PTP_CLOCK_EXTTS;
 			pevent.index = cpts_event_port(event) - 1;
 			ptp_clock_event(cpts->clock, &pevent);
+			++reported;
+			continue;
+		}
+
+		if (event_type(event) == CPTS_EV_COMP) {
+			list_del_init(&event->list);
+			list_add(&event->list, &cpts->pool);
+			if (cpts->ts_comp_next != event->low) {
+				pr_err("cpts ts_comp mismatch: %08x %08x\n",
+				       cpts->ts_comp_next, event->low);
+				continue;
+			} else
+				pr_debug("cpts comp ev tstamp: %u\n",
+					 event->low);
+
+			/* report the event */
+			ns = timecounter_cyc2time(&cpts->tc, event->low);
+			pevent.type = PTP_CLOCK_PPSUSR;
+			pevent.pps_times.ts_real = ns_to_timespec64(ns);
+			ptp_clock_event(cpts->clock, &pevent);
+
+			if (pps_reload) {
+				/* reload: add ns to ts_comp */
+				cpts_ts_comp_add_ns(cpts, NSEC_PER_SEC);
+				/* enable ts_comp pulse with new val */
+				cpts_ts_comp_enable(cpts);
+			}
 			++reported;
 			continue;
 		}
@@ -263,6 +451,8 @@ static int cpts_extts_enable(struct cpts *cpts, u32 index, int on)
 	if (((cpts->hw_ts_enable & BIT(index)) >> index) == on)
 		return 0;
 
+	mutex_lock(&cpts->ptp_clk_mutex);
+
 	spin_lock_irqsave(&cpts->lock, flags);
 
 	v = cpts_read32(cpts, control);
@@ -280,13 +470,13 @@ static int cpts_extts_enable(struct cpts *cpts, u32 index, int on)
 	if (cpts->hw_ts_enable)
 		/* poll for events faster - evry 200 ms */
 		cpts->ov_check_period =
-			msecs_to_jiffies(CPTS_EVENT_RX_TX_TIMEOUT);
-	else
+ 			msecs_to_jiffies(CPTS_EVENT_HWSTAMP_TIMEOUT);
+	else if (!cpts->ts_comp_enabled)
 		cpts->ov_check_period = cpts->ov_check_period_slow;
 
 	mod_delayed_work(system_wq, &cpts->overflow_work,
 			 cpts->ov_check_period);
-
+	mutex_unlock(&cpts->ptp_clk_mutex);
 	return 0;
 }
 
@@ -298,6 +488,8 @@ static int cpts_ptp_enable(struct ptp_clock_info *ptp,
 	switch (rq->type) {
 	case PTP_CLK_REQ_EXTTS:
 		return cpts_extts_enable(cpts, rq->extts.index, on);
+	case PTP_CLK_REQ_PPS:
+		return cpts_pps_enable(cpts, on);
 	default:
 		break;
 	}
@@ -325,12 +517,15 @@ static void cpts_overflow_check(struct work_struct *work)
 	struct timespec64 ts;
 	unsigned long flags;
 
+	mutex_lock(&cpts->ptp_clk_mutex);
 	spin_lock_irqsave(&cpts->lock, flags);
 	ts = ns_to_timespec64(timecounter_read(&cpts->tc));
 	spin_unlock_irqrestore(&cpts->lock, flags);
 
-	if (cpts->hw_ts_enable)
-		cpts_report_ts_events(cpts);
+	if (cpts->hw_ts_enable || cpts->ts_comp_enabled)
+		cpts_report_ts_events(cpts, true);
+	mutex_unlock(&cpts->ptp_clk_mutex);
+
 	pr_debug("cpts overflow check at %lld.%09lu\n", ts.tv_sec, ts.tv_nsec);
 	schedule_delayed_work(&cpts->overflow_work, cpts->ov_check_period);
 }
@@ -448,6 +643,7 @@ EXPORT_SYMBOL_GPL(cpts_tx_timestamp);
 int cpts_register(struct cpts *cpts)
 {
 	int err, i;
+	u32 control;
 
 	INIT_LIST_HEAD(&cpts->events);
 	INIT_LIST_HEAD(&cpts->pool);
@@ -456,7 +652,14 @@ int cpts_register(struct cpts *cpts)
 
 	clk_enable(cpts->refclk);
 
-	cpts_write32(cpts, CPTS_EN, control);
+	control = CPTS_EN;
+	if (cpts->caps & CPTS_CAP_TS_COMP_EN) {
+		if (cpts->caps & CPTS_CAP_TS_COMP_POL_LOW_SEL)
+			control &= ~TS_COMP_POL;
+		else
+			control |= TS_COMP_POL;
+	}
+	cpts_write32(cpts, control, control);
 	cpts_write32(cpts, TS_PEND_EN, int_enable);
 
 	cpts->cc.mult = cpts->cc_mult;
@@ -560,6 +763,20 @@ static int cpts_of_parse(struct cpts *cpts, struct device_node *node)
 		cpts->rftclk_sel = prop & CPTS_RFTCLK_SEL_MASK;
 	}
 
+	if (of_property_read_bool(node, "cpts-ts-comp-length")) {
+		cpts->caps |= CPTS_CAP_TS_COMP_EN;
+		cpts->ts_comp_length = CPTS_TS_COMP_PULSE_LENGTH_DEF;
+	}
+
+	if (cpts->caps & CPTS_CAP_TS_COMP_EN) {
+		ret = of_property_read_u32(node, "cpts-ts-comp-length", &prop);
+		if (!ret)
+			cpts->ts_comp_length = prop;
+
+		if (of_property_read_bool(node, "cpts-ts-comp-polarity-low"))
+			cpts->caps |= CPTS_CAP_TS_COMP_POL_LOW_SEL;
+	}
+
 	if (!of_property_read_u32(node, "cpts-ext-ts-inputs", &prop))
 		cpts->ext_ts_inputs = prop;
 
@@ -586,6 +803,7 @@ struct cpts *cpts_create(struct device *dev, void __iomem *regs,
 	cpts->dev = dev;
 	cpts->reg = (struct cpsw_cpts __iomem *)regs;
 	spin_lock_init(&cpts->lock);
+	mutex_init(&cpts->ptp_clk_mutex);
 	INIT_DELAYED_WORK(&cpts->overflow_work, cpts_overflow_check);
 
 	ret = cpts_of_parse(cpts, node);
@@ -611,6 +829,11 @@ struct cpts *cpts_create(struct device *dev, void __iomem *regs,
 		cpts->info.n_ext_ts = cpts->ext_ts_inputs;
 
 	cpts_calc_mult_shift(cpts);
+
+	if (cpts->caps & CPTS_CAP_TS_COMP_EN) {
+		cpts->info.pps = 1;
+		cpts->ts_comp_one_sec_cycs = clk_get_rate(cpts->refclk);
+	}
 
 	return cpts;
 }

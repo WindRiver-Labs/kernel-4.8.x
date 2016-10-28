@@ -39,7 +39,8 @@ struct cpsw_cpts {
 	u32 ts_push;              /* Time stamp event push */
 	u32 ts_load_val;          /* Time stamp load value */
 	u32 ts_load_en;           /* Time stamp load enable */
-	u32 res2[2];
+	u32 ts_comp_val;          /* Time stamp comparison value, v1.5 & up */
+	u32 ts_comp_length;       /* Time stamp comp assert len, v1.5 & up */
 	u32 intstat_raw;          /* Time sync interrupt status raw */
 	u32 intstat_masked;       /* Time sync interrupt status masked */
 	u32 int_enable;           /* Time sync interrupt enable */
@@ -64,10 +65,13 @@ struct cpsw_cpts {
 #define HW3_TS_PUSH_EN       (1<<10) /* Hardware push 3 enable */
 #define HW2_TS_PUSH_EN       (1<<9)  /* Hardware push 2 enable */
 #define HW1_TS_PUSH_EN       (1<<8)  /* Hardware push 1 enable */
+#define TS_COMP_POL	     BIT(2)  /* TS_COMP Polarity */
 #define INT_TEST             (1<<1)  /* Interrupt Test */
 #define CPTS_EN              (1<<0)  /* Time Sync Enable */
 
 #define CPTS_RFTCLK_SEL_MASK 0x1f
+
+#define CPTS_TS_COMP_LENGTH_MASK 0xffff
 
 /*
  * Definitions for the single bit resisters:
@@ -97,6 +101,7 @@ enum {
 	CPTS_EV_HW,   /* Hardware Time Stamp Push Event */
 	CPTS_EV_RX,   /* Ethernet Receive Event */
 	CPTS_EV_TX,   /* Ethernet Transmit Event */
+	CPTS_EV_COMP, /* Time Stamp Compare Event */
 };
 
 #define CPTS_FIFO_DEPTH 16
@@ -113,6 +118,8 @@ struct cpts_event {
 };
 
 #define CPTS_CAP_RFTCLK_SEL BIT(0)
+#define CPTS_CAP_TS_COMP_EN BIT(1)
+#define CPTS_CAP_TS_COMP_POL_LOW_SEL BIT(2)
 
 struct cpts {
 	struct device *dev;
@@ -137,6 +144,11 @@ struct cpts {
 	u32 ext_ts_inputs;
 	u32 hw_ts_enable;
 	u32 caps;
+	u32 ts_comp_next;	/* next time_stamp value to compare with */
+	u32 ts_comp_length;	/* TS_COMP Output pulse width */
+	u32 ts_comp_one_sec_cycs; /* number of counter cycles in one sec */
+	int ts_comp_enabled;
+	struct mutex ptp_clk_mutex; /* sync PTP interface with overflow_work */
 };
 
 int cpts_rx_timestamp(struct cpts *cpts, struct sk_buff *skb);
