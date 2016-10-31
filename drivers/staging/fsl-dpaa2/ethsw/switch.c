@@ -45,7 +45,7 @@
 #include "dpsw-cmd.h"
 
 /* Minimal supported DPSE version */
-#define DPSW_MIN_VER_MAJOR	7
+#define DPSW_MIN_VER_MAJOR	8
 #define DPSW_MIN_VER_MINOR	0
 
 /* IRQ index */
@@ -1382,6 +1382,7 @@ ethsw_init(struct fsl_mc_device *sw_dev)
 	struct net_device	*netdev;
 	int			err = 0;
 	u16			i;
+	u16			version_major, version_minor;
 	const struct dpsw_stp_cfg stp_cfg = {
 		.vlan_id = 1,
 		.state = DPSW_STP_STATE_FORWARDING,
@@ -1410,13 +1411,21 @@ ethsw_init(struct fsl_mc_device *sw_dev)
 		goto err_close;
 	}
 
+	err = dpsw_get_api_version(priv->mc_io, 0,
+				   &version_major,
+				   &version_minor);
+	if (err) {
+		dev_err(dev, "dpsw_get_api_version err %d\n", err);
+		goto err_close;
+	}
+
 	/* Minimum supported DPSW version check */
-	if (priv->sw_attr.version.major < DPSW_MIN_VER_MAJOR ||
-	    (priv->sw_attr.version.major == DPSW_MIN_VER_MAJOR &&
-	     priv->sw_attr.version.minor < DPSW_MIN_VER_MINOR)) {
+	if (version_major < DPSW_MIN_VER_MAJOR ||
+	    (version_major == DPSW_MIN_VER_MAJOR &&
+	     version_minor < DPSW_MIN_VER_MINOR)) {
 		dev_err(dev, "DPSW version %d:%d not supported. Use %d.%d or greater.\n",
-			priv->sw_attr.version.major,
-			priv->sw_attr.version.minor,
+			version_major,
+			version_minor,
 			DPSW_MIN_VER_MAJOR, DPSW_MIN_VER_MINOR);
 		err = -ENOTSUPP;
 		goto err_close;

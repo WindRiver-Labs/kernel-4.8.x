@@ -33,11 +33,11 @@
 #define __FSL_DPSW_CMD_H
 
 /* DPSW Version */
-#define DPSW_VER_MAJOR				7
+#define DPSW_VER_MAJOR				8
 #define DPSW_VER_MINOR				0
 
-#define DPSW_CMD_BASE_VER			0
-#define DPSW_CMD_ID_OFF			4
+#define DPSW_CMD_BASE_VER			1
+#define DPSW_CMD_ID_OFF				4
 #define DPSW_CMD_ID(id) (((id) << DPSW_CMD_ID_OFF) | DPSW_CMD_BASE_VER)
 
 /* Command IDs */
@@ -45,6 +45,7 @@
 #define DPSW_CMDID_OPEN                     DPSW_CMD_ID(0x802)
 #define DPSW_CMDID_CREATE                   DPSW_CMD_ID(0x902)
 #define DPSW_CMDID_DESTROY                  DPSW_CMD_ID(0x900)
+#define DPSW_CMDID_GET_API_VERSION          DPSW_CMD_ID(0xa02)
 
 #define DPSW_CMDID_ENABLE                   DPSW_CMD_ID(0x002)
 #define DPSW_CMDID_DISABLE                  DPSW_CMD_ID(0x003)
@@ -233,17 +234,15 @@ do { \
 	MC_RSP_OP(cmd, 0, 24, 8,  uint8_t,  attr->num_fdbs);\
 	MC_RSP_OP(cmd, 0, 32, 16, uint16_t, attr->max_vlans);\
 	MC_RSP_OP(cmd, 0, 48, 16, uint16_t, attr->num_vlans);\
-	MC_RSP_OP(cmd, 1, 0,  16, uint16_t, attr->version.major);\
-	MC_RSP_OP(cmd, 1, 16, 16, uint16_t, attr->version.minor);\
-	MC_RSP_OP(cmd, 1, 32, 16, uint16_t, attr->max_fdb_entries);\
-	MC_RSP_OP(cmd, 1, 48, 16, uint16_t, attr->fdb_aging_time);\
-	MC_RSP_OP(cmd, 2, 0,  32, int,	 attr->id);\
-	MC_RSP_OP(cmd, 2, 32, 16, uint16_t, attr->mem_size);\
-	MC_RSP_OP(cmd, 2, 48, 16, uint16_t, attr->max_fdb_mc_groups);\
-	MC_RSP_OP(cmd, 3, 0,  64, uint64_t, attr->options);\
-	MC_RSP_OP(cmd, 4, 0,  8,  uint8_t, attr->max_meters_per_if);\
-	MC_RSP_OP(cmd, 4, 8,  4,  enum dpsw_component_type, \
+	MC_RSP_OP(cmd, 1, 0, 16, uint16_t, attr->max_fdb_entries);\
+	MC_RSP_OP(cmd, 1, 16, 16, uint16_t, attr->fdb_aging_time);\
+	MC_RSP_OP(cmd, 1, 32,  32, int,	 attr->id);\
+	MC_RSP_OP(cmd, 2, 0, 16, uint16_t, attr->mem_size);\
+	MC_RSP_OP(cmd, 2, 16, 16, uint16_t, attr->max_fdb_mc_groups);\
+	MC_RSP_OP(cmd, 2, 32,  8,  uint8_t, attr->max_meters_per_if);\
+	MC_RSP_OP(cmd, 2, 40,  4,  enum dpsw_component_type, \
 			attr->component_type);\
+	MC_RSP_OP(cmd, 3, 0,  64, uint64_t, attr->options);\
 } while (0)
 
 /*                cmd, param, offset, width, type, arg_name */
@@ -915,6 +914,13 @@ do { \
 	MC_CMD_OP(cmd, 6, 0,  16, uint16_t, cfg->pools[6].buffer_size);\
 	MC_CMD_OP(cmd, 4, 0,  32, int,      cfg->pools[7].dpbp_id); \
 	MC_CMD_OP(cmd, 6, 16, 16, uint16_t, cfg->pools[7].buffer_size);\
+} while (0)
+
+/*                cmd, param, offset, width, type,      arg_name */
+#define DPSW_RSP_GET_API_VERSION(cmd, major, minor) \
+do { \
+	MC_RSP_OP(cmd, 0, 0,  16, uint16_t, major);\
+	MC_RSP_OP(cmd, 0, 16, 16, uint16_t, minor);\
 } while (0)
 
 #endif /* __FSL_DPSW_CMD_H */

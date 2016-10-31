@@ -116,9 +116,10 @@ int dpsw_close(struct fsl_mc_io *mc_io,
 }
 
 int dpsw_create(struct fsl_mc_io *mc_io,
+		u16 dprc_token,
 		u32 cmd_flags,
 		const struct dpsw_cfg *cfg,
-		u16 *token)
+		u32 *obj_id)
 {
 	struct mc_command cmd = { 0 };
 	int err;
@@ -126,7 +127,7 @@ int dpsw_create(struct fsl_mc_io *mc_io,
 	/* prepare command */
 	cmd.header = mc_encode_cmd_header(DPSW_CMDID_CREATE,
 					  cmd_flags,
-					  0);
+					  dprc_token);
 	DPSW_CMD_CREATE(cmd, cfg);
 
 	/* send command to mc*/
@@ -135,21 +136,24 @@ int dpsw_create(struct fsl_mc_io *mc_io,
 		return err;
 
 	/* retrieve response parameters */
-	*token = MC_CMD_HDR_READ_TOKEN(cmd.header);
+	*obj_id = get_mc_cmd_create_object_id(&cmd);
 
 	return 0;
 }
 
 int dpsw_destroy(struct fsl_mc_io *mc_io,
+		 u16 dprc_token
 		 u32 cmd_flags,
-		 u16 token)
+		 u32 obj_id)
 {
 	struct mc_command cmd = { 0 };
 
 	/* prepare command */
 	cmd.header = mc_encode_cmd_header(DPSW_CMDID_DESTROY,
 					  cmd_flags,
-					  token);
+					  dprc_token);
+	/* set object id to destroy */
+	cmd.params[0] = mc_enc(0, sizeof(object_id), object_id);
 
 	/* send command to mc*/
 	return mc_send_command(mc_io, &cmd);
@@ -1636,4 +1640,25 @@ int dpsw_ctrl_if_disable(struct fsl_mc_io	*mc_io,
 
 	/* send command to mc*/
 	return mc_send_command(mc_io, &cmd);
+}
+
+int dpsw_get_api_version(struct fsl_mc_io *mc_io,
+			 u32 cmd_flags,
+			 u16 *major_ver,
+			 u16 *minor_ver)
+{
+	struct mc_command cmd = { 0 };
+	int err;
+
+	cmd.header = mc_encode_cmd_header(DPSW_CMDID_GET_API_VERSION,
+					cmd_flags,
+					0);
+
+	err = mc_send_command(mc_io, &cmd);
+	if (err)
+		return err;
+
+	DPSW_RSP_GET_API_VERSION(cmd, *major_ver, *minor_ver);
+
+	return 0;
 }

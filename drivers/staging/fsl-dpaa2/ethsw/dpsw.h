@@ -166,9 +166,10 @@ struct dpsw_cfg {
 /**
  * dpsw_create() - Create the DPSW object.
  * @mc_io:	Pointer to MC portal's I/O object
+ * @dprc_token:	Parent container token; '0' for default container
  * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
  * @cfg:	Configuration structure
- * @token:	Returned token; use in subsequent API calls
+ * @obj_id: returned object id
  *
  * Create the DPSW object, allocate required resources and
  * perform required initialization.
@@ -176,31 +177,39 @@ struct dpsw_cfg {
  * The object can be created either by declaring it in the
  * DPL file, or by calling this function.
  *
- * This function returns a unique authentication token,
- * associated with the specific object ID and the specific MC
- * portal; this token must be used in all subsequent calls to
- * this specific object. For objects that are created using the
- * DPL file, call dpsw_open() function to get an authentication
- * token first
+ * The function accepts an authentication token of a parent
+ * container that this object should be assigned to. The token
+ * can be '0' so the object will be assigned to the default container.
+ * The newly created object can be opened with the returned
+ * object id and using the container's associated tokens and MC portals.
  *
  * Return:	'0' on Success; Error code otherwise.
  */
 int dpsw_create(struct fsl_mc_io	*mc_io,
+		u16 dprc_token,
 		u32		cmd_flags,
 		const struct dpsw_cfg	*cfg,
-		u16		*token);
+		u32		*obj_id);
 
 /**
  * dpsw_destroy() - Destroy the DPSW object and release all its resources.
  * @mc_io:	Pointer to MC portal's I/O object
+ * @dprc_token: Parent container token; '0' for default container
  * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
- * @token:	Token of DPSW object
+ * @object_id:	The object id; it must be a valid id within the container that
+ * created this object;
+ *
+ * The function accepts the authentication token of the parent container that
+ * created the object (not the one that currently owns the object). The object
+ * is searched within parent using the provided 'object_id'.
+ * All tokens to the object must be closed before calling destroy.
  *
  * Return:	'0' on Success; error code otherwise.
  */
 int dpsw_destroy(struct fsl_mc_io	*mc_io,
+		 u16		dprc_token,
 		 u32		cmd_flags,
-		 u16		token);
+		 u32		object_id);
 
 /**
  * dpsw_enable() - Enable DPSW functionality
@@ -429,7 +438,6 @@ int dpsw_clear_irq_status(struct fsl_mc_io	*mc_io,
 /**
  * struct dpsw_attr - Structure representing DPSW attributes
  * @id: DPSW object ID
- * @version: DPSW version
  * @options: Enable/Disable DPSW features
  * @max_vlans: Maximum Number of VLANs
  * @max_meters_per_if:  Number of meters per interface
@@ -448,15 +456,6 @@ int dpsw_clear_irq_status(struct fsl_mc_io	*mc_io,
  */
 struct dpsw_attr {
 	int		id;
-	/**
-	 * struct version - DPSW version
-	 * @major: DPSW major version
-	 * @minor: DPSW minor version
-	 */
-	struct {
-		u16 major;
-		u16 minor;
-	} version;
 	u64	options;
 	u16	max_vlans;
 	u8	max_meters_per_if;
@@ -2160,5 +2159,19 @@ int dpsw_ctrl_if_enable(struct fsl_mc_io	*mc_io,
 int dpsw_ctrl_if_disable(struct fsl_mc_io	*mc_io,
 			 u32		cmd_flags,
 			 u16		token);
+
+/**
+ * dpsw_get_api_version() - Get Data Path Switch API version
+ * @mc_io:  Pointer to MC portal's I/O object
+ * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
+ * @major_ver:	Major version of data path switch API
+ * @minor_ver:	Minor version of data path switch API
+ *
+ * Return:  '0' on Success; Error code otherwise.
+ */
+int dpsw_get_api_version(struct fsl_mc_io *mc_io,
+			 u32 cmd_flags,
+			 u16 *major_ver,
+			 u16 *minor_ver);
 
 #endif /* __FSL_DPSW_H */
