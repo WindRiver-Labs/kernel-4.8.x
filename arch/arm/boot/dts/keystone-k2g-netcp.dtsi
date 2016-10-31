@@ -134,6 +134,7 @@ netcp: netcp@4000000 {
 			tx-channel = "nettx";
 			cpts-rftclk-sel = <0>;
 			cpts-ext-ts-inputs = <8>;
+			cpts-ts-comp-length = <3>;
 
 			interfaces {
 				gbe0: interface-0 {

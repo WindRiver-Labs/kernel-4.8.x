@@ -403,6 +403,7 @@ netcp: netcp@24000000 {
 			tx-channel = "nettx";
 			cpts-rftclk-sel = <0>;
 			cpts-ext-ts-inputs = <6>;
+			cpts-ts-comp-length;
 
 			interfaces {
 				gbe0: interface-0 {

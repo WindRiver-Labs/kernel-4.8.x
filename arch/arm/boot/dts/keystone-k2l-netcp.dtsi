@@ -346,6 +346,7 @@ netcp: netcp@26000000 {
 			tx-queue = <896>;
 			tx-channel = "nettx";
 			cpts-rftclk-sel = <0>;
+			cpts-ts-comp-length;
 
 			interfaces {
 				gbe0: interface-0 {
