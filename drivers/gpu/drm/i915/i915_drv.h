@@ -2979,6 +2979,8 @@ __i915_printk(struct drm_i915_private *dev_priv, const char *level,
 #ifdef CONFIG_COMPAT
 extern long i915_compat_ioctl(struct file *filp, unsigned int cmd,
 			      unsigned long arg);
+#else
+#define i915_compat_ioctl NULL
 #endif
 extern int intel_gpu_reset(struct drm_i915_private *dev_priv, u32 engine_mask);
 extern bool intel_has_gpu_reset(struct drm_i915_private *dev_priv);
