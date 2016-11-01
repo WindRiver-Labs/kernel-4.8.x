@@ -1208,11 +1208,11 @@ int dpsw_acl_get_attributes(struct fsl_mc_io *mc_io,
 			    u16 acl_id,
 			    struct dpsw_acl_attr *attr);
 /**
-* struct dpsw_ctrl_if_attr - Control interface attributes
-* @rx_fqid:		Receive FQID
-* @rx_err_fqid:		Receive error FQID
-* @tx_err_conf_fqid:	Transmit error and confirmation FQID
-*/
+ * struct dpsw_ctrl_if_attr - Control interface attributes
+ * @rx_fqid:		Receive FQID
+ * @rx_err_fqid:		Receive error FQID
+ * @tx_err_conf_fqid:	Transmit error and confirmation FQID
+ */
 struct dpsw_ctrl_if_attr {
 	u32 rx_fqid;
 	u32 rx_err_fqid;
@@ -1238,11 +1238,11 @@ int dpsw_ctrl_if_get_attributes(struct fsl_mc_io *mc_io,
 struct dpsw_ctrl_if_pools_cfg {
 	u8 num_dpbp;
 	/**
-	* struct pools - Buffer pools parameters
-	* @dpbp_id: DPBP object ID
-	* @buffer_size: Buffer size
-	* @backup_pool: Backup pool
-	*/
+	 * struct pools - Buffer pools parameters
+	 * @dpbp_id: DPBP object ID
+	 * @buffer_size: Buffer size
+	 * @backup_pool: Backup pool
+	 */
 	struct {
 		int dpbp_id;
 		u16 buffer_size;
