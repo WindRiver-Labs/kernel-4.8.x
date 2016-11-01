@@ -129,7 +129,7 @@ int dpsw_open(struct fsl_mc_io *mc_io,
  */
 int dpsw_close(struct fsl_mc_io *mc_io,
 	       u32 cmd_flags,
-	u16 token)
+	       u16 token)
 {
 	struct mc_command cmd = { 0 };
 
@@ -164,11 +164,11 @@ int dpsw_close(struct fsl_mc_io *mc_io,
  *
  * Return:	'0' on Success; Error code otherwise.
  */
-int dpsw_create(struct fsl_mc_io	*mc_io,
-		u16	dprc_token,
-		u32	cmd_flags,
-		const struct dpsw_cfg	*cfg,
-		u32	*obj_id)
+int dpsw_create(struct fsl_mc_io *mc_io,
+		u16 dprc_token,
+		u32 cmd_flags,
+		const struct dpsw_cfg *cfg,
+		u32 *obj_id)
 {
 	struct mc_command cmd = { 0 };
 	int err;
@@ -205,10 +205,10 @@ int dpsw_create(struct fsl_mc_io	*mc_io,
  *
  * Return:	'0' on Success; error code otherwise.
  */
-int dpsw_destroy(struct fsl_mc_io	*mc_io,
-		 u16	dprc_token,
-		u32	cmd_flags,
-		u32	object_id)
+int dpsw_destroy(struct fsl_mc_io *mc_io,
+		 u16 dprc_token,
+		 u32 cmd_flags,
+		 u32 object_id)
 {
 	struct mc_command cmd = { 0 };
 
@@ -1223,12 +1223,12 @@ void dpsw_prepare_early_drop(const struct dpsw_early_drop_cfg *cfg,
  *
  * Return:	'0' on Success; error code otherwise.
  */
-int dpsw_if_set_early_drop(struct fsl_mc_io	*mc_io,
-			   u32		cmd_flags,
-			   u16		token,
-			   u16		if_id,
-			   u8		tc_id,
-			   u64		early_drop_iova)
+int dpsw_if_set_early_drop(struct fsl_mc_io *mc_io,
+			   u32 cmd_flags,
+			   u16 token,
+			   u16 if_id,
+			   u8 tc_id,
+			   u64 early_drop_iova)
 {
 	struct mc_command cmd = { 0 };
 
@@ -2401,11 +2401,11 @@ int dpsw_acl_remove_if(struct fsl_mc_io *mc_io,
  *
  * Return:	'0' on Success; Error code otherwise.
  */
-int dpsw_acl_get_attributes(struct fsl_mc_io		*mc_io,
-			    u32			cmd_flags,
-			    u16			token,
-			    u16			acl_id,
-			    struct dpsw_acl_attr	*attr)
+int dpsw_acl_get_attributes(struct fsl_mc_io *mc_io,
+			    u32 cmd_flags,
+			    u16 token,
+			    u16 acl_id,
+			    struct dpsw_acl_attr *attr)
 {
 	struct mc_command cmd = { 0 };
 	int err;
@@ -2436,10 +2436,10 @@ int dpsw_acl_get_attributes(struct fsl_mc_io		*mc_io,
  *
  * Return:	'0' on Success; Error code otherwise.
  */
-int dpsw_ctrl_if_get_attributes(struct fsl_mc_io		*mc_io,
-				u32			cmd_flags,
-				u16			token,
-				struct dpsw_ctrl_if_attr	*attr)
+int dpsw_ctrl_if_get_attributes(struct fsl_mc_io *mc_io,
+				u32 cmd_flags,
+				u16 token,
+				struct dpsw_ctrl_if_attr *attr)
 {
 	struct mc_command cmd = { 0 };
 	int err;
@@ -2469,9 +2469,9 @@ int dpsw_ctrl_if_get_attributes(struct fsl_mc_io		*mc_io,
  *
  * Return:	'0' on Success; Error code otherwise.
  */
-int dpsw_ctrl_if_set_pools(struct fsl_mc_io			*mc_io,
-			   u32				cmd_flags,
-			   u16				token,
+int dpsw_ctrl_if_set_pools(struct fsl_mc_io *mc_io,
+			   u32 cmd_flags,
+			   u16 token,
 			   const struct dpsw_ctrl_if_pools_cfg *pools)
 {
 	struct mc_command cmd = { 0 };
@@ -2494,9 +2494,9 @@ int dpsw_ctrl_if_set_pools(struct fsl_mc_io			*mc_io,
  *
  * Return:	'0' on Success; Error code otherwise.
  */
-int dpsw_ctrl_if_enable(struct fsl_mc_io	*mc_io,
-			u32		cmd_flags,
-			u16		token)
+int dpsw_ctrl_if_enable(struct fsl_mc_io *mc_io,
+			u32 cmd_flags,
+			u16 token)
 {
 	struct mc_command cmd = { 0 };
 
@@ -2517,9 +2517,9 @@ int dpsw_ctrl_if_enable(struct fsl_mc_io	*mc_io,
  *
  * Return:	'0' on Success; Error code otherwise.
  */
-int dpsw_ctrl_if_disable(struct fsl_mc_io	*mc_io,
-			 u32		cmd_flags,
-			 u16		token)
+int dpsw_ctrl_if_disable(struct fsl_mc_io *mc_io,
+			 u32 cmd_flags,
+			 u16 token)
 {
 	struct mc_command cmd = { 0 };
 
