@@ -77,6 +77,8 @@ struct skl_sst {
 
 	/* multi-core */
 	struct skl_dsp_cores cores;
+	/* Callback to update D0i3C register */
+	void (*update_d0i3c)(struct device *dev, bool enable);
 };
 
 struct skl_ipc_init_instance_msg {
