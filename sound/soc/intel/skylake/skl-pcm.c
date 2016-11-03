@@ -1151,6 +1151,7 @@ static int skl_platform_soc_probe(struct snd_soc_platform *platform)
 			return ret;
 		}
 		skl->platform = platform;
+		skl->skl_sst->update_d0i3c = skl_update_d0i3c;
 	}
 
 	return 0;
