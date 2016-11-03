@@ -33,6 +33,44 @@
 #define SKL_RATE_FIXUP_MASK		(1 << 1)
 #define SKL_FMT_FIXUP_MASK		(1 << 2)
 
+void skl_tplg_d0i3_get(struct skl *skl, enum d0i3_capability caps)
+{
+	struct skl_d0i3_data *d0i3 =  &skl->skl_sst->d0i3;
+
+	switch (caps) {
+	case SKL_D0I3_NONE:
+		d0i3->non_d0i3++;
+		break;
+
+	case SKL_D0I3_STREAMING:
+		d0i3->streaming++;
+		break;
+
+	case SKL_D0I3_NON_STREAMING:
+		d0i3->non_streaming++;
+		break;
+	}
+}
+
+void skl_tplg_d0i3_put(struct skl *skl, enum d0i3_capability caps)
+{
+	struct skl_d0i3_data *d0i3 =  &skl->skl_sst->d0i3;
+
+	switch (caps) {
+	case SKL_D0I3_NONE:
+		d0i3->non_d0i3--;
+		break;
+
+	case SKL_D0I3_STREAMING:
+		d0i3->streaming--;
+		break;
+
+	case SKL_D0I3_NON_STREAMING:
+		d0i3->non_streaming--;
+		break;
+	}
+}
+
 /*
  * SKL DSP driver modelling uses only few DAPM widgets so for rest we will
  * ignore. This helpers checks if the SKL driver handles this widget type
