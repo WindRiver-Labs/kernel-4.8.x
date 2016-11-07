@@ -40,7 +40,7 @@ static inline void cryptodev_cipher_auth(struct cipher_data *cdata,
 					 struct scatterlist *sg1, size_t len)
 {
 	/* for some reason we _have_ to call that even for zero length sgs */
-	aead_request_set_assoc(cdata->async.arequest, len ? sg1 : NULL, len);
+	aead_request_set_ad(cdata->async.arequest, len);
 }
 
 static inline void cryptodev_cipher_set_tag_size(struct cipher_data *cdata, int size)
