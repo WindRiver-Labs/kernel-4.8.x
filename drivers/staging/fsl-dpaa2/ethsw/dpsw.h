@@ -154,8 +154,8 @@ struct dpsw_cfg {
 	struct {
 		uint64_t	options;
 		u16	max_vlans;
-		uint8_t	max_meters_per_if;
-		uint8_t	max_fdbs;
+		u8	max_meters_per_if;
+		u8	max_fdbs;
 		u16	max_fdb_entries;
 		u16	fdb_aging_time;
 		u16	max_fdb_mc_groups;
@@ -290,7 +290,7 @@ struct dpsw_irq_cfg {
 int dpsw_set_irq(struct fsl_mc_io	*mc_io,
 		 u32		cmd_flags,
 		 u16		token,
-		 uint8_t		irq_index,
+		 u8		irq_index,
 		 struct dpsw_irq_cfg	*irq_cfg);
 
 /**
@@ -309,7 +309,7 @@ int dpsw_set_irq(struct fsl_mc_io	*mc_io,
 int dpsw_get_irq(struct fsl_mc_io	*mc_io,
 		 u32		cmd_flags,
 		 u16		token,
-		 uint8_t		irq_index,
+		 u8		irq_index,
 		 int			*type,
 		 struct dpsw_irq_cfg	*irq_cfg);
 
@@ -331,8 +331,8 @@ int dpsw_get_irq(struct fsl_mc_io	*mc_io,
 int dpsw_set_irq_enable(struct fsl_mc_io	*mc_io,
 			u32		cmd_flags,
 			u16		token,
-			uint8_t		irq_index,
-			uint8_t		en);
+			u8		irq_index,
+			u8		en);
 
 /**
  * dpsw_get_irq_enable() - Get overall interrupt state
@@ -347,8 +347,8 @@ int dpsw_set_irq_enable(struct fsl_mc_io	*mc_io,
 int dpsw_get_irq_enable(struct fsl_mc_io	*mc_io,
 			u32		cmd_flags,
 			u16		token,
-			uint8_t		irq_index,
-			uint8_t		*en);
+			u8		irq_index,
+			u8		*en);
 
 /**
  * dpsw_set_irq_mask() - Set interrupt mask.
@@ -369,7 +369,7 @@ int dpsw_get_irq_enable(struct fsl_mc_io	*mc_io,
 int dpsw_set_irq_mask(struct fsl_mc_io	*mc_io,
 		      u32		cmd_flags,
 		      u16		token,
-		      uint8_t		irq_index,
+		      u8		irq_index,
 		      u32		mask);
 
 /**
@@ -388,7 +388,7 @@ int dpsw_set_irq_mask(struct fsl_mc_io	*mc_io,
 int dpsw_get_irq_mask(struct fsl_mc_io	*mc_io,
 		      u32		cmd_flags,
 		      u16		token,
-		      uint8_t		irq_index,
+		      u8		irq_index,
 		      u32		*mask);
 
 /**
@@ -406,7 +406,7 @@ int dpsw_get_irq_mask(struct fsl_mc_io	*mc_io,
 int dpsw_get_irq_status(struct fsl_mc_io	*mc_io,
 			u32		cmd_flags,
 			u16		token,
-			uint8_t		irq_index,
+			u8		irq_index,
 			u32		*status);
 
 /**
@@ -424,7 +424,7 @@ int dpsw_get_irq_status(struct fsl_mc_io	*mc_io,
 int dpsw_clear_irq_status(struct fsl_mc_io	*mc_io,
 			  u32		cmd_flags,
 			  u16		token,
-			  uint8_t		irq_index,
+			  u8		irq_index,
 			  u32		status);
 /**
  * struct dpsw_attr - Structure representing DPSW attributes
@@ -459,15 +459,15 @@ struct dpsw_attr {
 	} version;
 	uint64_t	options;
 	u16	max_vlans;
-	uint8_t	max_meters_per_if;
-	uint8_t	max_fdbs;
+	u8	max_meters_per_if;
+	u8	max_fdbs;
 	u16	max_fdb_entries;
 	u16	fdb_aging_time;
 	u16	max_fdb_mc_groups;
 	u16	num_ifs;
 	u16	mem_size;
 	u16	num_vlans;
-	uint8_t		num_fdbs;
+	u8		num_fdbs;
 	enum dpsw_component_type component_type;
 };
 
@@ -643,8 +643,8 @@ int dpsw_if_set_multicast(struct fsl_mc_io	*mc_io,
  *			allowing up to 4,094 VLANs
  */
 struct dpsw_tci_cfg {
-	uint8_t	pcp;
-	uint8_t	dei;
+	u8	pcp;
+	u8	dei;
 	u16	vlan_id;
 };
 
@@ -907,7 +907,7 @@ struct dpsw_tx_schedule_cfg {
  */
 struct dpsw_tx_selection_cfg {
 	enum dpsw_priority_selector	priority_selector;
-	uint8_t			tc_id[DPSW_MAX_PRIORITIES];
+	u8			tc_id[DPSW_MAX_PRIORITIES];
 	struct dpsw_tx_schedule_cfg	tc_sched[DPSW_MAX_TC];
 };
 
@@ -1061,7 +1061,7 @@ int dpsw_if_set_metering(struct fsl_mc_io			*mc_io,
 			 u32				cmd_flags,
 			 u16				token,
 			 u16				if_id,
-			 uint8_t				tc_id,
+			 u8				tc_id,
 			 const struct dpsw_metering_cfg	*cfg);
 
 /**
@@ -1099,7 +1099,7 @@ enum dpsw_early_drop_mode {
 struct dpsw_wred_cfg {
 	uint64_t                min_threshold;
 	uint64_t                max_threshold;
-	uint8_t                 drop_probability;
+	u8                 drop_probability;
 };
 
 /**
@@ -1127,7 +1127,7 @@ struct dpsw_early_drop_cfg {
  *
  */
 void dpsw_prepare_early_drop(const struct dpsw_early_drop_cfg *cfg,
-			     uint8_t			*early_drop_buf);
+			     u8			*early_drop_buf);
 
 /**
  * dpsw_if_set_early_drop() - Set interface traffic class early-drop
@@ -1149,7 +1149,7 @@ int dpsw_if_set_early_drop(struct fsl_mc_io	*mc_io,
 			   u32		cmd_flags,
 			   u16		token,
 			   u16		if_id,
-			   uint8_t		tc_id,
+			   u8		tc_id,
 			   uint64_t		early_drop_iova);
 
 /**
@@ -1237,7 +1237,7 @@ int dpsw_if_disable(struct fsl_mc_io	*mc_io,
  * @qdid: control frames transmit qdid
  */
 struct dpsw_if_attr {
-	uint8_t				num_tcs;
+	u8				num_tcs;
 	u32			rate;
 	u32			options;
 	int				enabled;
@@ -1614,7 +1614,7 @@ enum dpsw_fdb_entry_type {
  */
 struct dpsw_fdb_unicast_cfg {
 	enum dpsw_fdb_entry_type	type;
-	uint8_t			mac_addr[6];
+	u8			mac_addr[6];
 	u16			if_egress;
 };
 
@@ -1676,7 +1676,7 @@ int dpsw_fdb_remove_unicast(struct fsl_mc_io			*mc_io,
  */
 struct dpsw_fdb_multicast_cfg {
 	enum dpsw_fdb_entry_type	type;
-	uint8_t			mac_addr[6];
+	u8			mac_addr[6];
 	u16			num_ifs;
 	u16			if_id[DPSW_MAX_IF];
 };
@@ -1858,14 +1858,14 @@ struct dpsw_acl_cfg {
  * @l4_dest_port: Destination TCP/UDP Port
  */
 struct dpsw_acl_fields {
-	uint8_t         l2_dest_mac[6];
-	uint8_t         l2_source_mac[6];
+	u8         l2_dest_mac[6];
+	u8         l2_source_mac[6];
 	u16        l2_tpid;
-	uint8_t         l2_pcp_dei;
+	u8         l2_pcp_dei;
 	u16        l2_vlan_id;
 	u16        l2_ether_type;
-	uint8_t         l3_dscp;
-	uint8_t         l3_protocol;
+	u8         l3_dscp;
+	u8         l3_protocol;
 	u32        l3_source_ip;
 	u32        l3_dest_ip;
 	u16        l4_source_port;
@@ -1964,7 +1964,7 @@ int dpsw_acl_remove(struct fsl_mc_io	*mc_io,
  *
  */
 void dpsw_acl_prepare_entry_cfg(const struct dpsw_acl_key	*key,
-				uint8_t			*entry_cfg_buf);
+				u8			*entry_cfg_buf);
 
 /**
  * dpsw_acl_add_entry() - Adds an entry to ACL.
@@ -2109,7 +2109,7 @@ int dpsw_ctrl_if_get_attributes(struct fsl_mc_io		*mc_io,
  *	must match 'num_dpbp' value
  */
 struct dpsw_ctrl_if_pools_cfg {
-	uint8_t num_dpbp;
+	u8 num_dpbp;
 	/**
 	* struct pools - Buffer pools parameters
 	* @dpbp_id: DPBP object ID
