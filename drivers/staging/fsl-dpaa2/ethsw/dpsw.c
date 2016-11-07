@@ -76,7 +76,7 @@ static int read_if_id_bitmap(uint16_t *if_id,
 
 /* DPSW APIs */
 int dpsw_open(struct fsl_mc_io *mc_io,
-	      uint32_t cmd_flags,
+	      u32 cmd_flags,
 	      int dpsw_id,
 	      uint16_t *token)
 {
@@ -101,7 +101,7 @@ int dpsw_open(struct fsl_mc_io *mc_io,
 }
 
 int dpsw_close(struct fsl_mc_io *mc_io,
-	       uint32_t cmd_flags,
+	       u32 cmd_flags,
 	uint16_t token)
 {
 	struct mc_command cmd = { 0 };
@@ -116,7 +116,7 @@ int dpsw_close(struct fsl_mc_io *mc_io,
 }
 
 int dpsw_create(struct fsl_mc_io *mc_io,
-		uint32_t cmd_flags,
+		u32 cmd_flags,
 		const struct dpsw_cfg *cfg,
 		uint16_t *token)
 {
@@ -141,7 +141,7 @@ int dpsw_create(struct fsl_mc_io *mc_io,
 }
 
 int dpsw_destroy(struct fsl_mc_io *mc_io,
-		 uint32_t cmd_flags,
+		 u32 cmd_flags,
 		 uint16_t token)
 {
 	struct mc_command cmd = { 0 };
@@ -156,7 +156,7 @@ int dpsw_destroy(struct fsl_mc_io *mc_io,
 }
 
 int dpsw_enable(struct fsl_mc_io *mc_io,
-		uint32_t cmd_flags,
+		u32 cmd_flags,
 		uint16_t token)
 {
 	struct mc_command cmd = { 0 };
@@ -171,7 +171,7 @@ int dpsw_enable(struct fsl_mc_io *mc_io,
 }
 
 int dpsw_disable(struct fsl_mc_io *mc_io,
-		 uint32_t cmd_flags,
+		 u32 cmd_flags,
 		 uint16_t token)
 {
 	struct mc_command cmd = { 0 };
@@ -186,7 +186,7 @@ int dpsw_disable(struct fsl_mc_io *mc_io,
 }
 
 int dpsw_is_enabled(struct fsl_mc_io *mc_io,
-		    uint32_t cmd_flags,
+		    u32 cmd_flags,
 		    uint16_t token,
 		    int *en)
 {
@@ -209,7 +209,7 @@ int dpsw_is_enabled(struct fsl_mc_io *mc_io,
 }
 
 int dpsw_reset(struct fsl_mc_io *mc_io,
-	       uint32_t cmd_flags,
+	       u32 cmd_flags,
 	       uint16_t token)
 {
 	struct mc_command cmd = { 0 };
@@ -224,7 +224,7 @@ int dpsw_reset(struct fsl_mc_io *mc_io,
 }
 
 int dpsw_set_irq(struct fsl_mc_io *mc_io,
-		 uint32_t cmd_flags,
+		 u32 cmd_flags,
 		 uint16_t token,
 		 uint8_t irq_index,
 		 struct dpsw_irq_cfg *irq_cfg)
@@ -242,7 +242,7 @@ int dpsw_set_irq(struct fsl_mc_io *mc_io,
 }
 
 int dpsw_get_irq(struct fsl_mc_io *mc_io,
-		 uint32_t cmd_flags,
+		 u32 cmd_flags,
 		 uint16_t token,
 		 uint8_t irq_index,
 		 int *type,
@@ -269,7 +269,7 @@ int dpsw_get_irq(struct fsl_mc_io *mc_io,
 }
 
 int dpsw_set_irq_enable(struct fsl_mc_io *mc_io,
-			uint32_t cmd_flags,
+			u32 cmd_flags,
 			uint16_t token,
 			uint8_t irq_index,
 			uint8_t en)
@@ -287,7 +287,7 @@ int dpsw_set_irq_enable(struct fsl_mc_io *mc_io,
 }
 
 int dpsw_get_irq_enable(struct fsl_mc_io *mc_io,
-			uint32_t cmd_flags,
+			u32 cmd_flags,
 			uint16_t token,
 			uint8_t irq_index,
 			uint8_t *en)
@@ -313,10 +313,10 @@ int dpsw_get_irq_enable(struct fsl_mc_io *mc_io,
 }
 
 int dpsw_set_irq_mask(struct fsl_mc_io *mc_io,
-		      uint32_t cmd_flags,
+		      u32 cmd_flags,
 		      uint16_t token,
 		      uint8_t irq_index,
-		      uint32_t mask)
+		      u32 mask)
 {
 	struct mc_command cmd = { 0 };
 
@@ -331,10 +331,10 @@ int dpsw_set_irq_mask(struct fsl_mc_io *mc_io,
 }
 
 int dpsw_get_irq_mask(struct fsl_mc_io *mc_io,
-		      uint32_t cmd_flags,
+		      u32 cmd_flags,
 		      uint16_t token,
 		      uint8_t irq_index,
-		      uint32_t *mask)
+		      u32 *mask)
 {
 	struct mc_command cmd = { 0 };
 	int err;
@@ -357,10 +357,10 @@ int dpsw_get_irq_mask(struct fsl_mc_io *mc_io,
 }
 
 int dpsw_get_irq_status(struct fsl_mc_io *mc_io,
-			uint32_t cmd_flags,
+			u32 cmd_flags,
 			uint16_t token,
 			uint8_t irq_index,
-			uint32_t *status)
+			u32 *status)
 {
 	struct mc_command cmd = { 0 };
 	int err;
@@ -383,10 +383,10 @@ int dpsw_get_irq_status(struct fsl_mc_io *mc_io,
 }
 
 int dpsw_clear_irq_status(struct fsl_mc_io *mc_io,
-			  uint32_t cmd_flags,
+			  u32 cmd_flags,
 			  uint16_t token,
 			  uint8_t irq_index,
-			  uint32_t status)
+			  u32 status)
 {
 	struct mc_command cmd = { 0 };
 
@@ -401,7 +401,7 @@ int dpsw_clear_irq_status(struct fsl_mc_io *mc_io,
 }
 
 int dpsw_get_attributes(struct fsl_mc_io *mc_io,
-			uint32_t cmd_flags,
+			u32 cmd_flags,
 			uint16_t token,
 			struct dpsw_attr *attr)
 {
@@ -425,7 +425,7 @@ int dpsw_get_attributes(struct fsl_mc_io *mc_io,
 }
 
 int dpsw_set_reflection_if(struct fsl_mc_io *mc_io,
-			   uint32_t cmd_flags,
+			   u32 cmd_flags,
 			   uint16_t token,
 			   uint16_t if_id)
 {
@@ -442,7 +442,7 @@ int dpsw_set_reflection_if(struct fsl_mc_io *mc_io,
 }
 
 int dpsw_if_set_link_cfg(struct fsl_mc_io *mc_io,
-			 uint32_t cmd_flags,
+			 u32 cmd_flags,
 			 uint16_t token,
 			 uint16_t if_id,
 			 struct dpsw_link_cfg *cfg)
@@ -460,7 +460,7 @@ int dpsw_if_set_link_cfg(struct fsl_mc_io *mc_io,
 }
 
 int dpsw_if_get_link_state(struct fsl_mc_io *mc_io,
-			   uint32_t cmd_flags,
+			   u32 cmd_flags,
 			   uint16_t token,
 			   uint16_t if_id,
 			   struct dpsw_link_state *state)
@@ -486,7 +486,7 @@ int dpsw_if_get_link_state(struct fsl_mc_io *mc_io,
 }
 
 int dpsw_if_set_flooding(struct fsl_mc_io *mc_io,
-			 uint32_t cmd_flags,
+			 u32 cmd_flags,
 			 uint16_t token,
 			 uint16_t if_id,
 			 int en)
@@ -504,7 +504,7 @@ int dpsw_if_set_flooding(struct fsl_mc_io *mc_io,
 }
 
 int dpsw_if_set_broadcast(struct fsl_mc_io *mc_io,
-			  uint32_t cmd_flags,
+			  u32 cmd_flags,
 			  uint16_t token,
 			  uint16_t if_id,
 			  int en)
@@ -522,7 +522,7 @@ int dpsw_if_set_broadcast(struct fsl_mc_io *mc_io,
 }
 
 int dpsw_if_set_multicast(struct fsl_mc_io *mc_io,
-			  uint32_t cmd_flags,
+			  u32 cmd_flags,
 			  uint16_t token,
 			  uint16_t if_id,
 			  int en)
@@ -540,7 +540,7 @@ int dpsw_if_set_multicast(struct fsl_mc_io *mc_io,
 }
 
 int dpsw_if_set_tci(struct fsl_mc_io *mc_io,
-		    uint32_t cmd_flags,
+		    u32 cmd_flags,
 		    uint16_t token,
 		    uint16_t if_id,
 		    const struct dpsw_tci_cfg *cfg)
@@ -558,7 +558,7 @@ int dpsw_if_set_tci(struct fsl_mc_io *mc_io,
 }
 
 int dpsw_if_get_tci(struct fsl_mc_io *mc_io,
-		    uint32_t cmd_flags,
+		    u32 cmd_flags,
 		    uint16_t token,
 		    uint16_t if_id,
 		    struct dpsw_tci_cfg *cfg)
@@ -584,7 +584,7 @@ int dpsw_if_get_tci(struct fsl_mc_io *mc_io,
 }
 
 int dpsw_if_set_stp(struct fsl_mc_io *mc_io,
-		    uint32_t cmd_flags,
+		    u32 cmd_flags,
 		    uint16_t token,
 		    uint16_t if_id,
 		    const struct dpsw_stp_cfg *cfg)
@@ -602,7 +602,7 @@ int dpsw_if_set_stp(struct fsl_mc_io *mc_io,
 }
 
 int dpsw_if_set_accepted_frames(struct fsl_mc_io *mc_io,
-				uint32_t cmd_flags,
+				u32 cmd_flags,
 				uint16_t token,
 				uint16_t if_id,
 				const struct dpsw_accepted_frames_cfg *cfg)
@@ -620,7 +620,7 @@ int dpsw_if_set_accepted_frames(struct fsl_mc_io *mc_io,
 }
 
 int dpsw_if_set_accept_all_vlan(struct fsl_mc_io *mc_io,
-				uint32_t cmd_flags,
+				u32 cmd_flags,
 				uint16_t token,
 				uint16_t if_id,
 				int accept_all)
@@ -638,7 +638,7 @@ int dpsw_if_set_accept_all_vlan(struct fsl_mc_io *mc_io,
 }
 
 int dpsw_if_get_counter(struct fsl_mc_io *mc_io,
-			uint32_t cmd_flags,
+			u32 cmd_flags,
 			uint16_t token,
 			uint16_t if_id,
 			enum dpsw_counter type,
@@ -665,7 +665,7 @@ int dpsw_if_get_counter(struct fsl_mc_io *mc_io,
 }
 
 int dpsw_if_set_counter(struct fsl_mc_io *mc_io,
-			uint32_t cmd_flags,
+			u32 cmd_flags,
 			uint16_t token,
 			uint16_t if_id,
 			enum dpsw_counter type,
@@ -684,7 +684,7 @@ int dpsw_if_set_counter(struct fsl_mc_io *mc_io,
 }
 
 int dpsw_if_set_tx_selection(struct fsl_mc_io *mc_io,
-			     uint32_t cmd_flags,
+			     u32 cmd_flags,
 			     uint16_t token,
 			     uint16_t if_id,
 			     const struct dpsw_tx_selection_cfg *cfg)
@@ -702,7 +702,7 @@ int dpsw_if_set_tx_selection(struct fsl_mc_io *mc_io,
 }
 
 int dpsw_if_add_reflection(struct fsl_mc_io *mc_io,
-			   uint32_t cmd_flags,
+			   u32 cmd_flags,
 			   uint16_t token,
 			   uint16_t if_id,
 			   const struct dpsw_reflection_cfg *cfg)
@@ -720,7 +720,7 @@ int dpsw_if_add_reflection(struct fsl_mc_io *mc_io,
 }
 
 int dpsw_if_remove_reflection(struct fsl_mc_io *mc_io,
-			      uint32_t cmd_flags,
+			      u32 cmd_flags,
 			      uint16_t token,
 			      uint16_t if_id,
 			      const struct dpsw_reflection_cfg *cfg)
@@ -738,7 +738,7 @@ int dpsw_if_remove_reflection(struct fsl_mc_io *mc_io,
 }
 
 int dpsw_if_set_flooding_metering(struct fsl_mc_io *mc_io,
-				  uint32_t cmd_flags,
+				  u32 cmd_flags,
 				  uint16_t token,
 				  uint16_t if_id,
 				  const struct dpsw_metering_cfg *cfg)
@@ -756,7 +756,7 @@ int dpsw_if_set_flooding_metering(struct fsl_mc_io *mc_io,
 }
 
 int dpsw_if_set_metering(struct fsl_mc_io *mc_io,
-			 uint32_t cmd_flags,
+			 u32 cmd_flags,
 			 uint16_t token,
 			 uint16_t if_id,
 			 uint8_t tc_id,
@@ -783,7 +783,7 @@ void dpsw_prepare_early_drop(const struct dpsw_early_drop_cfg *cfg,
 }
 
 int dpsw_if_set_early_drop(struct fsl_mc_io	*mc_io,
-			   uint32_t		cmd_flags,
+			   u32		cmd_flags,
 			   uint16_t		token,
 			   uint16_t		if_id,
 			   uint8_t		tc_id,
@@ -802,7 +802,7 @@ int dpsw_if_set_early_drop(struct fsl_mc_io	*mc_io,
 }
 
 int dpsw_add_custom_tpid(struct fsl_mc_io *mc_io,
-			 uint32_t cmd_flags,
+			 u32 cmd_flags,
 			 uint16_t token,
 			 const struct dpsw_custom_tpid_cfg *cfg)
 {
@@ -819,7 +819,7 @@ int dpsw_add_custom_tpid(struct fsl_mc_io *mc_io,
 }
 
 int dpsw_remove_custom_tpid(struct fsl_mc_io *mc_io,
-			    uint32_t cmd_flags,
+			    u32 cmd_flags,
 			    uint16_t token,
 			    const struct dpsw_custom_tpid_cfg *cfg)
 {
@@ -836,7 +836,7 @@ int dpsw_remove_custom_tpid(struct fsl_mc_io *mc_io,
 }
 
 int dpsw_if_enable(struct fsl_mc_io *mc_io,
-		   uint32_t cmd_flags,
+		   u32 cmd_flags,
 		   uint16_t token,
 		   uint16_t if_id)
 {
@@ -853,7 +853,7 @@ int dpsw_if_enable(struct fsl_mc_io *mc_io,
 }
 
 int dpsw_if_disable(struct fsl_mc_io *mc_io,
-		    uint32_t cmd_flags,
+		    u32 cmd_flags,
 		    uint16_t token,
 		    uint16_t if_id)
 {
@@ -870,7 +870,7 @@ int dpsw_if_disable(struct fsl_mc_io *mc_io,
 }
 
 int dpsw_if_get_attributes(struct fsl_mc_io *mc_io,
-			   uint32_t cmd_flags,
+			   u32 cmd_flags,
 			   uint16_t token,
 			   uint16_t if_id,
 			   struct dpsw_if_attr *attr)
@@ -896,7 +896,7 @@ int dpsw_if_get_attributes(struct fsl_mc_io *mc_io,
 }
 
 int dpsw_if_set_max_frame_length(struct fsl_mc_io *mc_io,
-				 uint32_t cmd_flags,
+				 u32 cmd_flags,
 				 uint16_t token,
 				 uint16_t if_id,
 				 uint16_t frame_length)
@@ -914,7 +914,7 @@ int dpsw_if_set_max_frame_length(struct fsl_mc_io *mc_io,
 }
 
 int dpsw_if_get_max_frame_length(struct fsl_mc_io *mc_io,
-				 uint32_t cmd_flags,
+				 u32 cmd_flags,
 				 uint16_t token,
 				 uint16_t if_id,
 				 uint16_t *frame_length)
@@ -939,7 +939,7 @@ int dpsw_if_get_max_frame_length(struct fsl_mc_io *mc_io,
 }
 
 int dpsw_vlan_add(struct fsl_mc_io *mc_io,
-		  uint32_t cmd_flags,
+		  u32 cmd_flags,
 		  uint16_t token,
 		  uint16_t vlan_id,
 		  const struct dpsw_vlan_cfg *cfg)
@@ -957,7 +957,7 @@ int dpsw_vlan_add(struct fsl_mc_io *mc_io,
 }
 
 int dpsw_vlan_add_if(struct fsl_mc_io *mc_io,
-		     uint32_t cmd_flags,
+		     u32 cmd_flags,
 		     uint16_t token,
 		     uint16_t vlan_id,
 		     const struct dpsw_vlan_if_cfg *cfg)
@@ -976,7 +976,7 @@ int dpsw_vlan_add_if(struct fsl_mc_io *mc_io,
 }
 
 int dpsw_vlan_add_if_untagged(struct fsl_mc_io *mc_io,
-			      uint32_t cmd_flags,
+			      u32 cmd_flags,
 			      uint16_t token,
 			      uint16_t vlan_id,
 			      const struct dpsw_vlan_if_cfg *cfg)
@@ -995,7 +995,7 @@ int dpsw_vlan_add_if_untagged(struct fsl_mc_io *mc_io,
 }
 
 int dpsw_vlan_add_if_flooding(struct fsl_mc_io *mc_io,
-			      uint32_t cmd_flags,
+			      u32 cmd_flags,
 			      uint16_t token,
 			      uint16_t vlan_id,
 			      const struct dpsw_vlan_if_cfg *cfg)
@@ -1014,7 +1014,7 @@ int dpsw_vlan_add_if_flooding(struct fsl_mc_io *mc_io,
 }
 
 int dpsw_vlan_remove_if(struct fsl_mc_io *mc_io,
-			uint32_t cmd_flags,
+			u32 cmd_flags,
 			uint16_t token,
 			uint16_t vlan_id,
 			const struct dpsw_vlan_if_cfg *cfg)
@@ -1033,7 +1033,7 @@ int dpsw_vlan_remove_if(struct fsl_mc_io *mc_io,
 }
 
 int dpsw_vlan_remove_if_untagged(struct fsl_mc_io *mc_io,
-				 uint32_t cmd_flags,
+				 u32 cmd_flags,
 				 uint16_t token,
 				 uint16_t vlan_id,
 				 const struct dpsw_vlan_if_cfg *cfg)
@@ -1052,7 +1052,7 @@ int dpsw_vlan_remove_if_untagged(struct fsl_mc_io *mc_io,
 }
 
 int dpsw_vlan_remove_if_flooding(struct fsl_mc_io *mc_io,
-				 uint32_t cmd_flags,
+				 u32 cmd_flags,
 				 uint16_t token,
 				 uint16_t vlan_id,
 				 const struct dpsw_vlan_if_cfg *cfg)
@@ -1071,7 +1071,7 @@ int dpsw_vlan_remove_if_flooding(struct fsl_mc_io *mc_io,
 }
 
 int dpsw_vlan_remove(struct fsl_mc_io *mc_io,
-		     uint32_t cmd_flags,
+		     u32 cmd_flags,
 		     uint16_t token,
 		     uint16_t vlan_id)
 {
@@ -1088,7 +1088,7 @@ int dpsw_vlan_remove(struct fsl_mc_io *mc_io,
 }
 
 int dpsw_vlan_get_attributes(struct fsl_mc_io *mc_io,
-			     uint32_t cmd_flags,
+			     u32 cmd_flags,
 			     uint16_t token,
 			     uint16_t vlan_id,
 			     struct dpsw_vlan_attr *attr)
@@ -1114,7 +1114,7 @@ int dpsw_vlan_get_attributes(struct fsl_mc_io *mc_io,
 }
 
 int dpsw_vlan_get_if(struct fsl_mc_io *mc_io,
-		     uint32_t cmd_flags,
+		     u32 cmd_flags,
 		     uint16_t token,
 		     uint16_t vlan_id,
 		     struct dpsw_vlan_if_cfg *cfg)
@@ -1141,7 +1141,7 @@ int dpsw_vlan_get_if(struct fsl_mc_io *mc_io,
 }
 
 int dpsw_vlan_get_if_flooding(struct fsl_mc_io *mc_io,
-			      uint32_t cmd_flags,
+			      u32 cmd_flags,
 			      uint16_t token,
 			      uint16_t vlan_id,
 			      struct dpsw_vlan_if_cfg *cfg)
@@ -1168,7 +1168,7 @@ int dpsw_vlan_get_if_flooding(struct fsl_mc_io *mc_io,
 }
 
 int dpsw_vlan_get_if_untagged(struct fsl_mc_io *mc_io,
-			      uint32_t cmd_flags,
+			      u32 cmd_flags,
 			      uint16_t token,
 			      uint16_t vlan_id,
 			      struct dpsw_vlan_if_cfg *cfg)
@@ -1195,7 +1195,7 @@ int dpsw_vlan_get_if_untagged(struct fsl_mc_io *mc_io,
 }
 
 int dpsw_fdb_add(struct fsl_mc_io *mc_io,
-		 uint32_t cmd_flags,
+		 u32 cmd_flags,
 		 uint16_t token,
 		 uint16_t *fdb_id,
 		 const struct dpsw_fdb_cfg *cfg)
@@ -1221,7 +1221,7 @@ int dpsw_fdb_add(struct fsl_mc_io *mc_io,
 }
 
 int dpsw_fdb_remove(struct fsl_mc_io *mc_io,
-		    uint32_t cmd_flags,
+		    u32 cmd_flags,
 		    uint16_t token,
 		    uint16_t fdb_id)
 {
@@ -1238,7 +1238,7 @@ int dpsw_fdb_remove(struct fsl_mc_io *mc_io,
 }
 
 int dpsw_fdb_add_unicast(struct fsl_mc_io *mc_io,
-			 uint32_t cmd_flags,
+			 u32 cmd_flags,
 			 uint16_t token,
 			 uint16_t fdb_id,
 			 const struct dpsw_fdb_unicast_cfg *cfg)
@@ -1256,7 +1256,7 @@ int dpsw_fdb_add_unicast(struct fsl_mc_io *mc_io,
 }
 
 int dpsw_fdb_get_unicast(struct fsl_mc_io *mc_io,
-			 uint32_t cmd_flags,
+			 u32 cmd_flags,
 			 uint16_t token,
 			 uint16_t fdb_id,
 			 struct dpsw_fdb_unicast_cfg *cfg)
@@ -1282,7 +1282,7 @@ int dpsw_fdb_get_unicast(struct fsl_mc_io *mc_io,
 }
 
 int dpsw_fdb_remove_unicast(struct fsl_mc_io *mc_io,
-			    uint32_t cmd_flags,
+			    u32 cmd_flags,
 			    uint16_t token,
 			    uint16_t fdb_id,
 			    const struct dpsw_fdb_unicast_cfg *cfg)
@@ -1300,7 +1300,7 @@ int dpsw_fdb_remove_unicast(struct fsl_mc_io *mc_io,
 }
 
 int dpsw_fdb_add_multicast(struct fsl_mc_io *mc_io,
-			   uint32_t cmd_flags,
+			   u32 cmd_flags,
 			   uint16_t token,
 			   uint16_t fdb_id,
 			   const struct dpsw_fdb_multicast_cfg *cfg)
@@ -1319,7 +1319,7 @@ int dpsw_fdb_add_multicast(struct fsl_mc_io *mc_io,
 }
 
 int dpsw_fdb_get_multicast(struct fsl_mc_io *mc_io,
-			   uint32_t cmd_flags,
+			   u32 cmd_flags,
 			   uint16_t token,
 			   uint16_t fdb_id,
 			   struct dpsw_fdb_multicast_cfg *cfg)
@@ -1346,7 +1346,7 @@ int dpsw_fdb_get_multicast(struct fsl_mc_io *mc_io,
 }
 
 int dpsw_fdb_remove_multicast(struct fsl_mc_io *mc_io,
-			      uint32_t cmd_flags,
+			      u32 cmd_flags,
 			      uint16_t token,
 			      uint16_t fdb_id,
 			      const struct dpsw_fdb_multicast_cfg *cfg)
@@ -1365,7 +1365,7 @@ int dpsw_fdb_remove_multicast(struct fsl_mc_io *mc_io,
 }
 
 int dpsw_fdb_set_learning_mode(struct fsl_mc_io *mc_io,
-			       uint32_t cmd_flags,
+			       u32 cmd_flags,
 			       uint16_t token,
 			       uint16_t fdb_id,
 			       enum dpsw_fdb_learning_mode mode)
@@ -1383,7 +1383,7 @@ int dpsw_fdb_set_learning_mode(struct fsl_mc_io *mc_io,
 }
 
 int dpsw_fdb_get_attributes(struct fsl_mc_io *mc_io,
-			    uint32_t cmd_flags,
+			    u32 cmd_flags,
 			    uint16_t token,
 			    uint16_t fdb_id,
 			    struct dpsw_fdb_attr *attr)
@@ -1409,7 +1409,7 @@ int dpsw_fdb_get_attributes(struct fsl_mc_io *mc_io,
 }
 
 int dpsw_acl_add(struct fsl_mc_io *mc_io,
-		 uint32_t cmd_flags,
+		 u32 cmd_flags,
 		 uint16_t token,
 		 uint16_t *acl_id,
 		 const struct dpsw_acl_cfg  *cfg)
@@ -1435,7 +1435,7 @@ int dpsw_acl_add(struct fsl_mc_io *mc_io,
 }
 
 int dpsw_acl_remove(struct fsl_mc_io *mc_io,
-		    uint32_t cmd_flags,
+		    u32 cmd_flags,
 		    uint16_t token,
 		    uint16_t acl_id)
 {
@@ -1460,7 +1460,7 @@ void dpsw_acl_prepare_entry_cfg(const struct dpsw_acl_key *key,
 }
 
 int dpsw_acl_add_entry(struct fsl_mc_io *mc_io,
-		       uint32_t cmd_flags,
+		       u32 cmd_flags,
 		       uint16_t token,
 		       uint16_t acl_id,
 		       const struct dpsw_acl_entry_cfg *cfg)
@@ -1478,7 +1478,7 @@ int dpsw_acl_add_entry(struct fsl_mc_io *mc_io,
 }
 
 int dpsw_acl_remove_entry(struct fsl_mc_io *mc_io,
-			  uint32_t cmd_flags,
+			  u32 cmd_flags,
 			  uint16_t token,
 			  uint16_t acl_id,
 			  const struct dpsw_acl_entry_cfg *cfg)
@@ -1496,7 +1496,7 @@ int dpsw_acl_remove_entry(struct fsl_mc_io *mc_io,
 }
 
 int dpsw_acl_add_if(struct fsl_mc_io *mc_io,
-		    uint32_t cmd_flags,
+		    u32 cmd_flags,
 		    uint16_t token,
 		    uint16_t acl_id,
 		    const struct dpsw_acl_if_cfg *cfg)
@@ -1515,7 +1515,7 @@ int dpsw_acl_add_if(struct fsl_mc_io *mc_io,
 }
 
 int dpsw_acl_remove_if(struct fsl_mc_io *mc_io,
-		       uint32_t cmd_flags,
+		       u32 cmd_flags,
 		       uint16_t token,
 		       uint16_t acl_id,
 		       const struct dpsw_acl_if_cfg *cfg)
@@ -1534,7 +1534,7 @@ int dpsw_acl_remove_if(struct fsl_mc_io *mc_io,
 }
 
 int dpsw_acl_get_attributes(struct fsl_mc_io		*mc_io,
-			    uint32_t			cmd_flags,
+			    u32			cmd_flags,
 			    uint16_t			token,
 			    uint16_t			acl_id,
 			    struct dpsw_acl_attr	*attr)
@@ -1560,7 +1560,7 @@ int dpsw_acl_get_attributes(struct fsl_mc_io		*mc_io,
 }
 
 int dpsw_ctrl_if_get_attributes(struct fsl_mc_io		*mc_io,
-				uint32_t			cmd_flags,
+				u32			cmd_flags,
 				uint16_t			token,
 				struct dpsw_ctrl_if_attr	*attr)
 {
@@ -1584,7 +1584,7 @@ int dpsw_ctrl_if_get_attributes(struct fsl_mc_io		*mc_io,
 }
 
 int dpsw_ctrl_if_set_pools(struct fsl_mc_io			*mc_io,
-			   uint32_t				cmd_flags,
+			   u32				cmd_flags,
 			   uint16_t				token,
 			   const struct dpsw_ctrl_if_pools_cfg *pools)
 {
@@ -1601,7 +1601,7 @@ int dpsw_ctrl_if_set_pools(struct fsl_mc_io			*mc_io,
 }
 
 int dpsw_ctrl_if_enable(struct fsl_mc_io	*mc_io,
-			uint32_t		cmd_flags,
+			u32		cmd_flags,
 			uint16_t		token)
 {
 	struct mc_command cmd = { 0 };
@@ -1624,7 +1624,7 @@ int dpsw_ctrl_if_enable(struct fsl_mc_io	*mc_io,
 * Return:	'0' on Success; Error code otherwise.
 */
 int dpsw_ctrl_if_disable(struct fsl_mc_io	*mc_io,
-			 uint32_t		cmd_flags,
+			 u32		cmd_flags,
 			 uint16_t		token)
 {
 	struct mc_command cmd = { 0 };
