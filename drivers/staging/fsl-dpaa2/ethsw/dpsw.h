@@ -152,7 +152,7 @@ struct dpsw_cfg {
 	 * @component_type: Indicates the component type of this bridge
 	 */
 	struct {
-		uint64_t	options;
+		u64	options;
 		u16	max_vlans;
 		u8	max_meters_per_if;
 		u8	max_fdbs;
@@ -272,7 +272,7 @@ int dpsw_reset(struct fsl_mc_io *mc_io,
  * @irq_num: A user defined number associated with this IRQ
  */
 struct dpsw_irq_cfg {
-	     uint64_t		addr;
+	     u64		addr;
 	     u32		val;
 	     int		irq_num;
 };
@@ -457,7 +457,7 @@ struct dpsw_attr {
 		u16 major;
 		u16 minor;
 	} version;
-	uint64_t	options;
+	u64	options;
 	u16	max_vlans;
 	u8	max_meters_per_if;
 	u8	max_fdbs;
@@ -535,7 +535,7 @@ enum dpsw_action {
  */
 struct dpsw_link_cfg {
 	u32 rate;
-	uint64_t options;
+	u64 options;
 };
 
 /**
@@ -561,7 +561,7 @@ int dpsw_if_set_link_cfg(struct fsl_mc_io	*mc_io,
  */
 struct dpsw_link_state {
 	u32 rate;
-	uint64_t options;
+	u64 options;
 	int      up;
 };
 
@@ -839,7 +839,7 @@ int dpsw_if_get_counter(struct fsl_mc_io	*mc_io,
 			u16		token,
 			u16		if_id,
 			enum dpsw_counter	type,
-			uint64_t		*counter);
+			u64		*counter);
 
 /**
  * dpsw_if_set_counter() - Set specific counter of particular interface
@@ -857,7 +857,7 @@ int dpsw_if_set_counter(struct fsl_mc_io	*mc_io,
 			u16		token,
 			u16		if_id,
 			enum dpsw_counter	type,
-			uint64_t		counter);
+			u64		counter);
 
 /**
  * Maximum number of TC
@@ -1097,8 +1097,8 @@ enum dpsw_early_drop_mode {
  *	associated with the maximum threshold)
  */
 struct dpsw_wred_cfg {
-	uint64_t                min_threshold;
-	uint64_t                max_threshold;
+	u64                min_threshold;
+	u64                max_threshold;
 	u8                 drop_probability;
 };
 
@@ -1150,7 +1150,7 @@ int dpsw_if_set_early_drop(struct fsl_mc_io	*mc_io,
 			   u16		token,
 			   u16		if_id,
 			   u8		tc_id,
-			   uint64_t		early_drop_iova);
+			   u64		early_drop_iova);
 
 /**
  * struct dpsw_custom_tpid_cfg - Structure representing tag Protocol identifier
@@ -1917,7 +1917,7 @@ struct dpsw_acl_result {
  *		space the priorities according to consequent rule additions.
  */
 struct dpsw_acl_entry_cfg {
-	uint64_t		key_iova;
+	u64		key_iova;
 	struct dpsw_acl_result  result;
 	int                     precedence;
 };
