@@ -73,7 +73,7 @@ struct fsl_mc_io;
 int dpsw_open(struct fsl_mc_io	*mc_io,
 	      u32		cmd_flags,
 	      int		dpsw_id,
-	      uint16_t		*token);
+	      u16		*token);
 
 /**
  * dpsw_close() - Close the control session of the object
@@ -88,7 +88,7 @@ int dpsw_open(struct fsl_mc_io	*mc_io,
  */
 int dpsw_close(struct fsl_mc_io *mc_io,
 	       u32	cmd_flags,
-	       uint16_t	token);
+	       u16	token);
 
 /**
  * DPSW options
@@ -136,7 +136,7 @@ enum dpsw_component_type {
  *		 use this structure to change default settings
  */
 struct dpsw_cfg {
-	uint16_t		num_ifs;
+	u16		num_ifs;
 	/**
 	 * struct adv - Advanced parameters
 	 * @options: Enable/Disable DPSW features (bitmap)
@@ -153,12 +153,12 @@ struct dpsw_cfg {
 	 */
 	struct {
 		uint64_t	options;
-		uint16_t	max_vlans;
+		u16	max_vlans;
 		uint8_t	max_meters_per_if;
 		uint8_t	max_fdbs;
-		uint16_t	max_fdb_entries;
-		uint16_t	fdb_aging_time;
-		uint16_t	max_fdb_mc_groups;
+		u16	max_fdb_entries;
+		u16	fdb_aging_time;
+		u16	max_fdb_mc_groups;
 		enum dpsw_component_type component_type;
 	} adv;
 };
@@ -188,7 +188,7 @@ struct dpsw_cfg {
 int dpsw_create(struct fsl_mc_io	*mc_io,
 		u32		cmd_flags,
 		const struct dpsw_cfg	*cfg,
-		uint16_t		*token);
+		u16		*token);
 
 /**
  * dpsw_destroy() - Destroy the DPSW object and release all its resources.
@@ -200,7 +200,7 @@ int dpsw_create(struct fsl_mc_io	*mc_io,
  */
 int dpsw_destroy(struct fsl_mc_io	*mc_io,
 		 u32		cmd_flags,
-		 uint16_t		token);
+		 u16		token);
 
 /**
  * dpsw_enable() - Enable DPSW functionality
@@ -212,7 +212,7 @@ int dpsw_destroy(struct fsl_mc_io	*mc_io,
  */
 int dpsw_enable(struct fsl_mc_io	*mc_io,
 		u32		cmd_flags,
-		uint16_t		token);
+		u16		token);
 
 /**
  * dpsw_disable() - Disable DPSW functionality
@@ -224,7 +224,7 @@ int dpsw_enable(struct fsl_mc_io	*mc_io,
  */
 int dpsw_disable(struct fsl_mc_io	*mc_io,
 		 u32		cmd_flags,
-		 uint16_t		token);
+		 u16		token);
 
 /**
  * dpsw_is_enabled() - Check if the DPSW is enabled
@@ -238,7 +238,7 @@ int dpsw_disable(struct fsl_mc_io	*mc_io,
  */
 int dpsw_is_enabled(struct fsl_mc_io	*mc_io,
 		    u32		cmd_flags,
-		    uint16_t		token,
+		    u16		token,
 		    int		*en);
 
 /**
@@ -251,7 +251,7 @@ int dpsw_is_enabled(struct fsl_mc_io	*mc_io,
  */
 int dpsw_reset(struct fsl_mc_io *mc_io,
 	       u32	cmd_flags,
-	       uint16_t	token);
+	       u16	token);
 
 /**
  * DPSW IRQ Index and Events
@@ -289,7 +289,7 @@ struct dpsw_irq_cfg {
  */
 int dpsw_set_irq(struct fsl_mc_io	*mc_io,
 		 u32		cmd_flags,
-		 uint16_t		token,
+		 u16		token,
 		 uint8_t		irq_index,
 		 struct dpsw_irq_cfg	*irq_cfg);
 
@@ -308,7 +308,7 @@ int dpsw_set_irq(struct fsl_mc_io	*mc_io,
  */
 int dpsw_get_irq(struct fsl_mc_io	*mc_io,
 		 u32		cmd_flags,
-		 uint16_t		token,
+		 u16		token,
 		 uint8_t		irq_index,
 		 int			*type,
 		 struct dpsw_irq_cfg	*irq_cfg);
@@ -330,7 +330,7 @@ int dpsw_get_irq(struct fsl_mc_io	*mc_io,
  */
 int dpsw_set_irq_enable(struct fsl_mc_io	*mc_io,
 			u32		cmd_flags,
-			uint16_t		token,
+			u16		token,
 			uint8_t		irq_index,
 			uint8_t		en);
 
@@ -346,7 +346,7 @@ int dpsw_set_irq_enable(struct fsl_mc_io	*mc_io,
  */
 int dpsw_get_irq_enable(struct fsl_mc_io	*mc_io,
 			u32		cmd_flags,
-			uint16_t		token,
+			u16		token,
 			uint8_t		irq_index,
 			uint8_t		*en);
 
@@ -368,7 +368,7 @@ int dpsw_get_irq_enable(struct fsl_mc_io	*mc_io,
  */
 int dpsw_set_irq_mask(struct fsl_mc_io	*mc_io,
 		      u32		cmd_flags,
-		      uint16_t		token,
+		      u16		token,
 		      uint8_t		irq_index,
 		      u32		mask);
 
@@ -387,7 +387,7 @@ int dpsw_set_irq_mask(struct fsl_mc_io	*mc_io,
  */
 int dpsw_get_irq_mask(struct fsl_mc_io	*mc_io,
 		      u32		cmd_flags,
-		      uint16_t		token,
+		      u16		token,
 		      uint8_t		irq_index,
 		      u32		*mask);
 
@@ -405,7 +405,7 @@ int dpsw_get_irq_mask(struct fsl_mc_io	*mc_io,
  */
 int dpsw_get_irq_status(struct fsl_mc_io	*mc_io,
 			u32		cmd_flags,
-			uint16_t		token,
+			u16		token,
 			uint8_t		irq_index,
 			u32		*status);
 
@@ -423,7 +423,7 @@ int dpsw_get_irq_status(struct fsl_mc_io	*mc_io,
  */
 int dpsw_clear_irq_status(struct fsl_mc_io	*mc_io,
 			  u32		cmd_flags,
-			  uint16_t		token,
+			  u16		token,
 			  uint8_t		irq_index,
 			  u32		status);
 /**
@@ -454,19 +454,19 @@ struct dpsw_attr {
 	 * @minor: DPSW minor version
 	 */
 	struct {
-		uint16_t major;
-		uint16_t minor;
+		u16 major;
+		u16 minor;
 	} version;
 	uint64_t	options;
-	uint16_t	max_vlans;
+	u16	max_vlans;
 	uint8_t	max_meters_per_if;
 	uint8_t	max_fdbs;
-	uint16_t	max_fdb_entries;
-	uint16_t	fdb_aging_time;
-	uint16_t	max_fdb_mc_groups;
-	uint16_t	num_ifs;
-	uint16_t	mem_size;
-	uint16_t	num_vlans;
+	u16	max_fdb_entries;
+	u16	fdb_aging_time;
+	u16	max_fdb_mc_groups;
+	u16	num_ifs;
+	u16	mem_size;
+	u16	num_vlans;
 	uint8_t		num_fdbs;
 	enum dpsw_component_type component_type;
 };
@@ -482,7 +482,7 @@ struct dpsw_attr {
  */
 int dpsw_get_attributes(struct fsl_mc_io	*mc_io,
 			u32		cmd_flags,
-			uint16_t		token,
+			u16		token,
 			struct dpsw_attr	*attr);
 
 /**
@@ -498,8 +498,8 @@ int dpsw_get_attributes(struct fsl_mc_io	*mc_io,
  */
 int dpsw_set_reflection_if(struct fsl_mc_io	*mc_io,
 			   u32		cmd_flags,
-			   uint16_t		token,
-			   uint16_t		if_id);
+			   u16		token,
+			   u16		if_id);
 
 /**
  * enum dpsw_action - Action selection for special/control frames
@@ -550,8 +550,8 @@ struct dpsw_link_cfg {
  */
 int dpsw_if_set_link_cfg(struct fsl_mc_io	*mc_io,
 			 u32		cmd_flags,
-			 uint16_t		token,
-			 uint16_t		if_id,
+			 u16		token,
+			 u16		if_id,
 			 struct dpsw_link_cfg	*cfg);
 /**
  * struct dpsw_link_state - Structure representing DPSW link state
@@ -577,8 +577,8 @@ struct dpsw_link_state {
  */
 int dpsw_if_get_link_state(struct fsl_mc_io		*mc_io,
 			   u32			cmd_flags,
-			   uint16_t			token,
-			   uint16_t			if_id,
+			   u16			token,
+			   u16			if_id,
 			   struct dpsw_link_state	*state);
 
 /**
@@ -593,8 +593,8 @@ int dpsw_if_get_link_state(struct fsl_mc_io		*mc_io,
  */
 int dpsw_if_set_flooding(struct fsl_mc_io	*mc_io,
 			 u32		cmd_flags,
-			 uint16_t		token,
-			 uint16_t		if_id,
+			 u16		token,
+			 u16		if_id,
 			 int			en);
 
 /**
@@ -609,8 +609,8 @@ int dpsw_if_set_flooding(struct fsl_mc_io	*mc_io,
  */
 int dpsw_if_set_broadcast(struct fsl_mc_io	*mc_io,
 			  u32		cmd_flags,
-			  uint16_t		token,
-			  uint16_t		if_id,
+			  u16		token,
+			  u16		if_id,
 			  int			en);
 
 /**
@@ -625,8 +625,8 @@ int dpsw_if_set_broadcast(struct fsl_mc_io	*mc_io,
  */
 int dpsw_if_set_multicast(struct fsl_mc_io	*mc_io,
 			  u32		cmd_flags,
-			  uint16_t		token,
-			  uint16_t		if_id,
+			  u16		token,
+			  u16		if_id,
 			  int			en);
 
 /**
@@ -645,7 +645,7 @@ int dpsw_if_set_multicast(struct fsl_mc_io	*mc_io,
 struct dpsw_tci_cfg {
 	uint8_t	pcp;
 	uint8_t	dei;
-	uint16_t	vlan_id;
+	u16	vlan_id;
 };
 
 /**
@@ -660,8 +660,8 @@ struct dpsw_tci_cfg {
  */
 int dpsw_if_set_tci(struct fsl_mc_io		*mc_io,
 		    u32			cmd_flags,
-		    uint16_t			token,
-		    uint16_t			if_id,
+		    u16			token,
+		    u16			if_id,
 		    const struct dpsw_tci_cfg	*cfg);
 
 /**
@@ -676,8 +676,8 @@ int dpsw_if_set_tci(struct fsl_mc_io		*mc_io,
  */
 int dpsw_if_get_tci(struct fsl_mc_io	*mc_io,
 		    u32		cmd_flags,
-		    uint16_t		token,
-		    uint16_t		if_id,
+		    u16		token,
+		    u16		if_id,
 		    struct dpsw_tci_cfg *cfg);
 
 /**
@@ -701,7 +701,7 @@ enum dpsw_stp_state {
  * @state: STP state
  */
 struct dpsw_stp_cfg {
-	uint16_t		vlan_id;
+	u16		vlan_id;
 	enum dpsw_stp_state	state;
 };
 
@@ -720,8 +720,8 @@ struct dpsw_stp_cfg {
  */
 int dpsw_if_set_stp(struct fsl_mc_io		*mc_io,
 		    u32			cmd_flags,
-		    uint16_t			token,
-		    uint16_t			if_id,
+		    u16			token,
+		    u16			if_id,
 		    const struct dpsw_stp_cfg	*cfg);
 
 /**
@@ -769,8 +769,8 @@ struct dpsw_accepted_frames_cfg {
  */
 int dpsw_if_set_accepted_frames(struct fsl_mc_io		*mc_io,
 				u32			cmd_flags,
-				uint16_t			token,
-				uint16_t			if_id,
+				u16			token,
+				u16			if_id,
 				const struct dpsw_accepted_frames_cfg *cfg);
 
 /**
@@ -789,8 +789,8 @@ int dpsw_if_set_accepted_frames(struct fsl_mc_io		*mc_io,
  */
 int dpsw_if_set_accept_all_vlan(struct fsl_mc_io	*mc_io,
 				u32		cmd_flags,
-				uint16_t		token,
-				uint16_t		if_id,
+				u16		token,
+				u16		if_id,
 				int			accept_all);
 
 /**
@@ -836,8 +836,8 @@ enum dpsw_counter {
  */
 int dpsw_if_get_counter(struct fsl_mc_io	*mc_io,
 			u32		cmd_flags,
-			uint16_t		token,
-			uint16_t		if_id,
+			u16		token,
+			u16		if_id,
 			enum dpsw_counter	type,
 			uint64_t		*counter);
 
@@ -854,8 +854,8 @@ int dpsw_if_get_counter(struct fsl_mc_io	*mc_io,
  */
 int dpsw_if_set_counter(struct fsl_mc_io	*mc_io,
 			u32		cmd_flags,
-			uint16_t		token,
-			uint16_t		if_id,
+			u16		token,
+			u16		if_id,
 			enum dpsw_counter	type,
 			uint64_t		counter);
 
@@ -894,7 +894,7 @@ enum dpsw_schedule_mode {
  */
 struct dpsw_tx_schedule_cfg {
 	enum dpsw_schedule_mode	mode;
-	uint16_t		delta_bandwidth;
+	u16		delta_bandwidth;
 };
 
 /**
@@ -928,8 +928,8 @@ struct dpsw_tx_selection_cfg {
  */
 int dpsw_if_set_tx_selection(struct fsl_mc_io			*mc_io,
 			     u32				cmd_flags,
-			     uint16_t				token,
-			     uint16_t				if_id,
+			     u16				token,
+			     u16				if_id,
 			     const struct dpsw_tx_selection_cfg	*cfg);
 
 /**
@@ -952,7 +952,7 @@ enum dpsw_reflection_filter {
  */
 struct dpsw_reflection_cfg {
 	enum dpsw_reflection_filter	filter;
-	uint16_t			vlan_id;
+	u16			vlan_id;
 };
 
 /**
@@ -967,8 +967,8 @@ struct dpsw_reflection_cfg {
  */
 int dpsw_if_add_reflection(struct fsl_mc_io			*mc_io,
 			   u32				cmd_flags,
-			   uint16_t				token,
-			   uint16_t				if_id,
+			   u16				token,
+			   u16				if_id,
 			   const struct dpsw_reflection_cfg	*cfg);
 
 /**
@@ -983,8 +983,8 @@ int dpsw_if_add_reflection(struct fsl_mc_io			*mc_io,
  */
 int dpsw_if_remove_reflection(struct fsl_mc_io			*mc_io,
 			      u32				cmd_flags,
-			      uint16_t				token,
-			      uint16_t				if_id,
+			      u16				token,
+			      u16				if_id,
 			      const struct dpsw_reflection_cfg	*cfg);
 
 /**
@@ -1042,8 +1042,8 @@ struct dpsw_metering_cfg {
  */
 int dpsw_if_set_flooding_metering(struct fsl_mc_io		*mc_io,
 				  u32			cmd_flags,
-				  uint16_t			token,
-				  uint16_t			if_id,
+				  u16			token,
+				  u16			if_id,
 				  const struct dpsw_metering_cfg *cfg);
 
 /**
@@ -1059,8 +1059,8 @@ int dpsw_if_set_flooding_metering(struct fsl_mc_io		*mc_io,
  */
 int dpsw_if_set_metering(struct fsl_mc_io			*mc_io,
 			 u32				cmd_flags,
-			 uint16_t				token,
-			 uint16_t				if_id,
+			 u16				token,
+			 u16				if_id,
 			 uint8_t				tc_id,
 			 const struct dpsw_metering_cfg	*cfg);
 
@@ -1147,8 +1147,8 @@ void dpsw_prepare_early_drop(const struct dpsw_early_drop_cfg *cfg,
  */
 int dpsw_if_set_early_drop(struct fsl_mc_io	*mc_io,
 			   u32		cmd_flags,
-			   uint16_t		token,
-			   uint16_t		if_id,
+			   u16		token,
+			   u16		if_id,
 			   uint8_t		tc_id,
 			   uint64_t		early_drop_iova);
 
@@ -1157,7 +1157,7 @@ int dpsw_if_set_early_drop(struct fsl_mc_io	*mc_io,
  * @tpid: An additional tag protocol identifier
  */
 struct dpsw_custom_tpid_cfg {
-	uint16_t tpid;
+	u16 tpid;
 };
 
 /**
@@ -1176,7 +1176,7 @@ struct dpsw_custom_tpid_cfg {
  */
 int dpsw_add_custom_tpid(struct fsl_mc_io			*mc_io,
 			 u32				cmd_flags,
-			 uint16_t				token,
+			 u16				token,
 			 const struct dpsw_custom_tpid_cfg	*cfg);
 
 /**
@@ -1190,7 +1190,7 @@ int dpsw_add_custom_tpid(struct fsl_mc_io			*mc_io,
  */
 int dpsw_remove_custom_tpid(struct fsl_mc_io			*mc_io,
 			    u32				cmd_flags,
-			    uint16_t				token,
+			    u16				token,
 			    const struct dpsw_custom_tpid_cfg	*cfg);
 
 /**
@@ -1204,8 +1204,8 @@ int dpsw_remove_custom_tpid(struct fsl_mc_io			*mc_io,
  */
 int dpsw_if_enable(struct fsl_mc_io	*mc_io,
 		   u32		cmd_flags,
-		   uint16_t		token,
-		   uint16_t		if_id);
+		   u16		token,
+		   u16		if_id);
 
 /**
  * dpsw_if_disable() - Disable Interface
@@ -1218,8 +1218,8 @@ int dpsw_if_enable(struct fsl_mc_io	*mc_io,
  */
 int dpsw_if_disable(struct fsl_mc_io	*mc_io,
 		    u32		cmd_flags,
-		    uint16_t		token,
-		    uint16_t		if_id);
+		    u16		token,
+		    u16		if_id);
 
 /**
  * struct dpsw_if_attr - Structure representing DPSW interface attributes
@@ -1243,7 +1243,7 @@ struct dpsw_if_attr {
 	int				enabled;
 	int				accept_all_vlan;
 	enum dpsw_accepted_frames	admit_untagged;
-	uint16_t			qdid;
+	u16			qdid;
 };
 
 /**
@@ -1258,8 +1258,8 @@ struct dpsw_if_attr {
  */
 int dpsw_if_get_attributes(struct fsl_mc_io	*mc_io,
 			   u32		cmd_flags,
-			   uint16_t		token,
-			   uint16_t		if_id,
+			   u16		token,
+			   u16		if_id,
 			   struct dpsw_if_attr	*attr);
 
 /**
@@ -1274,9 +1274,9 @@ int dpsw_if_get_attributes(struct fsl_mc_io	*mc_io,
  */
 int dpsw_if_set_max_frame_length(struct fsl_mc_io	*mc_io,
 				 u32		cmd_flags,
-				 uint16_t		token,
-				 uint16_t		if_id,
-				 uint16_t		frame_length);
+				 u16		token,
+				 u16		if_id,
+				 u16		frame_length);
 
 /**
  * dpsw_if_get_max_frame_length() - Get Maximum Receive frame length.
@@ -1290,16 +1290,16 @@ int dpsw_if_set_max_frame_length(struct fsl_mc_io	*mc_io,
  */
 int dpsw_if_get_max_frame_length(struct fsl_mc_io	*mc_io,
 				 u32		cmd_flags,
-				 uint16_t		token,
-				 uint16_t		if_id,
-				 uint16_t		*frame_length);
+				 u16		token,
+				 u16		if_id,
+				 u16		*frame_length);
 
 /**
  * struct dpsw_vlan_cfg - VLAN Configuration
  * @fdb_id: Forwarding Data Base
  */
 struct dpsw_vlan_cfg {
-	uint16_t fdb_id;
+	u16 fdb_id;
 };
 
 /**
@@ -1321,8 +1321,8 @@ struct dpsw_vlan_cfg {
  */
 int dpsw_vlan_add(struct fsl_mc_io		*mc_io,
 		  u32			cmd_flags,
-		  uint16_t			token,
-		  uint16_t			vlan_id,
+		  u16			token,
+		  u16			vlan_id,
 		  const struct dpsw_vlan_cfg	*cfg);
 
 /**
@@ -1333,8 +1333,8 @@ int dpsw_vlan_add(struct fsl_mc_io		*mc_io,
  *		assigned to the egress list for this VLAN
  */
 struct dpsw_vlan_if_cfg {
-	uint16_t num_ifs;
-	uint16_t if_id[DPSW_MAX_IF];
+	u16 num_ifs;
+	u16 if_id[DPSW_MAX_IF];
 };
 
 /**
@@ -1354,8 +1354,8 @@ struct dpsw_vlan_if_cfg {
  */
 int dpsw_vlan_add_if(struct fsl_mc_io			*mc_io,
 		     u32				cmd_flags,
-		     uint16_t				token,
-		     uint16_t				vlan_id,
+		     u16				token,
+		     u16				vlan_id,
 		     const struct dpsw_vlan_if_cfg	*cfg);
 
 /**
@@ -1377,8 +1377,8 @@ int dpsw_vlan_add_if(struct fsl_mc_io			*mc_io,
  */
 int dpsw_vlan_add_if_untagged(struct fsl_mc_io			*mc_io,
 			      u32				cmd_flags,
-			      uint16_t				token,
-			      uint16_t				vlan_id,
+			      u16				token,
+			      u16				vlan_id,
 			      const struct dpsw_vlan_if_cfg	*cfg);
 
 /**
@@ -1401,8 +1401,8 @@ int dpsw_vlan_add_if_untagged(struct fsl_mc_io			*mc_io,
  */
 int dpsw_vlan_add_if_flooding(struct fsl_mc_io			*mc_io,
 			      u32				cmd_flags,
-			      uint16_t				token,
-			      uint16_t				vlan_id,
+			      u16				token,
+			      u16				vlan_id,
 			      const struct dpsw_vlan_if_cfg	*cfg);
 
 /**
@@ -1420,8 +1420,8 @@ int dpsw_vlan_add_if_flooding(struct fsl_mc_io			*mc_io,
  */
 int dpsw_vlan_remove_if(struct fsl_mc_io		*mc_io,
 			u32			cmd_flags,
-			uint16_t			token,
-			uint16_t			vlan_id,
+			u16			token,
+			u16			vlan_id,
 			const struct dpsw_vlan_if_cfg	*cfg);
 
 /**
@@ -1441,8 +1441,8 @@ int dpsw_vlan_remove_if(struct fsl_mc_io		*mc_io,
  */
 int dpsw_vlan_remove_if_untagged(struct fsl_mc_io		*mc_io,
 				 u32			cmd_flags,
-				 uint16_t			token,
-				 uint16_t			vlan_id,
+				 u16			token,
+				 u16			vlan_id,
 				 const struct dpsw_vlan_if_cfg	*cfg);
 
 /**
@@ -1458,8 +1458,8 @@ int dpsw_vlan_remove_if_untagged(struct fsl_mc_io		*mc_io,
  */
 int dpsw_vlan_remove_if_flooding(struct fsl_mc_io		*mc_io,
 				 u32			cmd_flags,
-				 uint16_t			token,
-				 uint16_t			vlan_id,
+				 u16			token,
+				 u16			vlan_id,
 				 const struct dpsw_vlan_if_cfg	*cfg);
 
 /**
@@ -1473,8 +1473,8 @@ int dpsw_vlan_remove_if_flooding(struct fsl_mc_io		*mc_io,
  */
 int dpsw_vlan_remove(struct fsl_mc_io	*mc_io,
 		     u32		cmd_flags,
-		     uint16_t		token,
-		     uint16_t		vlan_id);
+		     u16		token,
+		     u16		vlan_id);
 
 /**
  * struct dpsw_vlan_attr - VLAN attributes
@@ -1484,10 +1484,10 @@ int dpsw_vlan_remove(struct fsl_mc_io	*mc_io,
  * @num_flooding_ifs: Number of flooding interfaces
  */
 struct dpsw_vlan_attr {
-	uint16_t fdb_id;
-	uint16_t num_ifs;
-	uint16_t num_untagged_ifs;
-	uint16_t num_flooding_ifs;
+	u16 fdb_id;
+	u16 num_ifs;
+	u16 num_untagged_ifs;
+	u16 num_flooding_ifs;
 };
 
 /**
@@ -1502,8 +1502,8 @@ struct dpsw_vlan_attr {
  */
 int dpsw_vlan_get_attributes(struct fsl_mc_io		*mc_io,
 			     u32			cmd_flags,
-			     uint16_t			token,
-			     uint16_t			vlan_id,
+			     u16			token,
+			     u16			vlan_id,
 			     struct dpsw_vlan_attr	*attr);
 
 /**
@@ -1518,8 +1518,8 @@ int dpsw_vlan_get_attributes(struct fsl_mc_io		*mc_io,
  */
 int dpsw_vlan_get_if(struct fsl_mc_io		*mc_io,
 		     u32			cmd_flags,
-		     uint16_t			token,
-		     uint16_t			vlan_id,
+		     u16			token,
+		     u16			vlan_id,
 		     struct dpsw_vlan_if_cfg	*cfg);
 
 /**
@@ -1534,8 +1534,8 @@ int dpsw_vlan_get_if(struct fsl_mc_io		*mc_io,
  */
 int dpsw_vlan_get_if_flooding(struct fsl_mc_io		*mc_io,
 			      u32			cmd_flags,
-			      uint16_t			token,
-			      uint16_t			vlan_id,
+			      u16			token,
+			      u16			vlan_id,
 			      struct dpsw_vlan_if_cfg	*cfg);
 
 /**
@@ -1551,8 +1551,8 @@ int dpsw_vlan_get_if_flooding(struct fsl_mc_io		*mc_io,
  */
 int dpsw_vlan_get_if_untagged(struct fsl_mc_io		*mc_io,
 			      u32			cmd_flags,
-			      uint16_t			token,
-			      uint16_t			vlan_id,
+			      u16			token,
+			      u16			vlan_id,
 			      struct dpsw_vlan_if_cfg	*cfg);
 
 /**
@@ -1561,8 +1561,8 @@ int dpsw_vlan_get_if_untagged(struct fsl_mc_io		*mc_io,
  * @fdb_aging_time: Aging time in seconds
  */
 struct dpsw_fdb_cfg {
-	uint16_t num_fdb_entries;
-	uint16_t fdb_aging_time;
+	u16 num_fdb_entries;
+	u16 fdb_aging_time;
 };
 
 /**
@@ -1578,8 +1578,8 @@ struct dpsw_fdb_cfg {
  */
 int dpsw_fdb_add(struct fsl_mc_io		*mc_io,
 		 u32			cmd_flags,
-		 uint16_t			token,
-		 uint16_t			*fdb_id,
+		 u16			token,
+		 u16			*fdb_id,
 		 const struct dpsw_fdb_cfg	*cfg);
 
 /**
@@ -1593,8 +1593,8 @@ int dpsw_fdb_add(struct fsl_mc_io		*mc_io,
  */
 int dpsw_fdb_remove(struct fsl_mc_io	*mc_io,
 		    u32		cmd_flags,
-		    uint16_t		token,
-		    uint16_t		fdb_id);
+		    u16		token,
+		    u16		fdb_id);
 
 /**
  * enum dpsw_fdb_entry_type - FDB Entry type - Static/Dynamic
@@ -1615,7 +1615,7 @@ enum dpsw_fdb_entry_type {
 struct dpsw_fdb_unicast_cfg {
 	enum dpsw_fdb_entry_type	type;
 	uint8_t			mac_addr[6];
-	uint16_t			if_egress;
+	u16			if_egress;
 };
 
 /**
@@ -1630,8 +1630,8 @@ struct dpsw_fdb_unicast_cfg {
  */
 int dpsw_fdb_add_unicast(struct fsl_mc_io			*mc_io,
 			 u32				cmd_flags,
-			 uint16_t				token,
-			 uint16_t				fdb_id,
+			 u16				token,
+			 u16				fdb_id,
 			 const struct dpsw_fdb_unicast_cfg	*cfg);
 
 /**
@@ -1647,8 +1647,8 @@ int dpsw_fdb_add_unicast(struct fsl_mc_io			*mc_io,
  */
 int dpsw_fdb_get_unicast(struct fsl_mc_io		*mc_io,
 			 u32			cmd_flags,
-			 uint16_t			token,
-			 uint16_t			fdb_id,
+			 u16			token,
+			 u16			fdb_id,
 			 struct dpsw_fdb_unicast_cfg	*cfg);
 
 /**
@@ -1663,8 +1663,8 @@ int dpsw_fdb_get_unicast(struct fsl_mc_io		*mc_io,
  */
 int dpsw_fdb_remove_unicast(struct fsl_mc_io			*mc_io,
 			    u32				cmd_flags,
-			    uint16_t				token,
-			    uint16_t				fdb_id,
+			    u16				token,
+			    u16				fdb_id,
 			    const struct dpsw_fdb_unicast_cfg	*cfg);
 
 /**
@@ -1677,8 +1677,8 @@ int dpsw_fdb_remove_unicast(struct fsl_mc_io			*mc_io,
 struct dpsw_fdb_multicast_cfg {
 	enum dpsw_fdb_entry_type	type;
 	uint8_t			mac_addr[6];
-	uint16_t			num_ifs;
-	uint16_t			if_id[DPSW_MAX_IF];
+	u16			num_ifs;
+	u16			if_id[DPSW_MAX_IF];
 };
 
 /**
@@ -1700,8 +1700,8 @@ struct dpsw_fdb_multicast_cfg {
  */
 int dpsw_fdb_add_multicast(struct fsl_mc_io			*mc_io,
 			   u32				cmd_flags,
-			   uint16_t				token,
-			   uint16_t				fdb_id,
+			   u16				token,
+			   u16				fdb_id,
 			   const struct dpsw_fdb_multicast_cfg	*cfg);
 
 /**
@@ -1717,8 +1717,8 @@ int dpsw_fdb_add_multicast(struct fsl_mc_io			*mc_io,
  */
 int dpsw_fdb_get_multicast(struct fsl_mc_io			*mc_io,
 			   u32				cmd_flags,
-			   uint16_t				token,
-			   uint16_t				fdb_id,
+			   u16				token,
+			   u16				fdb_id,
 			   struct dpsw_fdb_multicast_cfg	*cfg);
 
 /**
@@ -1739,8 +1739,8 @@ int dpsw_fdb_get_multicast(struct fsl_mc_io			*mc_io,
  */
 int dpsw_fdb_remove_multicast(struct fsl_mc_io			*mc_io,
 			      u32				cmd_flags,
-			      uint16_t				token,
-			      uint16_t				fdb_id,
+			      u16				token,
+			      u16				fdb_id,
 			      const struct dpsw_fdb_multicast_cfg *cfg);
 
 /**
@@ -1792,8 +1792,8 @@ enum dpsw_fdb_learning_mode {
  */
 int dpsw_fdb_set_learning_mode(struct fsl_mc_io		*mc_io,
 			       u32			cmd_flags,
-			       uint16_t			token,
-			       uint16_t			fdb_id,
+			       u16			token,
+			       u16			fdb_id,
 			       enum dpsw_fdb_learning_mode	mode);
 
 /**
@@ -1805,11 +1805,11 @@ int dpsw_fdb_set_learning_mode(struct fsl_mc_io		*mc_io,
  * @max_fdb_mc_groups: Maximum number of multicast groups
  */
 struct dpsw_fdb_attr {
-	uint16_t			max_fdb_entries;
-	uint16_t			fdb_aging_time;
+	u16			max_fdb_entries;
+	u16			fdb_aging_time;
 	enum dpsw_fdb_learning_mode	learning_mode;
-	uint16_t			num_fdb_mc_groups;
-	uint16_t			max_fdb_mc_groups;
+	u16			num_fdb_mc_groups;
+	u16			max_fdb_mc_groups;
 };
 
 /**
@@ -1824,8 +1824,8 @@ struct dpsw_fdb_attr {
  */
 int dpsw_fdb_get_attributes(struct fsl_mc_io		*mc_io,
 			    u32			cmd_flags,
-			    uint16_t			token,
-			    uint16_t			fdb_id,
+			    u16			token,
+			    u16			fdb_id,
 			    struct dpsw_fdb_attr	*attr);
 
 /**
@@ -1833,7 +1833,7 @@ int dpsw_fdb_get_attributes(struct fsl_mc_io		*mc_io,
  * @max_entries: Number of FDB entries
  */
 struct dpsw_acl_cfg {
-	uint16_t	max_entries;
+	u16	max_entries;
 };
 
 /**
@@ -1860,16 +1860,16 @@ struct dpsw_acl_cfg {
 struct dpsw_acl_fields {
 	uint8_t         l2_dest_mac[6];
 	uint8_t         l2_source_mac[6];
-	uint16_t        l2_tpid;
+	u16        l2_tpid;
 	uint8_t         l2_pcp_dei;
-	uint16_t        l2_vlan_id;
-	uint16_t        l2_ether_type;
+	u16        l2_vlan_id;
+	u16        l2_ether_type;
 	uint8_t         l3_dscp;
 	uint8_t         l3_protocol;
 	u32        l3_source_ip;
 	u32        l3_dest_ip;
-	uint16_t        l4_source_port;
-	uint16_t        l4_dest_port;
+	u16        l4_source_port;
+	u16        l4_dest_port;
 };
 
 /**
@@ -1904,7 +1904,7 @@ enum dpsw_acl_action {
  */
 struct dpsw_acl_result {
 	enum dpsw_acl_action	action;
-	uint16_t                if_id;
+	u16                if_id;
 };
 
 /**
@@ -1937,8 +1937,8 @@ struct dpsw_acl_entry_cfg {
  */
 int dpsw_acl_add(struct fsl_mc_io		*mc_io,
 		 u32			cmd_flags,
-		 uint16_t			token,
-		 uint16_t			*acl_id,
+		 u16			token,
+		 u16			*acl_id,
 		 const struct dpsw_acl_cfg	*cfg);
 
 /**
@@ -1952,8 +1952,8 @@ int dpsw_acl_add(struct fsl_mc_io		*mc_io,
  */
 int dpsw_acl_remove(struct fsl_mc_io	*mc_io,
 		    u32		cmd_flags,
-		    uint16_t		token,
-		    uint16_t		acl_id);
+		    u16		token,
+		    u16		acl_id);
 
 /**
  * dpsw_acl_prepare_entry_cfg() - Set an entry to ACL.
@@ -1980,8 +1980,8 @@ void dpsw_acl_prepare_entry_cfg(const struct dpsw_acl_key	*key,
  */
 int dpsw_acl_add_entry(struct fsl_mc_io		*mc_io,
 		       u32			cmd_flags,
-		       uint16_t			token,
-		       uint16_t			acl_id,
+		       u16			token,
+		       u16			acl_id,
 		       const struct dpsw_acl_entry_cfg	*cfg);
 
 /**
@@ -1998,8 +1998,8 @@ int dpsw_acl_add_entry(struct fsl_mc_io		*mc_io,
  */
 int dpsw_acl_remove_entry(struct fsl_mc_io			*mc_io,
 			  u32				cmd_flags,
-			  uint16_t				token,
-			  uint16_t				acl_id,
+			  u16				token,
+			  u16				acl_id,
 			  const struct dpsw_acl_entry_cfg	*cfg);
 
 /**
@@ -2008,8 +2008,8 @@ int dpsw_acl_remove_entry(struct fsl_mc_io			*mc_io,
  * @if_id: List of interfaces
  */
 struct dpsw_acl_if_cfg {
-	uint16_t	num_ifs;
-	uint16_t	if_id[DPSW_MAX_IF];
+	u16	num_ifs;
+	u16	if_id[DPSW_MAX_IF];
 };
 
 /**
@@ -2024,8 +2024,8 @@ struct dpsw_acl_if_cfg {
  */
 int dpsw_acl_add_if(struct fsl_mc_io			*mc_io,
 		    u32				cmd_flags,
-		    uint16_t				token,
-		    uint16_t				acl_id,
+		    u16				token,
+		    u16				acl_id,
 		    const struct dpsw_acl_if_cfg	*cfg);
 
 /**
@@ -2040,8 +2040,8 @@ int dpsw_acl_add_if(struct fsl_mc_io			*mc_io,
  */
 int dpsw_acl_remove_if(struct fsl_mc_io		*mc_io,
 		       u32			cmd_flags,
-		       uint16_t			token,
-		       uint16_t			acl_id,
+		       u16			token,
+		       u16			acl_id,
 		       const struct dpsw_acl_if_cfg	*cfg);
 
 /**
@@ -2051,9 +2051,9 @@ int dpsw_acl_remove_if(struct fsl_mc_io		*mc_io,
  * @num_ifs: Number of interfaces associated with ACL
  */
 struct dpsw_acl_attr {
-	uint16_t max_entries;
-	uint16_t num_entries;
-	uint16_t num_ifs;
+	u16 max_entries;
+	u16 num_entries;
+	u16 num_ifs;
 };
 
 /**
@@ -2068,8 +2068,8 @@ struct dpsw_acl_attr {
 */
 int dpsw_acl_get_attributes(struct fsl_mc_io		*mc_io,
 			    u32			cmd_flags,
-			    uint16_t			token,
-			    uint16_t			acl_id,
+			    u16			token,
+			    u16			acl_id,
 			    struct dpsw_acl_attr	*attr);
 /**
 * struct dpsw_ctrl_if_attr - Control interface attributes
@@ -2094,7 +2094,7 @@ struct dpsw_ctrl_if_attr {
 */
 int dpsw_ctrl_if_get_attributes(struct fsl_mc_io		*mc_io,
 				u32			cmd_flags,
-				uint16_t			token,
+				u16			token,
 				struct dpsw_ctrl_if_attr	*attr);
 
 /**
@@ -2118,7 +2118,7 @@ struct dpsw_ctrl_if_pools_cfg {
 	*/
 	struct {
 		int dpbp_id;
-		uint16_t buffer_size;
+		u16 buffer_size;
 		int backup_pool;
 	} pools[DPSW_MAX_DPBP];
 };
@@ -2134,7 +2134,7 @@ struct dpsw_ctrl_if_pools_cfg {
 */
 int dpsw_ctrl_if_set_pools(struct fsl_mc_io			*mc_io,
 			   u32				cmd_flags,
-			   uint16_t				token,
+			   u16				token,
 			   const struct dpsw_ctrl_if_pools_cfg *cfg);
 
 /**
@@ -2147,7 +2147,7 @@ int dpsw_ctrl_if_set_pools(struct fsl_mc_io			*mc_io,
 */
 int dpsw_ctrl_if_enable(struct fsl_mc_io	*mc_io,
 			u32		cmd_flags,
-			uint16_t		token);
+			u16		token);
 
 /**
 * dpsw_ctrl_if_disable() - Function disables control interface
@@ -2159,6 +2159,6 @@ int dpsw_ctrl_if_enable(struct fsl_mc_io	*mc_io,
 */
 int dpsw_ctrl_if_disable(struct fsl_mc_io	*mc_io,
 			 u32		cmd_flags,
-			 uint16_t		token);
+			 u16		token);
 
 #endif /* __FSL_DPSW_H */
