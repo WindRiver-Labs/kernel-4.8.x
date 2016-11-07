@@ -36,6 +36,7 @@
 #include <crypto/aead.h>
 #include <linux/rtnetlink.h>
 #include <crypto/authenc.h>
+#include <crypto/skcipher.h>
 #include "cryptodev_int.h"
 
 
@@ -131,11 +132,13 @@ int cryptodev_cipher_init(struct cipher_data *out, const char *alg_name,
 				uint8_t *keyp, size_t keylen, int stream, int aead)
 {
 	int ret;
+	struct crypto_skcipher *tfm;
 
 	if (aead == 0) {
 		struct ablkcipher_alg *alg;
 
-		out->async.s = crypto_alloc_ablkcipher(alg_name, 0, 0);
+		tfm = crypto_alloc_skcipher(alg_name, 0, 0);
+		out->async.s->base = tfm->base;
 		if (unlikely(IS_ERR(out->async.s))) {
 			ddebug(1, "Failed to load cipher %s", alg_name);
 				return -EINVAL;
