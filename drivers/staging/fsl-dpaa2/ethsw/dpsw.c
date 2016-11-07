@@ -642,7 +642,7 @@ int dpsw_if_get_counter(struct fsl_mc_io *mc_io,
 			u16 token,
 			u16 if_id,
 			enum dpsw_counter type,
-			uint64_t *counter)
+			u64 *counter)
 {
 	struct mc_command cmd = { 0 };
 	int err;
@@ -669,7 +669,7 @@ int dpsw_if_set_counter(struct fsl_mc_io *mc_io,
 			u16 token,
 			u16 if_id,
 			enum dpsw_counter type,
-			uint64_t counter)
+			u64 counter)
 {
 	struct mc_command cmd = { 0 };
 
@@ -777,7 +777,7 @@ int dpsw_if_set_metering(struct fsl_mc_io *mc_io,
 void dpsw_prepare_early_drop(const struct dpsw_early_drop_cfg *cfg,
 			     u8 *early_drop_buf)
 {
-	uint64_t *ext_params = (uint64_t *)early_drop_buf;
+	u64 *ext_params = (u64 *)early_drop_buf;
 
 	DPSW_PREP_EARLY_DROP(ext_params, cfg);
 }
@@ -787,7 +787,7 @@ int dpsw_if_set_early_drop(struct fsl_mc_io	*mc_io,
 			   u16		token,
 			   u16		if_id,
 			   u8		tc_id,
-			   uint64_t		early_drop_iova)
+			   u64		early_drop_iova)
 {
 	struct mc_command cmd = { 0 };
 
@@ -1454,7 +1454,7 @@ int dpsw_acl_remove(struct fsl_mc_io *mc_io,
 void dpsw_acl_prepare_entry_cfg(const struct dpsw_acl_key *key,
 				u8 *entry_cfg_buf)
 {
-	uint64_t *ext_params = (uint64_t *)entry_cfg_buf;
+	u64 *ext_params = (u64 *)entry_cfg_buf;
 
 	DPSW_PREP_ACL_ENTRY(ext_params, key);
 }
