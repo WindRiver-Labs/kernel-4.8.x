@@ -727,7 +727,6 @@
 			fsl,magic-packet;
 			rcpm-wakeup = <&rcpm 0x80000000 0x0>;
 			ranges;
-			dma-coherent;
 
 			queue-group@2d10000 {
 				#address-cells = <2>;
@@ -756,7 +755,6 @@
 			interrupt-parent = <&gic>;
 			model = "eTSEC";
 			ranges;
-			dma-coherent;
 
 			queue-group@2d50000  {
 				#address-cells = <2>;
@@ -785,7 +783,6 @@
 			interrupt-parent = <&gic>;
 			model = "eTSEC";
 			ranges;
-			dma-coherent;
 
 			queue-group@2d90000  {
 				#address-cells = <2>;
