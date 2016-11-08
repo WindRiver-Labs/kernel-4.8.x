@@ -154,9 +154,10 @@ struct dpdmux_cfg {
 /**
  * dpdmux_create() - Create the DPDMUX object
  * @mc_io:	Pointer to MC portal's I/O object
+ * @dprc_token:	Parent container token; '0' for default container
  * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
  * @cfg:	Configuration structure
- * @token:	Returned token; use in subsequent API calls
+ * @obj_id: returned object id
  *
  * Create the DPDMUX object, allocate required resources and
  * perform required initialization.
@@ -164,31 +165,39 @@ struct dpdmux_cfg {
  * The object can be created either by declaring it in the
  * DPL file, or by calling this function.
  *
- * This function returns a unique authentication token,
- * associated with the specific object ID and the specific MC
- * portal; this token must be used in all subsequent calls to
- * this specific object. For objects that are created using the
- * DPL file, call dpdmux_open() function to get an authentication
- * token first.
+ * The function accepts an authentication token of a parent
+ * container that this object should be assigned to. The token
+ * can be '0' so the object will be assigned to the default container.
+ * The newly created object can be opened with the returned
+ * object id and using the container's associated tokens and MC portals.
  *
  * Return:	'0' on Success; Error code otherwise.
  */
 int dpdmux_create(struct fsl_mc_io		*mc_io,
+		  u16			dprc_token,
 		  u32			cmd_flags,
 		  const struct dpdmux_cfg	*cfg,
-		  u16			*token);
+		  u32			*obj_id);
 
 /**
  * dpdmux_destroy() - Destroy the DPDMUX object and release all its resources.
  * @mc_io:	Pointer to MC portal's I/O object
+ * @dprc_token: Parent container token; '0' for default container
  * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
- * @token:	Token of DPDMUX object
+ * @object_id:	The object id; it must be a valid id within the container that
+ * created this object;
+ *
+ * The function accepts the authentication token of the parent container that
+ * created the object (not the one that currently owns the object). The object
+ * is searched within parent using the provided 'object_id'.
+ * All tokens to the object must be closed before calling destroy.
  *
  * Return:	'0' on Success; error code otherwise.
  */
 int dpdmux_destroy(struct fsl_mc_io	*mc_io,
+		   u16		dprc_token,
 		   u32		cmd_flags,
-		   u16		token);
+		   u32		object_id);
 
 /**
  * dpdmux_enable() - Enable DPDMUX functionality
@@ -253,7 +262,7 @@ struct dpdmux_irq_cfg {
 };
 
 /**
- * dpdmux_set_irq() - Set IRQ information for the DPDMUX to trigger an interrupt.
+ * dpdmux_set_irq() - Set IRQ information for the DPDMUX to trigger an interrupt
  * @mc_io:	Pointer to MC portal's I/O object
  * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
  * @token:	Token of DPDMUX object
@@ -404,7 +413,6 @@ int dpdmux_clear_irq_status(struct fsl_mc_io	*mc_io,
 /**
  * struct dpdmux_attr - Structure representing DPDMUX attributes
  * @id: DPDMUX object ID
- * @version: DPDMUX version
  * @options: Configuration options (bitmap)
  * @method: DPDMUX address table method
  * @manip: DPDMUX manipulation type
@@ -413,15 +421,6 @@ int dpdmux_clear_irq_status(struct fsl_mc_io	*mc_io,
  */
 struct dpdmux_attr {
 	int			id;
-	/**
-	 * struct version - DPDMUX version
-	 * @major: DPDMUX major version
-	 * @minor: DPDMUX minor version
-	 */
-	struct {
-		u16	major;
-		u16	minor;
-	} version;
 	u64		options;
 	enum dpdmux_method	method;
 	enum dpdmux_manip	manip;
@@ -444,18 +443,23 @@ int dpdmux_get_attributes(struct fsl_mc_io	*mc_io,
 			  struct dpdmux_attr	*attr);
 
 /**
- * dpdmux_ul_set_max_frame_length() - Set the maximum frame length in DPDMUX
+ * dpdmux_set_max_frame_length() - Set the maximum frame length in DPDMUX
  * @mc_io:	Pointer to MC portal's I/O object
  * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
  * @token:		Token of DPDMUX object
  * @max_frame_length:	The required maximum frame length
  *
+ * Update the maximum frame length on all DMUX interfaces.
+ * In case of VEPA, the maximum frame length on all dmux interfaces
+ * will be updated with the minimum value of the mfls of the connected
+ * dpnis and the actual value of dmux mfl.
+ *
  * Return:	'0' on Success; Error code otherwise.
  */
-int dpdmux_ul_set_max_frame_length(struct fsl_mc_io	*mc_io,
-				   u32		cmd_flags,
-				   u16		token,
-				   u16		max_frame_length);
+int dpdmux_set_max_frame_length(struct fsl_mc_io	*mc_io,
+				u32		cmd_flags,
+				u16		token,
+				u16		max_frame_length);
 
 /**
  * enum dpdmux_counter_type - Counter types
@@ -539,10 +543,10 @@ struct dpdmux_accepted_frames {
  *
  * Return:	'0' on Success; Error code otherwise.
  */
-int dpdmux_if_set_accepted_frames(struct fsl_mc_io		      *mc_io,
-				  u32			      cmd_flags,
-				  u16			      token,
-				  u16			      if_id,
+int dpdmux_if_set_accepted_frames(struct fsl_mc_io		*mc_io,
+				  u32			cmd_flags,
+				  u16			token,
+				  u16			if_id,
 				  const struct dpdmux_accepted_frames *cfg);
 
 /**
@@ -579,7 +583,7 @@ int dpdmux_if_get_attributes(struct fsl_mc_io		*mc_io,
  * @vlan_id: VLAN ID
  */
 struct dpdmux_l2_rule {
-	u8	mac_addr[6];
+	u8		mac_addr[6];
 	u16	vlan_id;
 };
 
@@ -720,5 +724,19 @@ int dpdmux_if_get_link_state(struct fsl_mc_io		*mc_io,
 			     u16			token,
 			     u16			if_id,
 			     struct dpdmux_link_state	*state);
+
+/**
+ * dpaiop_get_api_version() - Get Data Path Demux API version
+ * @mc_io:  Pointer to MC portal's I/O object
+ * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
+ * @major_ver:	Major version of data path demux API
+ * @minor_ver:	Minor version of data path demux API
+ *
+ * Return:  '0' on Success; Error code otherwise.
+ */
+int dpdmux_get_api_version(struct fsl_mc_io *mc_io,
+			   u32 cmd_flags,
+			   u16 *major_ver,
+			   u16 *minor_ver);
 
 #endif /* __FSL_DPDMUX_H */
