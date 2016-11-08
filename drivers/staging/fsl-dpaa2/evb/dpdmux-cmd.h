@@ -33,10 +33,10 @@
 #define _FSL_DPDMUX_CMD_H
 
 /* DPDMUX Version */
-#define DPDMUX_VER_MAJOR				5
+#define DPDMUX_VER_MAJOR				6
 #define DPDMUX_VER_MINOR				0
 
-#define DPDMUX_CMD_BASE_VER				0
+#define DPDMUX_CMD_BASE_VER				1
 #define DPDMUX_CMD_ID_OFF				4
 #define DPDMUX_CMD_ID(id) (((id) << DPDMUX_CMD_ID_OFF) | DPDMUX_CMD_BASE_VER)
 
@@ -45,6 +45,7 @@
 #define DPDMUX_CMDID_OPEN                    DPDMUX_CMD_ID(0x806)
 #define DPDMUX_CMDID_CREATE                  DPDMUX_CMD_ID(0x906)
 #define DPDMUX_CMDID_DESTROY                 DPDMUX_CMD_ID(0x900)
+#define DPDMUX_CMDID_GET_API_VERSION         DPDMUX_CMD_ID(0xa06)
 
 #define DPDMUX_CMDID_ENABLE                  DPDMUX_CMD_ID(0x002)
 #define DPDMUX_CMDID_DISABLE                 DPDMUX_CMD_ID(0x003)
@@ -61,7 +62,7 @@
 #define DPDMUX_CMDID_GET_IRQ_STATUS          DPDMUX_CMD_ID(0x016)
 #define DPDMUX_CMDID_CLEAR_IRQ_STATUS        DPDMUX_CMD_ID(0x017)
 
-#define DPDMUX_CMDID_UL_SET_MAX_FRAME_LENGTH DPDMUX_CMD_ID(0x0a1)
+#define DPDMUX_CMDID_SET_MAX_FRAME_LENGTH    DPDMUX_CMD_ID(0x0a1)
 
 #define DPDMUX_CMDID_UL_RESET_COUNTERS       DPDMUX_CMD_ID(0x0a3)
 
@@ -172,12 +173,10 @@ do { \
 	MC_RSP_OP(cmd, 0, 32, 16, uint16_t, attr->mem_size);\
 	MC_RSP_OP(cmd, 2, 0,  32, int,	    attr->id);\
 	MC_RSP_OP(cmd, 3, 0,  64, uint64_t, attr->options);\
-	MC_RSP_OP(cmd, 4, 0,  16, uint16_t, attr->version.major);\
-	MC_RSP_OP(cmd, 4, 16, 16, uint16_t, attr->version.minor);\
 } while (0)
 
 /*                cmd, param, offset, width, type, arg_name */
-#define DPDMUX_CMD_UL_SET_MAX_FRAME_LENGTH(cmd, max_frame_length) \
+#define DPDMUX_CMD_SET_MAX_FRAME_LENGTH(cmd, max_frame_length) \
 	MC_CMD_OP(cmd, 0, 0,  16, uint16_t, max_frame_length)
 
 /*                cmd, param, offset, width, type, arg_name */
@@ -255,6 +254,13 @@ do { \
 	MC_RSP_OP(cmd, 0, 32, 1,  int,      state->up);\
 	MC_RSP_OP(cmd, 1, 0,  32, uint32_t, state->rate);\
 	MC_RSP_OP(cmd, 2, 0,  64, uint64_t, state->options);\
+} while (0)
+
+/*                cmd, param, offset, width, type,      arg_name */
+#define DPDMUX_RSP_GET_API_VERSION(cmd, major, minor) \
+do { \
+	MC_RSP_OP(cmd, 0, 0,  16, uint16_t, major);\
+	MC_RSP_OP(cmd, 0, 16, 16, uint16_t, minor);\
 } while (0)
 
 #endif /* _FSL_DPDMUX_CMD_H */

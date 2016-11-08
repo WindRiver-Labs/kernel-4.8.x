@@ -74,10 +74,11 @@ int dpdmux_close(struct fsl_mc_io *mc_io,
 	return mc_send_command(mc_io, &cmd);
 }
 
-int dpdmux_create(struct fsl_mc_io *mc_io,
-		  u32 cmd_flags,
-		  const struct dpdmux_cfg *cfg,
-		  u16 *token)
+int dpdmux_create(struct fsl_mc_io	*mc_io,
+		  u16	dprc_token,
+		u32	cmd_flags,
+		const struct dpdmux_cfg	*cfg,
+		u32 *obj_id)
 {
 	struct mc_command cmd = { 0 };
 	int err;
@@ -85,7 +86,7 @@ int dpdmux_create(struct fsl_mc_io *mc_io,
 	/* prepare command */
 	cmd.header = mc_encode_cmd_header(DPDMUX_CMDID_CREATE,
 					  cmd_flags,
-					  0);
+					  dprc_token);
 	DPDMUX_CMD_CREATE(cmd, cfg);
 
 	/* send command to mc*/
@@ -94,21 +95,24 @@ int dpdmux_create(struct fsl_mc_io *mc_io,
 		return err;
 
 	/* retrieve response parameters */
-	*token = MC_CMD_HDR_READ_TOKEN(cmd.header);
+	*obj_id = get_mc_cmd_create_object_id(&cmd);
 
 	return 0;
 }
 
 int dpdmux_destroy(struct fsl_mc_io *mc_io,
-		   u32 cmd_flags,
-		   u16 token)
+		   u16 dprc_token,
+		u32 cmd_flags,
+		u32 object_id)
 {
 	struct mc_command cmd = { 0 };
 
 	/* prepare command */
 	cmd.header = mc_encode_cmd_header(DPDMUX_CMDID_DESTROY,
 					  cmd_flags,
-					  token);
+					  dprc_token);
+	/* set object id to destroy */
+	cmd.params[0] = mc_enc(0, sizeof(object_id), object_id);
 
 	/* send command to mc*/
 	return mc_send_command(mc_io, &cmd);
@@ -383,18 +387,18 @@ int dpdmux_get_attributes(struct fsl_mc_io *mc_io,
 	return 0;
 }
 
-int dpdmux_ul_set_max_frame_length(struct fsl_mc_io *mc_io,
-				   u32 cmd_flags,
+int dpdmux_set_max_frame_length(struct fsl_mc_io *mc_io,
+				u32 cmd_flags,
 				   u16 token,
 				   u16 max_frame_length)
 {
 	struct mc_command cmd = { 0 };
 
 	/* prepare command */
-	cmd.header = mc_encode_cmd_header(DPDMUX_CMDID_UL_SET_MAX_FRAME_LENGTH,
+	cmd.header = mc_encode_cmd_header(DPDMUX_CMDID_SET_MAX_FRAME_LENGTH,
 					  cmd_flags,
 					  token);
-	DPDMUX_CMD_UL_SET_MAX_FRAME_LENGTH(cmd, max_frame_length);
+	DPDMUX_CMD_SET_MAX_FRAME_LENGTH(cmd, max_frame_length);
 
 	/* send command to mc*/
 	return mc_send_command(mc_io, &cmd);
@@ -562,6 +566,27 @@ int dpdmux_if_get_link_state(struct fsl_mc_io *mc_io,
 
 	/* retrieve response parameters */
 	DPDMUX_RSP_IF_GET_LINK_STATE(cmd, state);
+
+	return 0;
+}
+
+int dpdmux_get_api_version(struct fsl_mc_io *mc_io,
+			   u32 cmd_flags,
+			   u16 *major_ver,
+			   u16 *minor_ver)
+{
+	struct mc_command cmd = { 0 };
+	int err;
+
+	cmd.header = mc_encode_cmd_header(DPDMUX_CMDID_GET_API_VERSION,
+					cmd_flags,
+					0);
+
+	err = mc_send_command(mc_io, &cmd);
+	if (err)
+		return err;
+
+	DPDMUX_RSP_GET_API_VERSION(cmd, *major_ver, *minor_ver);
 
 	return 0;
 }
