@@ -5384,9 +5384,11 @@ xfs_bunmapi(
 					ip, -((long)del.br_blockcount), 0,
 					XFS_QMOPT_RES_RTBLKS);
 			} else {
-				(void)xfs_trans_reserve_quota_nblks(NULL,
+				error = xfs_trans_reserve_quota_nblks(NULL,
 					ip, -((long)del.br_blockcount), 0,
 					XFS_QMOPT_RES_REGBLKS);
+				if (error)
+					return error;
 			}
 			ip->i_delayed_blks -= del.br_blockcount;
 			if (cur)
