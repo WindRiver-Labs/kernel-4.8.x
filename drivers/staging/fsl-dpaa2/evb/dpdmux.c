@@ -35,9 +35,9 @@
 #include "dpdmux-cmd.h"
 
 int dpdmux_open(struct fsl_mc_io *mc_io,
-		uint32_t cmd_flags,
+		u32 cmd_flags,
 		int dpdmux_id,
-		uint16_t *token)
+		u16 *token)
 {
 	struct mc_command cmd = { 0 };
 	int err;
@@ -60,8 +60,8 @@ int dpdmux_open(struct fsl_mc_io *mc_io,
 }
 
 int dpdmux_close(struct fsl_mc_io *mc_io,
-		 uint32_t cmd_flags,
-		 uint16_t token)
+		 u32 cmd_flags,
+		 u16 token)
 {
 	struct mc_command cmd = { 0 };
 
@@ -75,9 +75,9 @@ int dpdmux_close(struct fsl_mc_io *mc_io,
 }
 
 int dpdmux_create(struct fsl_mc_io *mc_io,
-		  uint32_t cmd_flags,
+		  u32 cmd_flags,
 		  const struct dpdmux_cfg *cfg,
-		  uint16_t *token)
+		  u16 *token)
 {
 	struct mc_command cmd = { 0 };
 	int err;
@@ -100,8 +100,8 @@ int dpdmux_create(struct fsl_mc_io *mc_io,
 }
 
 int dpdmux_destroy(struct fsl_mc_io *mc_io,
-		   uint32_t cmd_flags,
-		   uint16_t token)
+		   u32 cmd_flags,
+		   u16 token)
 {
 	struct mc_command cmd = { 0 };
 
@@ -115,8 +115,8 @@ int dpdmux_destroy(struct fsl_mc_io *mc_io,
 }
 
 int dpdmux_enable(struct fsl_mc_io *mc_io,
-		  uint32_t cmd_flags,
-		  uint16_t token)
+		  u32 cmd_flags,
+		  u16 token)
 {
 	struct mc_command cmd = { 0 };
 
@@ -130,8 +130,8 @@ int dpdmux_enable(struct fsl_mc_io *mc_io,
 }
 
 int dpdmux_disable(struct fsl_mc_io *mc_io,
-		   uint32_t cmd_flags,
-		   uint16_t token)
+		   u32 cmd_flags,
+		   u16 token)
 {
 	struct mc_command cmd = { 0 };
 
@@ -145,8 +145,8 @@ int dpdmux_disable(struct fsl_mc_io *mc_io,
 }
 
 int dpdmux_is_enabled(struct fsl_mc_io *mc_io,
-		      uint32_t cmd_flags,
-		      uint16_t token,
+		      u32 cmd_flags,
+		      u16 token,
 		      int *en)
 {
 	struct mc_command cmd = { 0 };
@@ -168,8 +168,8 @@ int dpdmux_is_enabled(struct fsl_mc_io *mc_io,
 }
 
 int dpdmux_reset(struct fsl_mc_io *mc_io,
-		 uint32_t cmd_flags,
-		 uint16_t token)
+		 u32 cmd_flags,
+		 u16 token)
 {
 	struct mc_command cmd = { 0 };
 
@@ -183,9 +183,9 @@ int dpdmux_reset(struct fsl_mc_io *mc_io,
 }
 
 int dpdmux_set_irq(struct fsl_mc_io	*mc_io,
-		   uint32_t		cmd_flags,
-		   uint16_t		token,
-		   uint8_t		irq_index,
+		   u32		cmd_flags,
+		   u16		token,
+		   u8		irq_index,
 		   struct dpdmux_irq_cfg *irq_cfg)
 {
 	struct mc_command cmd = { 0 };
@@ -201,9 +201,9 @@ int dpdmux_set_irq(struct fsl_mc_io	*mc_io,
 }
 
 int dpdmux_get_irq(struct fsl_mc_io *mc_io,
-		   uint32_t cmd_flags,
-		   uint16_t		token,
-		   uint8_t		irq_index,
+		   u32 cmd_flags,
+		   u16		token,
+		   u8		irq_index,
 		   int			*type,
 		   struct dpdmux_irq_cfg *irq_cfg)
 {
@@ -228,10 +228,10 @@ int dpdmux_get_irq(struct fsl_mc_io *mc_io,
 }
 
 int dpdmux_set_irq_enable(struct fsl_mc_io *mc_io,
-			  uint32_t cmd_flags,
-			  uint16_t token,
-			  uint8_t irq_index,
-			  uint8_t en)
+			  u32 cmd_flags,
+			  u16 token,
+			  u8 irq_index,
+			  u8 en)
 {
 	struct mc_command cmd = { 0 };
 
@@ -246,10 +246,10 @@ int dpdmux_set_irq_enable(struct fsl_mc_io *mc_io,
 }
 
 int dpdmux_get_irq_enable(struct fsl_mc_io *mc_io,
-			  uint32_t cmd_flags,
-			  uint16_t token,
-			  uint8_t irq_index,
-			  uint8_t *en)
+			  u32 cmd_flags,
+			  u16 token,
+			  u8 irq_index,
+			  u8 *en)
 {
 	struct mc_command cmd = { 0 };
 	int err;
@@ -272,10 +272,10 @@ int dpdmux_get_irq_enable(struct fsl_mc_io *mc_io,
 }
 
 int dpdmux_set_irq_mask(struct fsl_mc_io *mc_io,
-			uint32_t cmd_flags,
-			uint16_t token,
-			uint8_t irq_index,
-			uint32_t mask)
+			u32 cmd_flags,
+			u16 token,
+			u8 irq_index,
+			u32 mask)
 {
 	struct mc_command cmd = { 0 };
 
@@ -290,10 +290,10 @@ int dpdmux_set_irq_mask(struct fsl_mc_io *mc_io,
 }
 
 int dpdmux_get_irq_mask(struct fsl_mc_io *mc_io,
-			uint32_t cmd_flags,
-			uint16_t token,
-			uint8_t irq_index,
-			uint32_t *mask)
+			u32 cmd_flags,
+			u16 token,
+			u8 irq_index,
+			u32 *mask)
 {
 	struct mc_command cmd = { 0 };
 	int err;
@@ -316,10 +316,10 @@ int dpdmux_get_irq_mask(struct fsl_mc_io *mc_io,
 }
 
 int dpdmux_get_irq_status(struct fsl_mc_io *mc_io,
-			  uint32_t cmd_flags,
-			  uint16_t token,
-			  uint8_t irq_index,
-			  uint32_t *status)
+			  u32 cmd_flags,
+			  u16 token,
+			  u8 irq_index,
+			  u32 *status)
 {
 	struct mc_command cmd = { 0 };
 	int err;
@@ -342,10 +342,10 @@ int dpdmux_get_irq_status(struct fsl_mc_io *mc_io,
 }
 
 int dpdmux_clear_irq_status(struct fsl_mc_io *mc_io,
-			    uint32_t cmd_flags,
-			    uint16_t token,
-			    uint8_t irq_index,
-			    uint32_t status)
+			    u32 cmd_flags,
+			    u16 token,
+			    u8 irq_index,
+			    u32 status)
 {
 	struct mc_command cmd = { 0 };
 
@@ -360,8 +360,8 @@ int dpdmux_clear_irq_status(struct fsl_mc_io *mc_io,
 }
 
 int dpdmux_get_attributes(struct fsl_mc_io *mc_io,
-			  uint32_t cmd_flags,
-			  uint16_t token,
+			  u32 cmd_flags,
+			  u16 token,
 			  struct dpdmux_attr *attr)
 {
 	struct mc_command cmd = { 0 };
@@ -384,9 +384,9 @@ int dpdmux_get_attributes(struct fsl_mc_io *mc_io,
 }
 
 int dpdmux_ul_set_max_frame_length(struct fsl_mc_io *mc_io,
-				   uint32_t cmd_flags,
-				   uint16_t token,
-				   uint16_t max_frame_length)
+				   u32 cmd_flags,
+				   u16 token,
+				   u16 max_frame_length)
 {
 	struct mc_command cmd = { 0 };
 
@@ -401,8 +401,8 @@ int dpdmux_ul_set_max_frame_length(struct fsl_mc_io *mc_io,
 }
 
 int dpdmux_ul_reset_counters(struct fsl_mc_io *mc_io,
-			     uint32_t cmd_flags,
-			     uint16_t token)
+			     u32 cmd_flags,
+			     u16 token)
 {
 	struct mc_command cmd = { 0 };
 
@@ -416,9 +416,9 @@ int dpdmux_ul_reset_counters(struct fsl_mc_io *mc_io,
 }
 
 int dpdmux_if_set_accepted_frames(struct fsl_mc_io *mc_io,
-				  uint32_t cmd_flags,
-				  uint16_t token,
-				  uint16_t if_id,
+				  u32 cmd_flags,
+				  u16 token,
+				  u16 if_id,
 				  const struct dpdmux_accepted_frames *cfg)
 {
 	struct mc_command cmd = { 0 };
@@ -434,9 +434,9 @@ int dpdmux_if_set_accepted_frames(struct fsl_mc_io *mc_io,
 }
 
 int dpdmux_if_get_attributes(struct fsl_mc_io *mc_io,
-			     uint32_t cmd_flags,
-			     uint16_t token,
-			     uint16_t if_id,
+			     u32 cmd_flags,
+			     u16 token,
+			     u16 if_id,
 			     struct dpdmux_if_attr *attr)
 {
 	struct mc_command cmd = { 0 };
@@ -460,9 +460,9 @@ int dpdmux_if_get_attributes(struct fsl_mc_io *mc_io,
 }
 
 int dpdmux_if_remove_l2_rule(struct fsl_mc_io *mc_io,
-			     uint32_t cmd_flags,
-			     uint16_t token,
-			     uint16_t if_id,
+			     u32 cmd_flags,
+			     u16 token,
+			     u16 if_id,
 			     const struct dpdmux_l2_rule *rule)
 {
 	struct mc_command cmd = { 0 };
@@ -478,9 +478,9 @@ int dpdmux_if_remove_l2_rule(struct fsl_mc_io *mc_io,
 }
 
 int dpdmux_if_add_l2_rule(struct fsl_mc_io *mc_io,
-			  uint32_t cmd_flags,
-			  uint16_t token,
-			  uint16_t if_id,
+			  u32 cmd_flags,
+			  u16 token,
+			  u16 if_id,
 			  const struct dpdmux_l2_rule *rule)
 {
 	struct mc_command cmd = { 0 };
@@ -496,11 +496,11 @@ int dpdmux_if_add_l2_rule(struct fsl_mc_io *mc_io,
 }
 
 int dpdmux_if_get_counter(struct fsl_mc_io		*mc_io,
-			  uint32_t			cmd_flags,
-			  uint16_t			token,
-			  uint16_t			if_id,
+			  u32			cmd_flags,
+			  u16			token,
+			  u16			if_id,
 			  enum dpdmux_counter_type	counter_type,
-			  uint64_t			*counter)
+			  u64			*counter)
 {
 	struct mc_command cmd = { 0 };
 	int err;
@@ -523,9 +523,9 @@ int dpdmux_if_get_counter(struct fsl_mc_io		*mc_io,
 }
 
 int dpdmux_if_set_link_cfg(struct fsl_mc_io *mc_io,
-			   uint32_t cmd_flags,
-			   uint16_t token,
-			   uint16_t if_id,
+			   u32 cmd_flags,
+			   u16 token,
+			   u16 if_id,
 			   struct dpdmux_link_cfg *cfg)
 {
 	struct mc_command cmd = { 0 };
@@ -541,9 +541,9 @@ int dpdmux_if_set_link_cfg(struct fsl_mc_io *mc_io,
 }
 
 int dpdmux_if_get_link_state(struct fsl_mc_io *mc_io,
-			     uint32_t cmd_flags,
-			     uint16_t token,
-			     uint16_t if_id,
+			     u32 cmd_flags,
+			     u16 token,
+			     u16 if_id,
 			     struct dpdmux_link_state *state)
 {
 	struct mc_command cmd = { 0 };
