@@ -124,10 +124,10 @@ int dpdmux_close(struct fsl_mc_io *mc_io,
  *
  * Return:	'0' on Success; Error code otherwise.
  */
-int dpdmux_create(struct fsl_mc_io	*mc_io,
-		  u16	dprc_token,
-		u32	cmd_flags,
-		const struct dpdmux_cfg	*cfg,
+int dpdmux_create(struct fsl_mc_io *mc_io,
+		  u16 dprc_token,
+		u32 cmd_flags,
+		const struct dpdmux_cfg *cfg,
 		u32 *obj_id)
 {
 	struct mc_command cmd = { 0 };
@@ -294,10 +294,10 @@ int dpdmux_reset(struct fsl_mc_io *mc_io,
  *
  * Return:	'0' on Success; Error code otherwise.
  */
-int dpdmux_set_irq(struct fsl_mc_io	*mc_io,
-		   u32		cmd_flags,
-		   u16		token,
-		   u8		irq_index,
+int dpdmux_set_irq(struct fsl_mc_io *mc_io,
+		   u32 cmd_flags,
+		   u16 token,
+		   u8 irq_index,
 		   struct dpdmux_irq_cfg *irq_cfg)
 {
 	struct mc_command cmd = { 0 };
@@ -326,9 +326,9 @@ int dpdmux_set_irq(struct fsl_mc_io	*mc_io,
  */
 int dpdmux_get_irq(struct fsl_mc_io *mc_io,
 		   u32 cmd_flags,
-		   u16		token,
-		   u8		irq_index,
-		   int			*type,
+		   u16 token,
+		   u8 irq_index,
+		   int *type,
 		   struct dpdmux_irq_cfg *irq_cfg)
 {
 	struct mc_command cmd = { 0 };
@@ -792,12 +792,12 @@ int dpdmux_if_add_l2_rule(struct fsl_mc_io *mc_io,
 *
 * Return:	'0' on Success; Error code otherwise.
 */
-int dpdmux_if_get_counter(struct fsl_mc_io		*mc_io,
-			  u32			cmd_flags,
-			  u16			token,
-			  u16			if_id,
-			  enum dpdmux_counter_type	counter_type,
-			  u64			*counter)
+int dpdmux_if_get_counter(struct fsl_mc_io *mc_io,
+			  u32 cmd_flags,
+			  u16 token,
+			  u16 if_id,
+			  enum dpdmux_counter_type counter_type,
+			  u64 *counter)
 {
 	struct mc_command cmd = { 0 };
 	int err;
