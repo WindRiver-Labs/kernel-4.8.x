@@ -126,9 +126,9 @@ int dpdmux_close(struct fsl_mc_io *mc_io,
  */
 int dpdmux_create(struct fsl_mc_io *mc_io,
 		  u16 dprc_token,
-		u32 cmd_flags,
-		const struct dpdmux_cfg *cfg,
-		u32 *obj_id)
+		  u32 cmd_flags,
+		  const struct dpdmux_cfg *cfg,
+		  u32 *obj_id)
 {
 	struct mc_command cmd = { 0 };
 	int err;
@@ -167,8 +167,8 @@ int dpdmux_create(struct fsl_mc_io *mc_io,
  */
 int dpdmux_destroy(struct fsl_mc_io *mc_io,
 		   u16 dprc_token,
-		u32 cmd_flags,
-		u32 object_id)
+		   u32 cmd_flags,
+		   u32 object_id)
 {
 	struct mc_command cmd = { 0 };
 
@@ -610,8 +610,8 @@ int dpdmux_get_attributes(struct fsl_mc_io *mc_io,
  */
 int dpdmux_set_max_frame_length(struct fsl_mc_io *mc_io,
 				u32 cmd_flags,
-				   u16 token,
-				   u16 max_frame_length)
+				u16 token,
+				u16 max_frame_length)
 {
 	struct mc_command cmd = { 0 };
 
