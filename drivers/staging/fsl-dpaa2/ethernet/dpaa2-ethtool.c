@@ -128,8 +128,8 @@ out:
 static int dpaa2_eth_set_settings(struct net_device *net_dev,
 				  struct ethtool_cmd *cmd)
 {
-	struct dpni_link_cfg cfg = {0};
 	struct dpaa2_eth_priv *priv = netdev_priv(net_dev);
+	struct dpni_link_cfg cfg = {0};
 	int err = 0;
 
 	netdev_dbg(net_dev, "Setting link parameters...");
@@ -139,7 +139,7 @@ static int dpaa2_eth_set_settings(struct net_device *net_dev,
 	 * the user know that.
 	 */
 	if (netif_running(net_dev)) {
-		netdev_info(net_dev, "Sorry, interface must be brought down first.\n");
+		netdev_warn(net_dev, "Sorry, interface must be brought down first.\n");
 		return -EACCES;
 	}
 
@@ -160,6 +160,84 @@ static int dpaa2_eth_set_settings(struct net_device *net_dev,
 		 */
 		netdev_dbg(net_dev, "ERROR %d setting link cfg", err);
 
+	return err;
+}
+
+static void dpaa2_eth_get_pauseparam(struct net_device *net_dev,
+				struct ethtool_pauseparam *pause)
+{
+	struct dpaa2_eth_priv *priv = netdev_priv(net_dev);
+	struct dpni_link_state state = {0};
+	int err;
+
+	err = dpni_get_link_state(priv->mc_io, 0, priv->mc_token, &state);
+	if (err)
+		netdev_dbg(net_dev, "ERROR %d getting link state", err);
+
+	/* TODO: handle pause frame autonegotiation */
+	pause->autoneg = 0;
+
+	pause->rx_pause = !!(state.options & DPNI_LINK_OPT_PAUSE);
+	pause->tx_pause = pause->rx_pause ^
+		!!(state.options & DPNI_LINK_OPT_ASYM_PAUSE);
+}
+
+static int dpaa2_eth_set_pauseparam(struct net_device *net_dev,
+				struct ethtool_pauseparam *pause)
+{
+	struct dpaa2_eth_priv *priv = netdev_priv(net_dev);
+	struct dpni_link_state state = {0};
+	struct dpni_link_cfg cfg = {0};
+	u32 current_tx_pause;
+	int err = 0;
+
+	err = dpni_get_link_state(priv->mc_io, 0, priv->mc_token, &state);
+	if (err) {
+		netdev_dbg(net_dev, "ERROR %d getting link state", err);
+		goto out;
+	}
+
+	/* If the DPNI is up and autonegotiation is active, the user
+	 * won't be able to change flow control settings.
+	 */
+	if ((state.options & DPNI_LINK_OPT_AUTONEG) && netif_running(net_dev)) {
+		netdev_warn(net_dev,
+		"ERROR disable interface autonegotiation first.\n");
+		return -EACCES;
+	}
+
+	cfg.rate = state.rate;
+	cfg.options = state.options;
+	current_tx_pause = !!(cfg.options & DPNI_LINK_OPT_PAUSE) ^
+			   !!(cfg.options & DPNI_LINK_OPT_ASYM_PAUSE);
+
+	if (pause->rx_pause)
+		cfg.options |= DPNI_LINK_OPT_PAUSE;
+	else
+		cfg.options &= ~DPNI_LINK_OPT_PAUSE;
+
+	if (pause->rx_pause ^ pause->tx_pause)
+		cfg.options |= DPNI_LINK_OPT_ASYM_PAUSE;
+	else
+		cfg.options &= ~DPNI_LINK_OPT_ASYM_PAUSE;
+
+	err = dpni_set_link_cfg(priv->mc_io, 0, priv->mc_token, &cfg);
+	if (err) {
+		/* ethtool will be loud enough if we return an error; no point
+		 * in putting our own error message on the console by default
+		 */
+		netdev_dbg(net_dev, "ERROR %d setting link cfg", err);
+		goto out;
+	}
+
+	/* Enable / disable taildrops if Tx pause frames have changed */
+	if (current_tx_pause == pause->tx_pause)
+		goto out;
+
+	err = setup_fqs_taildrop(priv, !pause->tx_pause);
+	if (err)
+		netdev_dbg(net_dev, "ERROR %d configuring taildrop", err);
+out:
 	return err;
 }
 
@@ -762,6 +840,8 @@ const struct ethtool_ops dpaa2_ethtool_ops = {
 	.get_link = ethtool_op_get_link,
 	.get_settings = dpaa2_eth_get_settings,
 	.set_settings = dpaa2_eth_set_settings,
+	.get_pauseparam = dpaa2_eth_get_pauseparam,
+	.set_pauseparam = dpaa2_eth_set_pauseparam,
 	.get_sset_count = dpaa2_eth_get_sset_count,
 	.get_ethtool_stats = dpaa2_eth_get_ethtool_stats,
 	.get_strings = dpaa2_eth_get_strings,
