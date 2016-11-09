@@ -83,9 +83,14 @@
  * to accommodate the buffer refill delay.
  */
 #define DPAA2_ETH_MAX_FRAMES_PER_QUEUE	(DPAA2_ETH_TAILDROP_THRESH / 64)
-#define DPAA2_ETH_NUM_BUFS		(DPAA2_ETH_MAX_FRAMES_PER_QUEUE + 256)
-#define DPAA2_ETH_REFILL_THRESH	\
-	(DPAA2_ETH_NUM_BUFS - DPAA2_ETH_BUFS_PER_CMD)
+#define DPAA2_ETH_NUM_BUFS_TD		(DPAA2_ETH_MAX_FRAMES_PER_QUEUE + 256)
+#define DPAA2_ETH_REFILL_THRESH_TD	\
+	(DPAA2_ETH_NUM_BUFS_TD - DPAA2_ETH_BUFS_PER_CMD)
+
+/* Buffer quota per queue to use when flow control is active. */
+#define DPAA2_ETH_NUM_BUFS_FC		32
+#define DPAA2_ETH_REFILL_THRESH_FC	\
+	(DPAA2_ETH_NUM_BUFS_FC - DPAA2_ETH_BUFS_PER_CMD)
 
 /* Hardware requires alignment for ingress/egress buffer addresses
  * and ingress buffer lengths.
@@ -376,6 +381,9 @@ struct dpaa2_eth_priv {
 	u16 bpid;
 	u16 tx_qdid;
 
+	int num_bufs;
+	int refill_thresh;
+
 	u8 num_fqs;
 	/* Tx queues are at the beginning of the array */
 	struct dpaa2_eth_fq fq[DPAA2_ETH_MAX_QUEUES];
@@ -443,4 +451,5 @@ static inline int dpaa2_eth_queue_count(struct dpaa2_eth_priv *priv)
 
 void check_cls_support(struct dpaa2_eth_priv *priv);
 
+int setup_fqs_taildrop(struct dpaa2_eth_priv *priv, bool enable);
 #endif	/* __DPAA2_H */

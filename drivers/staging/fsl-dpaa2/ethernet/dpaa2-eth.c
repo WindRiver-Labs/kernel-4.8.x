@@ -944,7 +944,7 @@ static int seed_pool(struct dpaa2_eth_priv *priv, u16 bpid)
 	 */
 	preempt_disable();
 	for (j = 0; j < priv->num_channels; j++) {
-		for (i = 0; i < DPAA2_ETH_NUM_BUFS;
+		for (i = 0; i < priv->num_bufs;
 		     i += DPAA2_ETH_BUFS_PER_CMD) {
 			new_count = add_bufs(priv, bpid);
 			priv->channel[j]->buf_count += new_count;
@@ -1009,7 +1009,7 @@ static int refill_pool(struct dpaa2_eth_priv *priv,
 {
 	int new_count;
 
-	if (likely(ch->buf_count >= DPAA2_ETH_REFILL_THRESH))
+	if (likely(ch->buf_count >= priv->refill_thresh))
 		return 0;
 
 	do {
@@ -1019,9 +1019,9 @@ static int refill_pool(struct dpaa2_eth_priv *priv,
 			break;
 		}
 		ch->buf_count += new_count;
-	} while (ch->buf_count < DPAA2_ETH_NUM_BUFS);
+	} while (ch->buf_count < priv->num_bufs);
 
-	if (unlikely(ch->buf_count < DPAA2_ETH_NUM_BUFS))
+	if (unlikely(ch->buf_count < priv->num_bufs))
 		return -ENOMEM;
 
 	return 0;
@@ -2078,6 +2078,9 @@ static int setup_dpni(struct fsl_mc_device *ls_dev)
 	if (!priv->cls_rule)
 		goto err_cls_rule;
 
+	priv->num_bufs = DPAA2_ETH_NUM_BUFS_TD;
+	priv->refill_thresh = DPAA2_ETH_REFILL_THRESH_TD;
+
 	return 0;
 
 err_cls_rule:
@@ -2106,6 +2109,40 @@ static void free_dpni(struct dpaa2_eth_priv *priv)
 	kfree(priv->cls_rule);
 }
 
+int setup_fqs_taildrop(struct dpaa2_eth_priv *priv,
+		       bool enable)
+{
+	struct device *dev = priv->net_dev->dev.parent;
+	struct dpni_taildrop td;
+	int err = 0, i;
+
+	td.enable = enable;
+	td.threshold = DPAA2_ETH_TAILDROP_THRESH;
+
+	if (enable) {
+		priv->num_bufs = DPAA2_ETH_NUM_BUFS_TD;
+		priv->refill_thresh = DPAA2_ETH_REFILL_THRESH_TD;
+	} else {
+		priv->num_bufs = DPAA2_ETH_NUM_BUFS_FC;
+		priv->refill_thresh = DPAA2_ETH_REFILL_THRESH_FC;
+	}
+
+	for (i = 0; i < priv->num_fqs; i++) {
+		if (priv->fq[i].type != DPAA2_RX_FQ)
+			continue;
+
+		err = dpni_set_taildrop(priv->mc_io, 0, priv->mc_token,
+				DPNI_CP_QUEUE, DPNI_QUEUE_RX, 0,
+				priv->fq[i].flowid, &td);
+		if (err) {
+			dev_err(dev, "dpni_set_taildrop() failed (%d)\n", err);
+			break;
+		}
+	}
+
+	return err;
+}
+
 static int setup_rx_flow(struct dpaa2_eth_priv *priv,
 			 struct dpaa2_eth_fq *fq)
 {
@@ -2113,7 +2150,6 @@ static int setup_rx_flow(struct dpaa2_eth_priv *priv,
 	struct dpni_queue q = { { 0 } };
 	struct dpni_queue_id qid;
 	u8 q_opt = DPNI_QUEUE_OPT_USER_CTX | DPNI_QUEUE_OPT_DEST;
-	struct dpni_taildrop td;
 	int err;
 
 	err = dpni_get_queue(priv->mc_io, 0, priv->mc_token,
@@ -2133,15 +2169,6 @@ static int setup_rx_flow(struct dpaa2_eth_priv *priv,
 				     DPNI_QUEUE_RX, 0, fq->flowid, q_opt, &q);
 	if (err) {
 		dev_err(dev, "dpni_set_queue() failed (%d)\n", err);
-		return err;
-	}
-
-	td.enable = 1;
-	td.threshold = DPAA2_ETH_TAILDROP_THRESH;
-	err = dpni_set_taildrop(priv->mc_io, 0, priv->mc_token, DPNI_CP_QUEUE,
-			DPNI_QUEUE_RX, 0, fq->flowid, &td);
-	if (err) {
-		dev_err(dev, "dpni_set_taildrop() failed (%d)\n", err);
 		return err;
 	}
 
@@ -2423,6 +2450,13 @@ static int bind_dpni(struct dpaa2_eth_priv *priv)
 		}
 		if (err)
 			return err;
+	}
+
+	/* pause frames are disabled by default, so enable taildrops */
+	err = setup_fqs_taildrop(priv, true);
+	if (err) {
+		dev_err(dev, "setup_fqs_taildrop() failed\n");
+		return err;
 	}
 
 	err = dpni_get_qdid(priv->mc_io, 0, priv->mc_token, DPNI_QUEUE_TX,
