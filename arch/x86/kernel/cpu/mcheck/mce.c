@@ -1783,6 +1783,14 @@ static void mce_start_timer(unsigned int cpu, struct hrtimer *t)
 			0, HRTIMER_MODE_REL_PINNED);
 }
 
+static void __mcheck_cpu_setup_timer(void)
+{
+	struct timer_list *t = this_cpu_ptr(&mce_timer);
+	unsigned int cpu = smp_processor_id();
+
+	setup_pinned_timer(t, mce_timer_fn, cpu);
+}
+
 static void __mcheck_cpu_init_timer(void)
 {
 	struct hrtimer *t = this_cpu_ptr(&mce_timer);
@@ -1835,7 +1843,7 @@ void mcheck_cpu_init(struct cpuinfo_x86 *c)
 	__mcheck_cpu_init_generic();
 	__mcheck_cpu_init_vendor(c);
 	__mcheck_cpu_init_clear_banks();
-	__mcheck_cpu_init_timer();
+	__mcheck_cpu_setup_timer();
 }
 
 /*
@@ -2527,30 +2535,27 @@ static void mce_device_remove(unsigned int cpu)
 }
 
 /* Make sure there are no machine checks on offlined CPUs. */
-static void mce_disable_cpu(void *h)
+static void mce_disable_cpu(void)
 {
-	unsigned long action = *(unsigned long *)h;
-
 	if (!mce_available(raw_cpu_ptr(&cpu_info)))
 		return;
 
 	hrtimer_cancel(this_cpu_ptr(&mce_timer));
 
-	if (!(action & CPU_TASKS_FROZEN))
+	if (!cpuhp_tasks_frozen)
 		cmci_clear();
 
 	vendor_disable_error_reporting();
 }
 
-static void mce_reenable_cpu(void *h)
+static void mce_reenable_cpu(void)
 {
-	unsigned long action = *(unsigned long *)h;
 	int i;
 
 	if (!mce_available(raw_cpu_ptr(&cpu_info)))
 		return;
 
-	if (!(action & CPU_TASKS_FROZEN))
+	if (!cpuhp_tasks_frozen)
 		cmci_reenable();
 	for (i = 0; i < mca_cfg.banks; i++) {
 		struct mce_bank *b = &mce_banks[i];
@@ -2569,6 +2574,7 @@ mce_cpu_callback(struct notifier_block *nfb, unsigned long action, void *hcpu)
 
 	switch (action & ~CPU_TASKS_FROZEN) {
 	case CPU_ONLINE:
+	case CPU_DOWN_FAILED:
 
 		mce_device_create(cpu);
 
@@ -2576,11 +2582,10 @@ mce_cpu_callback(struct notifier_block *nfb, unsigned long action, void *hcpu)
 			mce_device_remove(cpu);
 			return NOTIFY_BAD;
 		}
-
+		mce_reenable_cpu();
+		mce_start_timer(cpu, t);
 		break;
 	case CPU_DEAD:
-		mce_threshold_remove_device(cpu);
-		mce_device_remove(cpu);
 		mce_intel_hcpu_update(cpu);
 
 		/* intentionally ignoring frozen here */
@@ -2588,10 +2593,10 @@ mce_cpu_callback(struct notifier_block *nfb, unsigned long action, void *hcpu)
 			cmci_rediscover();
 		break;
 	case CPU_DOWN_PREPARE:
-		smp_call_function_single(cpu, mce_disable_cpu, &action, 1);
-		break;
-	case CPU_DOWN_FAILED:
-		smp_call_function_single(cpu, mce_reenable_cpu, &action, 1);
+		mce_disable_cpu();
+
+		mce_threshold_remove_device(cpu);
+		mce_device_remove(cpu);
 		break;
 	}
 
