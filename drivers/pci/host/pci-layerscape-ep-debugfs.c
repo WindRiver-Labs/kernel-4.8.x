@@ -57,10 +57,10 @@ struct ls_ep_test {
 	void __iomem		*cfg;
 	void __iomem		*buf;
 	void __iomem		*out;
-	dma_addr_t		cfg_addr;
-	dma_addr_t		buf_addr;
-	dma_addr_t		out_addr;
-	dma_addr_t		bus_addr;
+	phys_addr_t		cfg_addr;
+	phys_addr_t		buf_addr;
+	phys_addr_t		out_addr;
+	phys_addr_t		bus_addr;
 	struct task_struct	*thread;
 	spinlock_t		lock;
 	struct completion	done;
