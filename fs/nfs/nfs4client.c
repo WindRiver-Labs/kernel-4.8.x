@@ -187,7 +187,7 @@ struct nfs_client *nfs4_alloc_client(const struct nfs_client_initdata *cl_init)
 		goto error;
 
 	if (cl_init->minorversion > NFS4_MAX_MINOR_VERSION) {
-		err = -EPROTONOSUPPORT;
+		err = -EINVAL;
 		goto error;
 	}
 
