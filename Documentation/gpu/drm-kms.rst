@@ -297,6 +297,12 @@ Color Management Properties
 .. kernel-doc:: drivers/gpu/drm/drm_color_mgmt.c
    :export:
 
+Tile Group Property
+-------------------
+
+.. kernel-doc:: drivers/gpu/drm/drm_connector.c
+   :doc: Tile group
+
 Existing KMS Properties
 -----------------------
 
