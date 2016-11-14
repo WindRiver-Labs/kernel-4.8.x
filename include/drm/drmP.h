@@ -179,8 +179,8 @@ struct dma_buf_attachment;
 #define DRM_DEV_INFO(dev, fmt, ...)					\
 	drm_dev_printk(dev, KERN_INFO, DRM_UT_NONE, __func__, "", fmt,	\
 		       ##__VA_ARGS__)
-#define DRM_INFO(fmt, ...)						\
-	drm_printk(KERN_INFO, DRM_UT_NONE, __func__, "", fmt, ##__VA_ARGS__)
+#define DRM_INFO(fmt, ...)                             \
+	printk(KERN_INFO "[" DRM_NAME "] " fmt, ##__VA_ARGS__)
 
 #define DRM_DEV_INFO_ONCE(dev, fmt, ...)				\
 ({									\
@@ -710,10 +710,6 @@ void drm_clflush_virt_range(void *addr, unsigned long length);
  * These are exported to drivers so that they can implement fencing using
  * DMA quiscent + idle. DMA quiescent usually requires the hardware lock.
  */
-
-/* Modesetting support */
-extern void drm_vblank_pre_modeset(struct drm_device *dev, unsigned int pipe);
-extern void drm_vblank_post_modeset(struct drm_device *dev, unsigned int pipe);
 
 				/* Debugfs support */
 #if defined(CONFIG_DEBUG_FS)
