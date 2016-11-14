@@ -20,6 +20,17 @@ be setup by initializing the following fields.
 
 Display Modes Function Reference
 --------------------------------
+Mode Configuration
+
+KMS Core Structures and Functions
+=================================
+
+.. kernel-doc:: drivers/gpu/drm/drm_mode_config.c
+   :export:
+
+.. kernel-doc:: include/drm/drm_mode_config.h
+   :internal:
+
 Modeset Base Object Abstraction
 ===============================
 
@@ -29,12 +40,6 @@ Modeset Base Object Abstraction
 .. kernel-doc:: drivers/gpu/drm/drm_mode_object.c
    :export:
 
-.. kernel-doc:: include/drm/drm_modes.h
-   :internal:
-
-.. kernel-doc:: drivers/gpu/drm/drm_modes.c
-   :export:
-
 Atomic Mode Setting Function Reference
 --------------------------------------
 
@@ -42,6 +47,15 @@ Atomic Mode Setting Function Reference
    :export:
 
 .. kernel-doc:: drivers/gpu/drm/drm_atomic.c
+   :internal:
+
+CRTC Abstraction
+================
+
+.. kernel-doc:: drivers/gpu/drm/drm_crtc.c
+   :export:
+
+.. kernel-doc:: include/drm/drm_crtc.h
    :internal:
 
 Frame Buffer Abstraction
