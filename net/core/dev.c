@@ -4930,17 +4930,18 @@ void __napi_schedule_irqoff(struct napi_struct *n)
 }
 EXPORT_SYMBOL(__napi_schedule_irqoff);
 
-void __napi_complete(struct napi_struct *n)
+bool __napi_complete(struct napi_struct *n)
 {
 	BUG_ON(!test_bit(NAPI_STATE_SCHED, &n->state));
 
 	list_del_init(&n->poll_list);
 	smp_mb__before_atomic();
 	clear_bit(NAPI_STATE_SCHED, &n->state);
+	return true;
 }
 EXPORT_SYMBOL(__napi_complete);
 
-void napi_complete_done(struct napi_struct *n, int work_done)
+bool napi_complete_done(struct napi_struct *n, int work_done)
 {
 	unsigned long flags;
 
@@ -4949,7 +4950,7 @@ void napi_complete_done(struct napi_struct *n, int work_done)
 	 * just in case its running on a different cpu
 	 */
 	if (unlikely(test_bit(NAPI_STATE_NPSVC, &n->state)))
-		return;
+		return false;
 
 	if (n->gro_list) {
 		unsigned long timeout = 0;
@@ -4971,6 +4972,7 @@ void napi_complete_done(struct napi_struct *n, int work_done)
 		__napi_complete(n);
 		local_irq_restore(flags);
 	}
+	return true;
 }
 EXPORT_SYMBOL(napi_complete_done);
 
