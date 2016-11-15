@@ -203,8 +203,10 @@ static int __sii902x_get_edid(struct i2c_adapter *adp,
 		return -ENOMEM;
 
 	ret = __sii902x_read_edid(adp, edid, buf);
-	if (ret)
+	if (ret) {
+		kfree(edid);
 		return ret;
+	}
 
 	/* edid first block parsing */
 	memset(&fbi->monspecs, 0, sizeof(fbi->monspecs));
@@ -215,8 +217,10 @@ static int __sii902x_get_edid(struct i2c_adapter *adp,
 	if (num) {
 		buf[0] = 0x80;
 		ret = __sii902x_read_edid(adp, edid, buf);
-		if (ret)
+		if (ret) {
+			kfree(edid);
 			return ret;
+		}
 
 		fb_edid_add_monspecs(edid, &fbi->monspecs);
 	}
