@@ -1521,7 +1521,7 @@ static bool intel_hdmi_live_status(struct drm_connector *connector)
 	struct drm_device *dev = connector->dev;
 	struct intel_hdmi *intel_hdmi = intel_attached_hdmi(connector);
 
-	if (INTEL_INFO(dev)->gen > 6) {
+	if (INTEL_INFO(to_i915(dev))->gen > 6) {
 		/* Todo: Implement for other Gen 6+ archs*/
 		if (IS_VALLEYVIEW(to_i915(dev)))
 			return vlv_hdmi_live_status(dev, intel_hdmi);
