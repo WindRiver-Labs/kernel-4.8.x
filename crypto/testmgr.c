@@ -1087,7 +1087,7 @@ static int __test_tls(struct crypto_aead *tfm, int enc,
 		}
 
 		sg_init_one(&asg[0], assoc, template[i].alen);
-		aead_request_set_assoc(req, asg, template[i].alen);
+		aead_request_set_ad(req, template[i].alen);
 		aead_request_set_crypt(req, sg, (diff_dst) ? sgout : sg,
 				       template[i].ilen, iv);
 
