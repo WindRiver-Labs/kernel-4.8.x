@@ -1586,6 +1586,7 @@ intel_hdmi_detect(struct drm_connector *connector, bool force)
 	struct drm_i915_private *dev_priv = to_i915(connector->dev);
 	bool inform_audio = false;
 	struct drm_device *dev = connector->dev;
+	struct intel_hdmi *intel_hdmi;
 
 	DRM_DEBUG_KMS("[CONNECTOR:%d:%s]\n",
 		      connector->base.id, connector->name);
