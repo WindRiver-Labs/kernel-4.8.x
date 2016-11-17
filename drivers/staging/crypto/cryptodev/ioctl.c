@@ -47,6 +47,7 @@
 #include <linux/scatterlist.h>
 #include <linux/rtnetlink.h>
 #include <crypto/authenc.h>
+#include <crypto/skcipher.h>
 
 #include <linux/sysctl.h>
 
@@ -765,7 +766,7 @@ static int get_session_info(struct fcrypt *fcr, struct session_info_op *siop)
 
 	if (ses_ptr->cdata.init) {
 		if (ses_ptr->cdata.aead == 0)
-			tfm = crypto_ablkcipher_tfm(ses_ptr->cdata.async.s);
+			tfm = crypto_skcipher_tfm(ses_ptr->cdata.async.s);
 		else
 			tfm = crypto_aead_tfm(ses_ptr->cdata.async.as);
 		tfm_info_to_alg_info(&siop->cipher_info, tfm);
