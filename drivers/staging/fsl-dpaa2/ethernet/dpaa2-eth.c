@@ -293,7 +293,7 @@ static void dpaa2_eth_rx(struct dpaa2_eth_priv *priv,
 	skb_record_rx_queue(skb, queue_id);
 
 	percpu_stats->rx_packets++;
-	percpu_stats->rx_bytes += skb->len;
+	percpu_stats->rx_bytes += dpaa2_fd_get_len(fd);
 
 	if (priv->net_dev->features & NETIF_F_GRO)
 		napi_gro_receive(napi, skb);
