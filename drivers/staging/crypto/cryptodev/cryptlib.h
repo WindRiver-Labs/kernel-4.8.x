@@ -10,8 +10,8 @@ struct cipher_data {
 	int alignmask;
 	struct {
 		/* block ciphers */
-		struct crypto_ablkcipher *s;
-		struct ablkcipher_request *request;
+		struct crypto_skcipher *s;
+		struct skcipher_request *request;
 
 		/* AEAD ciphers */
 		struct crypto_aead *as;
