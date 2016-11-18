@@ -53,7 +53,7 @@ struct regmap {
 	union {
 		struct mutex mutex;
 		struct {
-			spinlock_t spinlock;
+			raw_spinlock_t spinlock;
 			unsigned long spinlock_flags;
 		};
 	};
