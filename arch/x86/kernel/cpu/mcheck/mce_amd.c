@@ -1335,6 +1335,9 @@ static __init int threshold_init_device(void)
 {
 	unsigned lcpu = 0;
 
+	if (mce_threshold_vector == amd_threshold_interrupt)
+		thresholding_en = true;
+
 	/* to hit CPUs online before the notifier is up */
 	for_each_online_cpu(lcpu) {
 		int err = mce_threshold_create_device(lcpu);
@@ -1342,8 +1345,6 @@ static __init int threshold_init_device(void)
 		if (err)
 			return err;
 	}
-
-	thresholding_en = true;
 
 	return 0;
 }
