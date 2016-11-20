@@ -1134,7 +1134,13 @@
 	};
 
 /include/ "elo3-dma-0.dtsi"
+	dma@100300 {
+		fsl,external-dma-control-signals;
+	};
 /include/ "elo3-dma-1.dtsi"
+	dma@101300 {
+		fsl,external-dma-control-signals;
+	};
 /include/ "elo3-dma-2.dtsi"
 
 /include/ "qoriq-espi-0.dtsi"

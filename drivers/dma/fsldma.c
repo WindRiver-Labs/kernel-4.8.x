@@ -1358,12 +1358,19 @@ static int fsldma_of_probe(struct platform_device *op)
 	fdev->irq = irq_of_parse_and_map(op->dev.of_node, 0);
 
 	dma_cap_set(DMA_MEMCPY, fdev->common.cap_mask);
-	dma_cap_set(DMA_SG, fdev->common.cap_mask);
+
 	dma_cap_set(DMA_SLAVE, fdev->common.cap_mask);
+
+	if (of_get_property(op->dev.of_node,
+		"fsl,external-dma-control-signals", NULL)) {
+		dma_cap_set(DMA_SG, fdev->common.cap_mask);
+		fdev->common.device_prep_dma_sg = fsl_dma_prep_sg;
+	} else
+		dma_cap_clear(DMA_SG, fdev->common.cap_mask);
+
 	fdev->common.device_alloc_chan_resources = fsl_dma_alloc_chan_resources;
 	fdev->common.device_free_chan_resources = fsl_dma_free_chan_resources;
 	fdev->common.device_prep_dma_memcpy = fsl_dma_prep_memcpy;
-	fdev->common.device_prep_dma_sg = fsl_dma_prep_sg;
 	fdev->common.device_tx_status = fsl_tx_status;
 	fdev->common.device_issue_pending = fsl_dma_memcpy_issue_pending;
 	fdev->common.device_config = fsl_dma_device_config;
