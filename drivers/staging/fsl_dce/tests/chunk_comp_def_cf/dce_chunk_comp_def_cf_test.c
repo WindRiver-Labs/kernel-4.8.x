@@ -629,7 +629,6 @@ fail_init_test_ctx:
 
 /* this section can't be added before deflate fail section
 as it would cause seg fault */
-fail_inflate_process:
 	detach_data_list_from_sg(&inf_process_req->dce_cf[1],
 		&inf_process_req->input_data,
 		DMA_BIDIRECTIONAL);

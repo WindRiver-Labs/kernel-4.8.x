@@ -408,7 +408,7 @@ __acquires(&map->spinlock)
 	struct regmap *map = __map;
 	unsigned long flags;
 
-	spin_lock_irqsave(&map->spinlock, flags);
+	raw_spin_lock_irqsave(&map->spinlock, flags);
 	map->spinlock_flags = flags;
 }
 
@@ -416,7 +416,7 @@ static void regmap_unlock_spinlock(void *__map)
 __releases(&map->spinlock)
 {
 	struct regmap *map = __map;
-	spin_unlock_irqrestore(&map->spinlock, map->spinlock_flags);
+	raw_spin_unlock_irqrestore(&map->spinlock, map->spinlock_flags);
 }
 
 static void dev_get_regmap_release(struct device *dev, void *res)
@@ -607,7 +607,7 @@ struct regmap *__regmap_init(struct device *dev,
 	} else {
 		if ((bus && bus->fast_io) ||
 		    config->fast_io) {
-			spin_lock_init(&map->spinlock);
+			raw_spin_lock_init(&map->spinlock);
 			map->lock = regmap_lock_spinlock;
 			map->unlock = regmap_unlock_spinlock;
 			lockdep_set_class_and_name(&map->spinlock,
