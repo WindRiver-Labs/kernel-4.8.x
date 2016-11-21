@@ -228,7 +228,8 @@ static inline cputime_t clock_t_to_cputime(const unsigned long clk)
 	return (__force cputime_t) ct;
 }
 
-#define cputime64_to_clock_t(ct)	cputime_to_clock_t((cputime_t)(ct))
+#define cputime64_to_clock_t(ct)	\
+	(__force u64)(cputime_to_clock_t((cputime_t)(ct)))
 
 /*
  * PPC64 uses PACA which is task independent for storing accounting data while
