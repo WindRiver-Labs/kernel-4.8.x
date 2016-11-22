@@ -1961,6 +1961,21 @@ static int setup_dpni(struct fsl_mc_device *ls_dev)
 		goto err_get_attr;
 	}
 
+	/* Update number of logical FQs in netdev */
+	err = netif_set_real_num_tx_queues(net_dev,
+			dpaa2_eth_queue_count(priv));
+	if (err) {
+		dev_err(dev, "netif_set_real_num_tx_queues failed (%d)\n", err);
+		goto err_set_tx_queues;
+	}
+
+	err = netif_set_real_num_rx_queues(net_dev,
+			dpaa2_eth_queue_count(priv));
+	if (err) {
+		dev_err(dev, "netif_set_real_num_rx_queues failed (%d)\n", err);
+		goto err_set_rx_queues;
+	}
+
 	/* Configure our buffers' layout */
 	priv->buf_layout.options = DPNI_BUF_LAYOUT_OPT_PARSER_RESULT |
 					DPNI_BUF_LAYOUT_OPT_FRAME_STATUS |
@@ -2035,6 +2050,8 @@ static int setup_dpni(struct fsl_mc_device *ls_dev)
 err_cls_rule:
 err_data_offset:
 err_buf_layout:
+err_set_rx_queues:
+err_set_tx_queues:
 err_get_attr:
 err_reset:
 	dpni_close(priv->mc_io, 0, priv->mc_token);
