@@ -210,7 +210,8 @@ static struct sk_buff *build_frag_skb(struct dpaa2_eth_priv *priv,
 static void dpaa2_eth_rx(struct dpaa2_eth_priv *priv,
 			 struct dpaa2_eth_channel *ch,
 			 const struct dpaa2_fd *fd,
-			 struct napi_struct *napi)
+			 struct napi_struct *napi,
+			 u16 queue_id)
 {
 	dma_addr_t addr = dpaa2_fd_get_addr(fd);
 	u8 fd_format = dpaa2_fd_get_format(fd);
@@ -279,6 +280,12 @@ static void dpaa2_eth_rx(struct dpaa2_eth_priv *priv,
 
 	skb->protocol = eth_type_trans(skb, priv->net_dev);
 
+	/* Record Rx queue - this will be used when picking a Tx queue to
+	 * forward the frames. We're keeping flow affinity through the
+	 * network stack.
+	 */
+	skb_record_rx_queue(skb, queue_id);
+
 	percpu_stats->rx_packets++;
 	percpu_stats->rx_bytes += skb->len;
 
@@ -301,7 +308,8 @@ err_build_skb:
 static void dpaa2_eth_rx_err(struct dpaa2_eth_priv *priv,
 			     struct dpaa2_eth_channel *ch,
 			     const struct dpaa2_fd *fd,
-			     struct napi_struct *napi __always_unused)
+			     struct napi_struct *napi __always_unused,
+			     u16 queue_id __always_unused)
 {
 	struct device *dev = priv->net_dev->dev.parent;
 	dma_addr_t addr = dpaa2_fd_get_addr(fd);
@@ -377,7 +385,7 @@ static bool consume_frames(struct dpaa2_eth_channel *ch, int *rx_cleaned,
 		fq = (struct dpaa2_eth_fq *)dpaa2_dq_fqd_ctx(dq);
 		fq->stats.frames++;
 
-		fq->consume(priv, ch, fd, &ch->napi);
+		fq->consume(priv, ch, fd, &ch->napi, fq->flowid);
 		has_cleaned = true;
 
 		if (fq->type == DPAA2_TX_CONF_FQ)
@@ -668,7 +676,7 @@ static int dpaa2_eth_tx(struct sk_buff *skb, struct net_device *net_dev)
 	struct rtnl_link_stats64 *percpu_stats;
 	struct dpaa2_eth_drv_stats *percpu_extras;
 	struct dpaa2_eth_fq fq;
-	u16 queue_mapping;
+	u16 queue_mapping = skb_get_queue_mapping(skb);
 	int err, i;
 
 	percpu_stats = this_cpu_ptr(priv->percpu_stats);
@@ -715,10 +723,6 @@ static int dpaa2_eth_tx(struct sk_buff *skb, struct net_device *net_dev)
 	/* Tracing point */
 	trace_dpaa2_tx_fd(net_dev, &fd);
 
-	/* TxConf FQ selection primarily based on cpu affinity; this is
-	 * non-migratable context, so it's safe to call smp_processor_id().
-	 */
-	queue_mapping = smp_processor_id() % priv->dpni_attrs.num_queues;
 	fq = priv->fq[queue_mapping];
 	for (i = 0; i < (DPAA2_ETH_MAX_TX_QUEUES << 1); i++) {
 		err = dpaa2_io_service_enqueue_qd(NULL, priv->tx_qdid, 0,
@@ -753,7 +757,8 @@ err_alloc_headroom:
 static void dpaa2_eth_tx_conf(struct dpaa2_eth_priv *priv,
 			      struct dpaa2_eth_channel *ch,
 			      const struct dpaa2_fd *fd,
-			      struct napi_struct *napi __always_unused)
+			      struct napi_struct *napi __always_unused,
+			      u16 queue_id __always_unused)
 {
 	struct rtnl_link_stats64 *percpu_stats;
 	struct dpaa2_eth_drv_stats *percpu_extras;
