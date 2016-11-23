@@ -853,11 +853,13 @@ struct intel_hdmi {
 	uint32_t edid_mode_count;
 
 	void (*write_infoframe)(struct drm_encoder *encoder,
+				const struct intel_crtc_state *crtc_state,
 				enum hdmi_infoframe_type type,
 				const void *frame, ssize_t len);
 	void (*set_infoframes)(struct drm_encoder *encoder,
 			       bool enable,
-			       const struct drm_display_mode *adjusted_mode);
+			       const struct intel_crtc_state *crtc_state,
+			       const struct drm_connector_state *conn_state);
 	bool (*infoframe_enabled)(struct drm_encoder *encoder,
 				  const struct intel_crtc_state *pipe_config);
 };
