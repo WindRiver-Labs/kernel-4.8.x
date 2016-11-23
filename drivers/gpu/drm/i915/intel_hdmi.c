@@ -2112,16 +2112,14 @@ void i915_had_wq(struct work_struct *work)
 	}
 }
 
-void intel_hdmi_init(struct drm_device *dev,
+void intel_hdmi_init(struct drm_i915_private *dev_priv,
 		     i915_reg_t hdmi_reg, enum port port)
 {
-	struct drm_i915_private *dev_priv = to_i915(dev);
 	struct intel_digital_port *intel_dig_port;
 	struct intel_encoder *intel_encoder;
 	struct intel_connector *intel_connector;
 	/* Added for HDMI Audio */
 	struct hdmi_audio_priv *hdmi_priv;
-	struct drm_i915_private *dev_priv = dev->dev_private;
 	
 	intel_dig_port = kzalloc(sizeof(*intel_dig_port), GFP_KERNEL);
 	if (!intel_dig_port)
@@ -2136,8 +2134,9 @@ void intel_hdmi_init(struct drm_device *dev,
 
 	intel_encoder = &intel_dig_port->base;
 
-	drm_encoder_init(dev, &intel_encoder->base, &intel_hdmi_enc_funcs,
-			 DRM_MODE_ENCODER_TMDS, "HDMI %c", port_name(port));
+	drm_encoder_init(&dev_priv->drm, &intel_encoder->base,
+			 &intel_hdmi_enc_funcs, DRM_MODE_ENCODER_TMDS,
+			 "HDMI %c", port_name(port));
 
 	intel_encoder->compute_config = intel_hdmi_compute_config;
 	if (HAS_PCH_SPLIT(dev_priv)) {
@@ -2202,7 +2201,7 @@ void intel_hdmi_init(struct drm_device *dev,
 	if (!hdmi_priv) {
 		pr_err("failed to allocate memory");
 	} else {
-		hdmi_priv->dev = dev;
+		hdmi_priv->dev = &dev_priv->drm;
 		if (IS_CHERRYVIEW(dev_priv)) {
 			// FIXME: plb: looks wrong
 			// mapping between stream and Hdmi port ?
