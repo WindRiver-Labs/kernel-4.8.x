@@ -259,6 +259,10 @@ static void cdns_uart_handle_rx(void *dev_id, unsigned int isrstatus)
 				continue;
 		}
 
+#ifdef CONFIG_CONSOLE_POLL
+		if (port->poll_rx_cb && port->poll_rx_cb((unsigned char)data))
+			continue;
+#endif
 		if (uart_handle_sysrq_char(port, data))
 			continue;
 
