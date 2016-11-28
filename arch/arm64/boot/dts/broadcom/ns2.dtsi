@@ -852,7 +852,7 @@
 		};
 
 		usbphy0: usbphy@67010800 {
-			#phy-cells = <1>;
+			#phy-cells = <0>;
 			compatible = "brcm,ns2-usb2-phy";
 			reg = m0_idm_reset_ctl:  <0x67010800 0x4>,
 			   m0_idm_io_ctl_direct: <0x67010408 0x4>,
@@ -865,7 +865,7 @@
 		};
 
 		usbphy1: usbphy@67011800 {
-			#phy-cells = <1>;
+			#phy-cells = <0>;
 			compatible = "brcm,ns2-usb2-phy";
 			reg = m1_idm_reset_ctl:  <0x67011800 0x4>,
 			   m1_idm_io_ctl_direct: <0x67011408 0x4>,
