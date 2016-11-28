@@ -933,7 +933,7 @@ int send_ssp_cmd(struct snd_soc_dai *dai, const char *id, bool enable)
 	struct sst_data *drv = snd_soc_dai_get_drvdata(dai);
 	const struct sst_ssp_config *config;
 
-	dev_info(dai->dev, "Enter: enable=%d port_name=%s\n", enable, id);
+	dev_dbg(dai->dev, "Enter: enable=%d port_name=%s\n", enable, id);
 
 	SST_FILL_DEFAULT_DESTINATION(drv->ssp_cmd.header.dst);
 	drv->ssp_cmd.header.command_id = SBA_HW_SET_SSP;
