@@ -33,9 +33,6 @@
 #include "qman_private.h"
 #include <linux/highmem.h>
 #include <linux/of_reserved_mem.h>
-#ifndef CONFIG_ARM64
-#include <linux/fsl/svr.h>
-#endif
 
 /* Last updated for v00.800 of the BG */
 
@@ -360,11 +357,6 @@ static void qm_get_version(struct qman *qm, u16 *id, u8 *major, u8 *minor,
 static int qm_is_initalized(struct qman *qm, enum qm_memory memory)
 {
 	u32 offset = (memory == qm_memory_fqd) ? REG_FQD_BARE : REG_PFDR_BARE;
-#ifndef CONFIG_FMAN_ARM
-	u32 svr = mfspr(SPRN_SVR);
-	if (SVR_SOC_VER(svr) == SVR_T4240)
-		return 0;
-#endif
 	return __qm_in(qm, offset + REG_offset_BAR);
 }
 static void qm_reserve_memory(struct qman *qm, enum qm_memory memory, int zero)
