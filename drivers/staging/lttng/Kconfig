@@ -1,6 +1,10 @@
 config LTTNG
 	tristate "LTTng support"
 	depends on TRACEPOINTS
+	select VIRTUALIZATION if X86
+	select KVM if X86
+	select KVM_INTEL if X86
+	select KVM_AMD if X86
 	help
 	  LTTng is an open source tracing framework for Linux.
 
