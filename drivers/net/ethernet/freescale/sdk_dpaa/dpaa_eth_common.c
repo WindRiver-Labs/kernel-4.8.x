@@ -552,7 +552,20 @@ EXPORT_SYMBOL(dpa_remove);
 #if defined(CONFIG_KEXEC)
 void __cold dpa_shutdown(struct platform_device *of_dev)
 {
-	dpa_remove(of_dev);
+	struct device		*dev;
+	struct net_device	*net_dev;
+	struct dpa_priv_s	*priv;
+
+	dev = &of_dev->dev;
+	net_dev = dev_get_drvdata(dev);
+
+	priv = netdev_priv(net_dev);
+
+	dpa_fq_free(dev, &priv->dpa_fq_list);
+
+	dpa_bp_free(priv);
+
+	return;
 }
 #endif
 
