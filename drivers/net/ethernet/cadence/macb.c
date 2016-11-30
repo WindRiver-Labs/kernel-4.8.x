@@ -921,7 +921,7 @@ static int gem_rx(struct macb *bp, int budget)
 #endif
 		ctrl = desc->ctrl;
 
-		if (!rxused)
+		if (!rxused || !ctrl)
 			break;
 
 		bp->rx_tail++;
