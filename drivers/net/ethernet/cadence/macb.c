@@ -1921,11 +1921,15 @@ static int macb_ptp_enable(struct ptp_clock_info *ptp,
 
 static void macb_ptp_close(struct macb *bp)
 {
+	unsigned long flags;
+
+	spin_lock_irqsave(&bp->lock, flags);
 	/* Clear the time counters */
 	gem_writel(bp, 1588NS, 0);
 	gem_writel(bp, 1588S, 0);
 	gem_writel(bp, 1588ADJ, 0);
 	gem_writel(bp, 1588INCR, 0);
+	spin_unlock_irqrestore(&bp->lock, flags);
 
 	ptp_clock_unregister(bp->ptp_clock);
 }
@@ -2385,11 +2389,12 @@ static int macb_close(struct net_device *dev)
 
 	spin_lock_irqsave(&bp->lock, flags);
 	macb_reset_hw(bp);
+	netif_carrier_off(dev);
+	spin_unlock_irqrestore(&bp->lock, flags);
+
 	if ((gem_readl(bp, DCFG5) & GEM_BIT(TSU)) &&
 	    (bp->caps & MACB_CAPS_TSU))
 		macb_ptp_close(bp);
-	netif_carrier_off(dev);
-	spin_unlock_irqrestore(&bp->lock, flags);
 
 	macb_free_consistent(bp);
 
