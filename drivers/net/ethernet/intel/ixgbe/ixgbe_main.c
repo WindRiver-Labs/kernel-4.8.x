@@ -5836,8 +5836,6 @@ int ixgbe_setup_tx_resources(struct ixgbe_ring *tx_ring)
 	if (!tx_ring->tx_buffer_info)
 		goto err;
 
-	u64_stats_init(&tx_ring->syncp);
-
 	/* round up to nearest 4K */
 	tx_ring->size = tx_ring->count * sizeof(union ixgbe_adv_tx_desc);
 	tx_ring->size = ALIGN(tx_ring->size, 4096);
@@ -5919,8 +5917,6 @@ int ixgbe_setup_rx_resources(struct ixgbe_ring *rx_ring)
 		rx_ring->rx_buffer_info = vzalloc(size);
 	if (!rx_ring->rx_buffer_info)
 		goto err;
-
-	u64_stats_init(&rx_ring->syncp);
 
 	/* Round up to nearest 4K */
 	rx_ring->size = rx_ring->count * sizeof(union ixgbe_adv_rx_desc);
@@ -9755,6 +9751,12 @@ skip_sriov:
 	err = ixgbe_init_interrupt_scheme(adapter);
 	if (err)
 		goto err_sw_init;
+
+	for (i = 0; i < adapter->num_rx_queues; i++)
+		u64_stats_init(&adapter->rx_ring[i]->syncp);
+
+	for (i = 0; i < adapter->num_tx_queues; i++)
+		u64_stats_init(&adapter->tx_ring[i]->syncp);
 
 	/* WOL not supported for all devices */
 	adapter->wol = 0;
