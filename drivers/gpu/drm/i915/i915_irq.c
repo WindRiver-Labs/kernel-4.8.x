@@ -2523,7 +2523,7 @@ gen8_de_irq_handler(struct drm_i915_private *dev_priv, u32 master_ctl)
 				found = true;
 			}
 
-			if (IS_BROXTON(dev_priv)) {
+			if (IS_GEN9_LP(dev_priv)) {
 				tmp_mask = iir & BXT_DE_PORT_HOTPLUG_MASK;
 				if (tmp_mask) {
 					bxt_hpd_irq_handler(dev_priv, tmp_mask,
@@ -2539,7 +2539,7 @@ gen8_de_irq_handler(struct drm_i915_private *dev_priv, u32 master_ctl)
 				}
 			}
 
-			if (IS_BROXTON(dev_priv) && (iir & BXT_DE_PORT_GMBUS)) {
+			if (IS_GEN9_LP(dev_priv) && (iir & BXT_DE_PORT_GMBUS)) {
 				gmbus_irq_handler(dev_priv);
 				found = true;
 			}
@@ -3542,7 +3542,7 @@ static void gen8_de_irq_postinstall(struct drm_i915_private *dev_priv)
 				  GEN9_DE_PIPE_IRQ_FAULT_ERRORS;
 		de_port_masked |= GEN9_AUX_CHANNEL_B | GEN9_AUX_CHANNEL_C |
 				  GEN9_AUX_CHANNEL_D;
-		if (IS_BROXTON(dev_priv))
+		if (IS_GEN9_LP(dev_priv))
 			de_port_masked |= BXT_DE_PORT_GMBUS;
 	} else {
 		de_pipe_masked |= GEN8_PIPE_PRIMARY_FLIP_DONE |
@@ -3553,7 +3553,7 @@ static void gen8_de_irq_postinstall(struct drm_i915_private *dev_priv)
 					   GEN8_PIPE_FIFO_UNDERRUN;
 
 	de_port_enables = de_port_masked;
-	if (IS_BROXTON(dev_priv))
+	if (IS_GEN9_LP(dev_priv))
 		de_port_enables |= BXT_DE_PORT_HOTPLUG_MASK;
 	else if (IS_BROADWELL(dev_priv))
 		de_port_enables |= GEN8_PORT_DP_A_HOTPLUG;
@@ -4378,7 +4378,7 @@ void intel_irq_init(struct drm_i915_private *dev_priv)
 		dev->driver->irq_uninstall = gen8_irq_uninstall;
 		dev->driver->enable_vblank = gen8_enable_vblank;
 		dev->driver->disable_vblank = gen8_disable_vblank;
-		if (IS_BROXTON(dev_priv))
+		if (IS_GEN9_LP(dev_priv))
 			dev_priv->display.hpd_irq_setup = bxt_hpd_irq_setup;
 		else if (HAS_PCH_SPT(dev_priv) || HAS_PCH_KBP(dev_priv))
 			dev_priv->display.hpd_irq_setup = spt_hpd_irq_setup;
