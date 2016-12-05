@@ -56,6 +56,12 @@
 #define ETHSW_VLAN_PVID		4
 #define ETHSW_VLAN_GLOBAL	8
 
+
+/* Maximum Frame Length supported by HW (currently 10k) */
+#define DPAA2_MFL		(10 * 1024)
+#define ETHSW_MAX_FRAME_LENGTH	(DPAA2_MFL - VLAN_ETH_HLEN - ETH_FCS_LEN)
+#define ETHSW_L2_MAX_FRM(mtu)	(mtu + VLAN_ETH_HLEN + ETH_FCS_LEN)
+
 struct ethsw_port_priv {
 	struct net_device	*netdev;
 	struct list_head	list;
@@ -1145,6 +1151,32 @@ error:
 	return storage;
 }
 
+static int ethsw_port_change_mtu(struct net_device *netdev, int mtu)
+{
+	struct ethsw_port_priv	*port_priv = netdev_priv(netdev);
+	int			err;
+
+	if (mtu < ETH_ZLEN || mtu > ETHSW_MAX_FRAME_LENGTH) {
+		netdev_err(netdev, "Invalid MTU %d. Valid range is: %d..%d\n",
+			   mtu, ETH_ZLEN, ETHSW_MAX_FRAME_LENGTH);
+		return -EINVAL;
+	}
+
+	err = dpsw_if_set_max_frame_length(port_priv->ethsw_priv->mc_io,
+					   0,
+					   port_priv->ethsw_priv->dpsw_handle,
+					   port_priv->port_index,
+					   (u16)ETHSW_L2_MAX_FRM(mtu));
+	if (err) {
+		netdev_err(netdev,
+			   "dpsw_if_set_max_frame_length() err %d\n", err);
+		return err;
+	}
+
+	netdev->mtu = mtu;
+	return 0;
+}
+
 static const struct net_device_ops ethsw_port_ops = {
 	.ndo_open		= &ethsw_port_open,
 	.ndo_stop		= &ethsw_port_stop,
@@ -1154,6 +1186,7 @@ static const struct net_device_ops ethsw_port_ops = {
 	.ndo_fdb_dump		= &ndo_dflt_fdb_dump,
 
 	.ndo_get_stats64	= &ethsw_port_get_stats,
+	.ndo_change_mtu		= &ethsw_port_change_mtu,
 
 	.ndo_start_xmit		= &ethsw_dropframe,
 };
