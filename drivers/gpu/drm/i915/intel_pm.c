@@ -1234,6 +1234,8 @@ static void vlv_pipe_set_fifo_size(struct intel_crtc *crtc)
 		      pipe_name(crtc->pipe), sprite0_start,
 		      sprite1_start, fifo_size);
 
+	spin_lock(&dev_priv->wm.dsparb_lock);
+
 	switch (crtc->pipe) {
 		uint32_t dsparb, dsparb2, dsparb3;
 	case PIPE_A:
@@ -1290,6 +1292,10 @@ static void vlv_pipe_set_fifo_size(struct intel_crtc *crtc)
 	default:
 		break;
 	}
+
+	POSTING_READ(DSPARB);
+
+	spin_unlock(&dev_priv->wm.dsparb_lock);
 }
 
 #undef VLV_FIFO
