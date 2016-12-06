@@ -76,6 +76,7 @@ int dpbp_open(struct fsl_mc_io *mc_io,
 
 	return err;
 }
+EXPORT_SYMBOL(dpbp_open);
 
 /**
  * dpbp_close() - Close the control session of the object
@@ -101,6 +102,7 @@ int dpbp_close(struct fsl_mc_io *mc_io,
 	/* send command to mc*/
 	return mc_send_command(mc_io, &cmd);
 }
+EXPORT_SYMBOL(dpbp_close);
 
 /**
  * dpbp_create() - Create the DPBP object.
@@ -196,6 +198,7 @@ int dpbp_enable(struct fsl_mc_io *mc_io,
 	/* send command to mc*/
 	return mc_send_command(mc_io, &cmd);
 }
+EXPORT_SYMBOL(dpbp_enable);
 
 /**
  * dpbp_disable() - Disable the DPBP.
@@ -218,6 +221,7 @@ int dpbp_disable(struct fsl_mc_io *mc_io,
 	/* send command to mc*/
 	return mc_send_command(mc_io, &cmd);
 }
+EXPORT_SYMBOL(dpbp_disable);
 
 /**
  * dpbp_is_enabled() - Check if the DPBP is enabled.
@@ -273,6 +277,7 @@ int dpbp_reset(struct fsl_mc_io *mc_io,
 	/* send command to mc*/
 	return mc_send_command(mc_io, &cmd);
 }
+EXPORT_SYMBOL(dpbp_reset);
 
 /**
  * dpbp_set_irq() - Set IRQ information for the DPBP to trigger an interrupt.
@@ -613,6 +618,7 @@ int dpbp_get_attributes(struct fsl_mc_io *mc_io,
 
 	return 0;
 }
+EXPORT_SYMBOL(dpbp_get_attributes);
 
 /**
  * dpbp_set_notifications() - Set notifications towards software
