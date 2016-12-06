@@ -58,6 +58,7 @@ int dpcon_open(struct fsl_mc_io *mc_io,
 
 	return 0;
 }
+EXPORT_SYMBOL(dpcon_open);
 
 int dpcon_close(struct fsl_mc_io *mc_io,
 		uint32_t cmd_flags,
@@ -73,6 +74,7 @@ int dpcon_close(struct fsl_mc_io *mc_io,
 	/* send command to mc*/
 	return mc_send_command(mc_io, &cmd);
 }
+EXPORT_SYMBOL(dpcon_close);
 
 int dpcon_create(struct fsl_mc_io *mc_io,
 		 uint16_t dprc_token,
@@ -131,6 +133,7 @@ int dpcon_enable(struct fsl_mc_io *mc_io,
 	/* send command to mc*/
 	return mc_send_command(mc_io, &cmd);
 }
+EXPORT_SYMBOL(dpcon_enable);
 
 int dpcon_disable(struct fsl_mc_io *mc_io,
 		  uint32_t cmd_flags,
@@ -146,6 +149,7 @@ int dpcon_disable(struct fsl_mc_io *mc_io,
 	/* send command to mc*/
 	return mc_send_command(mc_io, &cmd);
 }
+EXPORT_SYMBOL(dpcon_disable);
 
 int dpcon_is_enabled(struct fsl_mc_io *mc_io,
 		     uint32_t cmd_flags,
@@ -183,6 +187,7 @@ int dpcon_reset(struct fsl_mc_io *mc_io,
 	/* send command to mc*/
 	return mc_send_command(mc_io, &cmd);
 }
+EXPORT_SYMBOL(dpcon_reset);
 
 int dpcon_set_irq(struct fsl_mc_io	*mc_io,
 		  uint32_t		cmd_flags,
@@ -384,6 +389,7 @@ int dpcon_get_attributes(struct fsl_mc_io *mc_io,
 
 	return 0;
 }
+EXPORT_SYMBOL(dpcon_get_attributes);
 
 int dpcon_set_notification(struct fsl_mc_io *mc_io,
 			   uint32_t cmd_flags,
@@ -401,6 +407,7 @@ int dpcon_set_notification(struct fsl_mc_io *mc_io,
 	/* send command to mc*/
 	return mc_send_command(mc_io, &cmd);
 }
+EXPORT_SYMBOL(dpcon_set_notification);
 
 int dpcon_get_api_version(struct fsl_mc_io *mc_io,
 			  uint32_t cmd_flags,
