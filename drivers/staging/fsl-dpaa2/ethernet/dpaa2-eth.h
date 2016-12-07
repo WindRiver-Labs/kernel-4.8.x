@@ -417,6 +417,7 @@ struct dpaa2_eth_priv {
 #define DPAA2_CLASSIFIER_DMA_SIZE 256
 
 extern const struct ethtool_ops dpaa2_ethtool_ops;
+extern const char dpaa2_eth_drv_version[];
 
 static inline int dpaa2_eth_queue_count(struct dpaa2_eth_priv *priv)
 {
