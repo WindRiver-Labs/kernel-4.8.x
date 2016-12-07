@@ -90,7 +90,8 @@ static void dpaa2_eth_get_drvinfo(struct net_device *net_dev,
 				  struct ethtool_drvinfo *drvinfo)
 {
 	strlcpy(drvinfo->driver, KBUILD_MODNAME, sizeof(drvinfo->driver));
-	strlcpy(drvinfo->version, VERSION, sizeof(drvinfo->version));
+	strlcpy(drvinfo->version, dpaa2_eth_drv_version,
+		sizeof(drvinfo->version));
 	strlcpy(drvinfo->fw_version, "N/A", sizeof(drvinfo->fw_version));
 	strlcpy(drvinfo->bus_info, dev_name(net_dev->dev.parent->parent),
 		sizeof(drvinfo->bus_info));
