@@ -95,6 +95,7 @@ struct ns2_usb3_phy_master {
 	struct ns2_usb3_phy iphys[NS2_USB3_PHY_MAX];
 	struct mdio_device *mdiodev;
 	struct mutex phy_mutex;
+	int init_count; /* PHY is dual port phy, so init once*/
 };
 
 static int iproc_ns2_phy_action(struct ns2_usb3_phy *iphy,
@@ -104,6 +105,9 @@ static int iproc_ns2_phy_action(struct ns2_usb3_phy *iphy,
 	u32  data, count;
 	u32 offset = 0;
 	int ret = 0;
+
+	if (iphy->mphy->init_count)
+		return 0;
 
 	switch (block) {
 	case PHY_RESET:
@@ -138,19 +142,22 @@ static int iproc_ns2_phy_action(struct ns2_usb3_phy *iphy,
 
 	case PHY_SOFT_RESET:
 		addr = iphy->reg_base[NS2_USB3_PHY_CFG];
+		offset = NS2_USB3_PHY_P0CTL_REG;
 
-		switch (iphy->port_no) {
-		case 0:
-			offset = NS2_USB3_PHY_P0CTL_REG;
-			break;
+		ret = regmap_read(addr, offset, &data);
+		if (ret != 0)
+			return ret;
 
-		case 1:
-			offset = NS2_USB3_PHY_P1CTL_REG;
-			break;
+		if (assert)
+			data &= ~NS2_USB3_PHY_PXCTL_I_BIT;
+		else
+			data |= NS2_USB3_PHY_PXCTL_I_BIT;
 
-		default:
-			return -EINVAL;
-		}
+		ret = regmap_write(addr, offset, data);
+		if (ret != 0)
+			return ret;
+
+		offset = NS2_USB3_PHY_P1CTL_REG;
 
 		ret = regmap_read(addr, offset, &data);
 		if (ret != 0)
@@ -166,20 +173,22 @@ static int iproc_ns2_phy_action(struct ns2_usb3_phy *iphy,
 
 	case PHY_PIPE_RESET:
 		addr = iphy->reg_base[NS2_USB3_RST_CTRL];
+		offset = NS2_IDM_RST_CTRL_P0_OFFSET;
 
-		switch (iphy->port_no) {
-		case 0:
-			offset = NS2_IDM_RST_CTRL_P0_OFFSET;
-		break;
+		ret = regmap_read(addr, offset, &data);
+		if (ret != 0)
+			return ret;
 
-		case 1:
-			offset = NS2_IDM_RST_CTRL_P1_OFFSET;
-		break;
+		if (assert)
+			data |= NS2_IDM_RESET_CONTROL_BIT;
+		else
+			data &= ~NS2_IDM_RESET_CONTROL_BIT;
 
-		default:
-			return -EINVAL;
-		}
+		ret = regmap_write(addr, offset, data);
+		if (ret != 0)
+			return ret;
 
+		offset = NS2_IDM_RST_CTRL_P1_OFFSET;
 		ret = regmap_read(addr, offset, &data);
 		if (ret != 0)
 			return ret;
@@ -194,20 +203,22 @@ static int iproc_ns2_phy_action(struct ns2_usb3_phy *iphy,
 
 	case PHY_VBUS_PPC:
 		addr = iphy->reg_base[NS2_USB3_RST_CTRL];
+		offset = NS2_IDM_IO_CTRL_P0_OFFSET;
 
-		switch (iphy->port_no) {
-		case 0:
-			offset = NS2_IDM_IO_CTRL_P0_OFFSET;
-		break;
+		ret = regmap_read(addr, offset, &data);
+		if (ret != 0)
+			return ret;
 
-		case 1:
-			offset = NS2_IDM_IO_CTRL_P1_OFFSET;
-		break;
+		if (assert)
+			data |= NS2_IDM_IO_CTRL_PPC_CFG;
+		else
+			data &= ~NS2_IDM_IO_CTRL_PPC_CFG;
 
-		default:
-			return -EINVAL;
-		}
+		ret = regmap_write(addr, offset, data);
+		if (ret != 0)
+			return ret;
 
+		offset = NS2_IDM_IO_CTRL_P1_OFFSET;
 		ret = regmap_read(addr, offset, &data);
 		if (ret != 0)
 			return ret;
@@ -294,6 +305,36 @@ static int iproc_ns2_phy_action(struct ns2_usb3_phy *iphy,
 	}
 
 	return ret;
+}
+
+static int ns2_usb3_phy_exit(struct phy *phy)
+{
+	struct ns2_usb3_phy *iphy = phy_get_drvdata(phy);
+	int rc = 0;
+
+	mutex_lock(&iphy->mphy->phy_mutex);
+
+	rc = iproc_ns2_phy_action(iphy, PHY_PLL_RESET, true);
+	if (rc)
+		goto out;
+
+	rc = iproc_ns2_phy_action(iphy, PHY_SOFT_RESET, true);
+	if (rc)
+		goto out;
+
+	rc = iproc_ns2_phy_action(iphy, PHY_RESET, true);
+	if (rc)
+		goto out;
+
+	rc = iproc_ns2_phy_action(iphy, PHY_PIPE_RESET, true);
+	if (rc)
+		goto out;
+	mdelay(10);
+out:
+	iphy->mphy->init_count--;
+	mutex_unlock(&iphy->mphy->phy_mutex);
+
+	return rc;
 }
 
 static int ns2_usb3_phy_init(struct phy *phy)
@@ -403,7 +444,9 @@ static int ns2_usb3_phy_init(struct phy *phy)
 
 	/* Set USB3H VBUS PPC Polarity and NandNor select */
 	rc = iproc_ns2_phy_action(iphy, PHY_VBUS_PPC, true);
+
 out:
+	iphy->mphy->init_count++;
 	mutex_unlock(&iphy->mphy->phy_mutex);
 
 	return rc;
@@ -411,6 +454,7 @@ out:
 
 static struct phy_ops ns2_usb3_phy_ops = {
 	.init = ns2_usb3_phy_init,
+	.exit = ns2_usb3_phy_exit,
 	.owner = THIS_MODULE,
 };
 
@@ -427,6 +471,7 @@ static int ns2_usb3_phy_probe(struct mdio_device *mdiodev)
 		return -ENOMEM;
 	mphy->mdiodev = mdiodev;
 	mutex_init(&mphy->phy_mutex);
+	mphy->init_count = 0;
 
 	cnt = 0;
 	for_each_available_child_of_node(dn, child) {

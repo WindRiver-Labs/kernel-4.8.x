@@ -56,12 +56,23 @@ static int xhci_priv_init_quirk(struct usb_hcd *hcd)
 
 static void xhci_plat_quirks(struct device *dev, struct xhci_hcd *xhci)
 {
+	struct device_node *of_node = dev->of_node;
 	/*
 	 * As of now platform drivers don't provide MSI support so we ensure
 	 * here that the generic code does not try to make a pci_dev from our
 	 * dev struct in order to setup MSI
 	 */
 	xhci->quirks |= XHCI_PLAT;
+
+	/*
+	 * For upstreaming this will have to move to xhci-brcm.c kind of
+	 * file for quirks. Adding it here for the current release for
+	 * Power Management Support.
+	 */
+	if (of_node &&
+	    of_property_read_bool(of_node, "needs-reset-on-resume")) {
+		xhci->quirks |= XHCI_RESET_ON_RESUME;
+	}
 }
 
 /* called during probe() after chip reset completes */
