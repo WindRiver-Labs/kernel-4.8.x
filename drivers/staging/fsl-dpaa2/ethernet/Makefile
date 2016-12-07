@@ -1,10 +1,6 @@
 #
 # Makefile for the Freescale DPAA Ethernet controllers
 #
-# Copyright (C) 2014-2015 Freescale Semiconductor, Inc.
-#
-# This file is released under the GPLv2
-#
 
 ccflags-y += -DVERSION=\"\"
 
