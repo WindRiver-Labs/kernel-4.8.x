@@ -649,6 +649,10 @@ EXPORT_SYMBOL_GPL(dma_buf_unmap_attachment);
  * @dmabuf:	[in]	buffer to prepare cpu access for.
  * @direction:	[in]	length of range for cpu access.
  *
+ * After the cpu access is complete the caller should call
+ * dma_buf_end_cpu_access(). Only when cpu access is braketed by both calls is
+ * it guaranteed to be coherent with other DMA access.
+ *
  * Can return negative error values, returns 0 on success.
  */
 int dma_buf_begin_cpu_access(struct dma_buf *dmabuf,
@@ -673,6 +677,8 @@ EXPORT_SYMBOL_GPL(dma_buf_begin_cpu_access);
  * specified access direction.
  * @dmabuf:	[in]	buffer to complete cpu access for.
  * @direction:	[in]	length of range for cpu access.
+ *
+ * This terminates CPU access started with dma_buf_begin_cpu_access().
  *
  * Can return negative error values, returns 0 on success.
  */
