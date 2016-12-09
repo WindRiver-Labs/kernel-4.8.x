@@ -1,6 +1,6 @@
 config LTTNG
 	tristate "LTTng support"
-	depends on TRACEPOINTS
+	select TRACEPOINTS
 	select VIRTUALIZATION if X86
 	select KVM if X86
 	select KVM_INTEL if X86
