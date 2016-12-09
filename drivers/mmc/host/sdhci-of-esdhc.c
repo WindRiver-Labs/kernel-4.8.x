@@ -19,6 +19,7 @@
 #include <linux/delay.h>
 #include <linux/module.h>
 #include <linux/of_address.h>
+#include <linux/clk.h>
 #include <linux/fsl/svr.h>
 #include <linux/fsl/guts.h>
 #include <linux/mmc/host.h>
@@ -960,6 +961,7 @@ static void esdhc_init(struct platform_device *pdev, struct sdhci_host *host)
 	struct sdhci_pltfm_host *pltfm_host;
 	struct sdhci_esdhc *esdhc;
 	struct device_node *np;
+	struct clk *clk;
 	const __be32 *val;
 	int size;
 	u16 host_ver;
@@ -983,8 +985,13 @@ static void esdhc_init(struct platform_device *pdev, struct sdhci_host *host)
 		esdhc->adapter_type = be32_to_cpup(val);
 
 	val = of_get_property(np, "peripheral-frequency", &size);
-	if (val && size == sizeof(*val) && *val)
+	if (val && size == sizeof(*val) && *val) {
 		esdhc->peripheral_clock = be32_to_cpup(val);
+	} else {
+		clk = of_clk_get(np, 0);
+		if (!IS_ERR(clk))
+			esdhc->peripheral_clock = clk_get_rate(clk);
+	}
 }
 
 static int sdhci_esdhc_probe(struct platform_device *pdev)
