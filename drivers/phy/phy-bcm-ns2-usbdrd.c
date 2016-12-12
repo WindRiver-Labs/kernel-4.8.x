@@ -126,6 +126,21 @@ static int ns2_drd_phy_init(struct phy *phy)
 
 	spin_lock_irqsave(&driver->lock, flags);
 
+	/* Enable VBUS and ID Pins */
+	val = readl(driver->apbx_idm_io_ctrl);
+	val |= (VBUS_TO_GPIO_31 | USB_ID_TO_GPIO_30);
+	writel(val, driver->apbx_idm_io_ctrl);
+
+	/* Configure ICFG registers */
+	val = readl(driver->icfgdrd_regs + ICFG_STRAP_CTRL);
+	val |= STRAP_CTRL_VAL;
+	writel(val, driver->icfgdrd_regs + ICFG_STRAP_CTRL);
+
+	writel(DRD_AFE_VAL, driver->icfgdrd_regs + ICFG_DRD_AFE);
+
+	/* Configure IDM IO control register*/
+	writel(DRD_IOCTRL_VAL, driver->idmdrd_io_ctrl);
+
 	val = readl(driver->icfgdrd_regs + ICFG_FSM_CTRL);
 
 	if (data->new_state == EVT_HOST) {
@@ -235,6 +250,9 @@ static int ns2_drd_phy_poweron(struct phy *phy)
 		val = readl(driver->idmdrd_rst_ctrl);
 		val &= ~IDM_RST_BIT;
 		writel(val, driver->idmdrd_rst_ctrl);
+
+		/* Give hardware time to settle */
+		usleep_range(150, 300);
 
 		/* port over current Polarity */
 		val = readl(driver->usb2h_strap_reg);
@@ -418,7 +436,6 @@ static int ns2_drd_phy_probe(struct platform_device *pdev)
 	struct ns2_phy_data *data;
 	struct resource *res;
 	int ret;
-	u32 val;
 
 	driver = devm_kzalloc(dev, sizeof(struct ns2_phy_driver),
 			      GFP_KERNEL);
@@ -461,21 +478,6 @@ static int ns2_drd_phy_probe(struct platform_device *pdev)
 	driver->apbx_idm_io_ctrl = devm_ioremap_resource(dev, res);
 	if (IS_ERR(driver->apbx_idm_io_ctrl))
 		return PTR_ERR(driver->apbx_idm_io_ctrl);
-
-	/* Enable VBUS and ID Pins */
-	val = readl(driver->apbx_idm_io_ctrl);
-	val |= (VBUS_TO_GPIO_31 | USB_ID_TO_GPIO_30);
-	writel(val, driver->apbx_idm_io_ctrl);
-
-	/* Configure ICFG registers */
-	val = readl(driver->icfgdrd_regs + ICFG_STRAP_CTRL);
-	val |= STRAP_CTRL_VAL;
-	writel(val, driver->icfgdrd_regs + ICFG_STRAP_CTRL);
-
-	writel(DRD_AFE_VAL, driver->icfgdrd_regs + ICFG_DRD_AFE);
-
-	/* Configure IDM IO control register*/
-	writel(DRD_IOCTRL_VAL, driver->idmdrd_io_ctrl);
 
 	 /* create extcon */
 	driver->id_gpiod = devm_gpiod_get(&pdev->dev, "id", GPIOD_IN);
@@ -541,12 +543,6 @@ static int ns2_drd_phy_probe(struct platform_device *pdev)
 
 	dev_set_drvdata(dev, driver);
 	driver->host_mode = 0;
-
-	/* Shutdown all ports. They can be powered up as required */
-	val = readl(driver->crmu_usb2_ctrl);
-	val &= ~(AFE_CORERDY_VDDC | PHY_RESETB);
-	writel(val, driver->crmu_usb2_ctrl);
-
 	data = driver->data;
 	data->phy = devm_phy_create(dev, dev->of_node, &ops);
 	if (IS_ERR(data->phy)) {
