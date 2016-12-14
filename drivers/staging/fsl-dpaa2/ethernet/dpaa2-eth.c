@@ -810,6 +810,19 @@ static void dpaa2_eth_tx_conf(struct dpaa2_eth_priv *priv,
 			status & DPAA2_FAS_TX_ERR_MASK);
 }
 
+static u16 dpaa2_eth_select_queue(struct net_device *net_dev,
+		struct sk_buff *skb, void *accel_priv,
+		select_queue_fallback_t fallback)
+{
+	struct dpaa2_eth_priv *priv = netdev_priv(net_dev);
+
+	if (skb_rx_queue_recorded(skb))
+		return skb_get_rx_queue(skb);
+
+	/* to be revisited when this is called from preemptible cotext */
+	return smp_processor_id() % dpaa2_eth_queue_count(priv);
+}
+
 static int set_rx_csum(struct dpaa2_eth_priv *priv, bool enable)
 {
 	int err;
@@ -1563,6 +1576,7 @@ static int dpaa2_eth_ioctl(struct net_device *dev, struct ifreq *rq, int cmd)
 static const struct net_device_ops dpaa2_eth_ops = {
 	.ndo_open = dpaa2_eth_open,
 	.ndo_start_xmit = dpaa2_eth_tx,
+	.ndo_select_queue = dpaa2_eth_select_queue,
 	.ndo_stop = dpaa2_eth_stop,
 	.ndo_init = dpaa2_eth_init,
 	.ndo_set_mac_address = dpaa2_eth_set_addr,
