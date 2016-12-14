@@ -2715,21 +2715,9 @@ static void usb_put_invalidate_rhdev(struct usb_hcd *hcd)
 	usb_put_dev(rhdev);
 }
 
-/**
- * usb_add_hcd - finish generic HCD structure initialization and register
- * @hcd: the usb_hcd structure to initialize
- * @irqnum: Interrupt line to allocate
- * @irqflags: Interrupt type flags
- *
- * Finish the remaining parts of generic HCD initialization: allocate the
- * buffers of consistent memory, register the bus, request the IRQ line,
- * and call the driver's reset() and start() routines.
- */
-int usb_add_hcd(struct usb_hcd *hcd,
-		unsigned int irqnum, unsigned long irqflags)
+int usb_hcd_phy_init(struct usb_hcd *hcd)
 {
-	int retval;
-	struct usb_device *rhdev;
+	int retval = 0;
 
 	if (IS_ENABLED(CONFIG_USB_PHY) && !hcd->usb_phy) {
 		struct usb_phy *phy = usb_get_phy_dev(hcd->self.controller, 0);
@@ -2755,22 +2743,64 @@ int usb_add_hcd(struct usb_hcd *hcd,
 		if (IS_ERR(phy)) {
 			retval = PTR_ERR(phy);
 			if (retval == -EPROBE_DEFER)
-				goto err_phy;
+				return retval;
 		} else {
 			retval = phy_init(phy);
 			if (retval) {
 				phy_put(phy);
-				goto err_phy;
+				return retval;
 			}
 			retval = phy_power_on(phy);
 			if (retval) {
 				phy_exit(phy);
 				phy_put(phy);
-				goto err_phy;
+				return retval;
 			}
 			hcd->phy = phy;
 			hcd->remove_phy = 1;
 		}
+	}
+	return 0;
+}
+EXPORT_SYMBOL_GPL(usb_hcd_phy_init);
+
+void usb_hcd_phy_exit(struct usb_hcd *hcd)
+{
+	if (IS_ENABLED(CONFIG_GENERIC_PHY) && hcd->remove_phy && hcd->phy) {
+		phy_power_off(hcd->phy);
+		phy_exit(hcd->phy);
+		phy_put(hcd->phy);
+		hcd->phy = NULL;
+	}
+	if (hcd->remove_phy && hcd->usb_phy) {
+		usb_phy_shutdown(hcd->usb_phy);
+		usb_put_phy(hcd->usb_phy);
+		hcd->usb_phy = NULL;
+	}
+}
+EXPORT_SYMBOL_GPL(usb_hcd_phy_exit);
+
+/**
+ * usb_add_hcd - finish generic HCD structure initialization and register
+ * @hcd: the usb_hcd structure to initialize
+ * @irqnum: Interrupt line to allocate
+ * @irqflags: Interrupt type flags
+ *
+ * Finish the remaining parts of generic HCD initialization: allocate the
+ * buffers of consistent memory, register the bus, request the IRQ line,
+ * and call the driver's reset() and start() routines.
+ */
+int usb_add_hcd(struct usb_hcd *hcd,
+		unsigned int irqnum, unsigned long irqflags)
+{
+	int retval;
+	struct usb_device *rhdev;
+
+	retval = usb_hcd_phy_init(hcd);
+	if (retval != 0) {
+		dev_err(hcd->self.controller,
+			"%s: phy init failed\n", __func__);
+		goto err_phy;
 	}
 
 	dev_info(hcd->self.controller, "%s\n", hcd->product_desc);
@@ -3021,17 +3051,7 @@ void usb_remove_hcd(struct usb_hcd *hcd)
 	usb_deregister_bus(&hcd->self);
 	hcd_buffer_destroy(hcd);
 
-	if (IS_ENABLED(CONFIG_GENERIC_PHY) && hcd->remove_phy && hcd->phy) {
-		phy_power_off(hcd->phy);
-		phy_exit(hcd->phy);
-		phy_put(hcd->phy);
-		hcd->phy = NULL;
-	}
-	if (hcd->remove_phy && hcd->usb_phy) {
-		usb_phy_shutdown(hcd->usb_phy);
-		usb_put_phy(hcd->usb_phy);
-		hcd->usb_phy = NULL;
-	}
+	usb_hcd_phy_exit(hcd);
 
 	usb_put_invalidate_rhdev(hcd);
 }
