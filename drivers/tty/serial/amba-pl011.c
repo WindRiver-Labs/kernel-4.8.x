@@ -1683,9 +1683,24 @@ static void pl011_write_lcr_h(struct uart_amba_port *uap, unsigned int lcr_h)
 	}
 }
 
+static void pl011_int_trigger(unsigned long data);
+
+static struct timer_list pl011_int_trigger_timer =
+		TIMER_INITIALIZER(pl011_int_trigger, 0, 0);
+
+static void pl011_int_trigger(unsigned long data)
+{
+	struct uart_amba_port *uap =(struct uart_amba_port *)data;
+	pl011_int(uap->port.irq, uap);
+	mod_timer(&pl011_int_trigger_timer, jiffies + 1);
+}
+
 static int pl011_allocate_irq(struct uart_amba_port *uap)
 {
 	pl011_write(uap->im, uap, REG_IMSC);
+
+	pl011_int_trigger_timer.data = (unsigned long) uap;
+	mod_timer(&pl011_int_trigger_timer, jiffies + 1);
 
 	return request_irq(uap->port.irq, pl011_int, 0, "uart-pl011", uap);
 }
@@ -1831,6 +1846,8 @@ static void pl011_shutdown(struct uart_port *port)
 	pl011_dma_shutdown(uap);
 
 	free_irq(uap->port.irq, uap);
+
+	del_timer(&pl011_int_trigger_timer);
 
 	pl011_disable_uart(uap);
 
