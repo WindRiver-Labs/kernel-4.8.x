@@ -1929,10 +1929,6 @@ retry:
 	}
 
 	if (arg->flags & DRM_MODE_ATOMIC_TEST_ONLY) {
-		/*
-		 * Unlike commit, check_only does not clean up state.
-		 * Below we call drm_atomic_state_put for it.
-		 */
 		ret = drm_atomic_check_only(state);
 	} else if (arg->flags & DRM_MODE_ATOMIC_NONBLOCK) {
 		ret = drm_atomic_nonblocking_commit(state);
