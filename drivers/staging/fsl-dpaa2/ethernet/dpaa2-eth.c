@@ -2552,7 +2552,7 @@ static int netdev_init(struct net_device *net_dev)
 	 * forwarding path.
 	 */
 	rx_req_headroom = LL_RESERVED_SPACE(net_dev) - ETH_HLEN;
-	rx_headroom = ALIGN(DPAA2_ETH_HWA_SIZE + DPAA2_ETH_SWA_SIZE,
+	rx_headroom = ALIGN(DPAA2_ETH_RX_HWA_SIZE + DPAA2_ETH_SWA_SIZE,
 			DPAA2_ETH_RX_BUF_ALIGN);
 	if (rx_req_headroom > rx_headroom)
 		priv->rx_extra_head = ALIGN(rx_req_headroom - rx_headroom, 4);

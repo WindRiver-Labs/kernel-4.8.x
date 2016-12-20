@@ -91,7 +91,7 @@
  */
 #define DPAA2_ETH_RX_BUF_SIZE		2048
 #define DPAA2_ETH_TX_BUF_ALIGN		64
-#define DPAA2_ETH_RX_BUF_ALIGN		256
+#define DPAA2_ETH_RX_BUF_ALIGN		64
 #define DPAA2_ETH_NEEDED_HEADROOM(p_priv) \
 	((p_priv)->tx_data_offset + DPAA2_ETH_TX_BUF_ALIGN)
 
@@ -121,7 +121,8 @@
 /* Size of hardware annotation area based on the current buffer layout
  * configuration
  */
-#define DPAA2_ETH_HWA_SIZE		128
+#define DPAA2_ETH_RX_HWA_SIZE		64
+#define DPAA2_ETH_TX_HWA_SIZE		128
 
 /* Must keep this struct smaller than DPAA2_ETH_SWA_SIZE */
 struct dpaa2_eth_swa {
