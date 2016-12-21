@@ -374,7 +374,7 @@ struct dpaa2_eth_priv {
 	u16 rx_extra_head;
 
 	struct fsl_mc_device *dpbp_dev;
-	struct dpbp_attr dpbp_attrs;
+	u16 bpid;
 
 	u16 tx_qdid;
 	struct fsl_mc_io *mc_io;
