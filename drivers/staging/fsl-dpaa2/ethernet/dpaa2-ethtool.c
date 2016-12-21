@@ -300,7 +300,7 @@ static void dpaa2_eth_get_ethtool_stats(struct net_device *net_dev,
 	*(data + i++) = fcnt_tx_total;
 	*(data + i++) = bcnt_tx_total;
 
-	err = dpaa2_io_query_bp_count(NULL, priv->dpbp_attrs.bpid, &buf_cnt);
+	err = dpaa2_io_query_bp_count(NULL, priv->bpid, &buf_cnt);
 	if (err) {
 		netdev_warn(net_dev, "Buffer count query error %d\n", err);
 		return;
