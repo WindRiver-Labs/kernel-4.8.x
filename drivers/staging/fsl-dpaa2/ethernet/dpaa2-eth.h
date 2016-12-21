@@ -118,12 +118,6 @@
  */
 #define DPAA2_ETH_SWA_SIZE		64
 
-/* Size of hardware annotation area based on the current buffer layout
- * configuration
- */
-#define DPAA2_ETH_RX_HWA_SIZE		64
-#define DPAA2_ETH_TX_HWA_SIZE		128
-
 /* Must keep this struct smaller than DPAA2_ETH_SWA_SIZE */
 struct dpaa2_eth_swa {
 	struct sk_buff *skb;
@@ -159,6 +153,12 @@ struct dpaa2_eth_swa {
 #define DPAA2_FD_CTRL_PTA		0x00800000
 #define DPAA2_FD_CTRL_PTV1		0x00400000
 
+/* Size of hardware annotation area based on the current buffer layout
+ * configuration
+ */
+#define DPAA2_ETH_RX_HWA_SIZE		64
+#define DPAA2_ETH_TX_HWA_SIZE		128
+
 /* Frame annotation status */
 struct dpaa2_fas {
 	u8 reserved;
@@ -166,6 +166,17 @@ struct dpaa2_fas {
 	__le16 ifpid;
 	__le32 status;
 } __packed;
+
+/* Frame annotation status word is located in the first 8 bytes
+ * of the buffer's hardware annotation area
+ */
+#define DPAA2_FAS_OFFSET		0
+#define DPAA2_FAS_SIZE			(sizeof(struct dpaa2_fas))
+
+/* Timestamp is located in the next 8 bytes of the buffer's
+ * hardware annotation area
+ */
+#define DPAA2_TS_OFFSET			0x8
 
 /* Frame annotation egress action descriptor */
 #define DPAA2_FAEAD_OFFSET		0x58
@@ -179,11 +190,18 @@ struct dpaa2_faead {
 #define DPAA2_FAEAD_UPDV		0x00001000
 #define DPAA2_FAEAD_UPD			0x00000010
 
-/* Frame annotation status word is located in the first 8 bytes
- * of the buffer's hardware annotation area
- */
-#define DPAA2_FAS_OFFSET		0
-#define DPAA2_FAS_SIZE			(sizeof(struct dpaa2_fas))
+/* accessors for the hardware annotation fields that we use */
+#define dpaa2_eth_get_hwa(buf_addr) \
+	((void *)(buf_addr) + DPAA2_ETH_SWA_SIZE)
+
+#define dpaa2_eth_get_fas(buf_addr) \
+	(struct dpaa2_fas *)(dpaa2_eth_get_hwa(buf_addr) + DPAA2_FAS_OFFSET)
+
+#define dpaa2_eth_get_ts(buf_addr) \
+	(u64 *)(dpaa2_eth_get_hwa(buf_addr) + DPAA2_TS_OFFSET)
+
+#define dpaa2_eth_get_faead(buf_addr) \
+	(struct dpaa2_faead *)(dpaa2_eth_get_hwa(buf_addr) + DPAA2_FAEAD_OFFSET)
 
 /* Error and status bits in the frame annotation status word */
 /* Debug frame, otherwise supposed to be discarded */
@@ -351,10 +369,6 @@ struct dpaa2_eth_priv {
 
 	int dpni_id;
 	struct dpni_attr dpni_attrs;
-	/* Insofar as the MC is concerned, we're using one layout on all 3 types
-	 * of buffers (Rx, Tx, Tx-Conf).
-	 */
-	struct dpni_buffer_layout buf_layout;
 	u16 tx_data_offset;
 	/* Rx extra headroom space */
 	u16 rx_extra_head;
