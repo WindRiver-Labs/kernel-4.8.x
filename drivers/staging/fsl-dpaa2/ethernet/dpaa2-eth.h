@@ -360,6 +360,21 @@ struct dpaa2_eth_hash_fields {
 struct dpaa2_eth_priv {
 	struct net_device *net_dev;
 
+	/* Standard statistics */
+	struct rtnl_link_stats64 __percpu *percpu_stats;
+	/* Extra stats, in addition to the ones known by the kernel */
+	struct dpaa2_eth_drv_stats __percpu *percpu_extras;
+
+	bool ts_tx_en; /* Tx timestamping enabled */
+	bool ts_rx_en; /* Rx timestamping enabled */
+
+	u16 tx_data_offset;
+	/* Rx extra headroom space */
+	u16 rx_extra_head;
+
+	u16 bpid;
+	u16 tx_qdid;
+
 	u8 num_fqs;
 	/* Tx queues are at the beginning of the array */
 	struct dpaa2_eth_fq fq[DPAA2_ETH_MAX_QUEUES];
@@ -369,14 +384,8 @@ struct dpaa2_eth_priv {
 
 	int dpni_id;
 	struct dpni_attr dpni_attrs;
-	u16 tx_data_offset;
-	/* Rx extra headroom space */
-	u16 rx_extra_head;
-
 	struct fsl_mc_device *dpbp_dev;
-	u16 bpid;
 
-	u16 tx_qdid;
 	struct fsl_mc_io *mc_io;
 	/* SysFS-controlled affinity mask for TxConf FQs */
 	struct cpumask txconf_cpumask;
@@ -386,11 +395,6 @@ struct dpaa2_eth_priv {
 	 * depending on user settings.
 	 */
 	struct cpumask dpio_cpumask;
-
-	/* Standard statistics */
-	struct rtnl_link_stats64 __percpu *percpu_stats;
-	/* Extra stats, in addition to the ones known by the kernel */
-	struct dpaa2_eth_drv_stats __percpu *percpu_extras;
 
 	u16 mc_token;
 
@@ -411,9 +415,6 @@ struct dpaa2_eth_priv {
 	struct dpaa2_eth_cls_rule *cls_rule;
 
 	struct dpni_tx_shaping_cfg shaping_cfg;
-
-	bool ts_tx_en; /* Tx timestamping enabled */
-	bool ts_rx_en; /* Rx timestamping enabled */
 };
 
 #define dpaa2_eth_hash_enabled(priv)	\
