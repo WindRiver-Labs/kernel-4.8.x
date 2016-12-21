@@ -847,6 +847,7 @@ static void esdhc_set_uhs_signaling(struct sdhci_host *host, unsigned int uhs)
 
 static const struct of_device_id scfg_device_ids[] = {
 	{ .compatible = "fsl,t1040-scfg", },
+	{ .compatible = "fsl,ls1012a-scfg", },
 	{}
 };
 #define SCFG_SDHCIOVSELCR	0x408
