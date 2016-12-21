@@ -606,6 +606,24 @@ config IOSF_MBI_DEBUG
 
 	  If you don't require the option or are in doubt, say N.
 
+config X86_INTEL_SBI_APL
+	tristate "Intel SoC Sideband Interface for Apollo Lake"
+	depends on PCI
+	---help---
+	  This option enables sideband interface access for Intel Apollo Lake.
+	  Like IOSF_MBI, the registers are used in lieu of MSR's.
+
+	  You should say Y if you are running a kernel on Apollo Lake.
+
+config X86_INTEL_SBI_APL_DEBUG
+	bool "Enable Intel SoC SBI for Apollo Lake access in debugfs"
+	depends on X86_INTEL_SBI_APL && DEBUG_FS
+	---help---
+	  Select this option to expose the Sideband Interface through
+	  debugfs.
+
+	  You should say N if you do not plan to debug the SoC.
+
 config X86_RDC321X
 	bool "RDC R-321x SoC"
 	depends on X86_32
@@ -626,6 +644,22 @@ config X86_32_NON_STANDARD
 	  subarchitectures.  It is intended for a generic binary
 	  kernel. If you select them all, kernel will probe it one by
 	  one and will fallback to default.
+
+config X86_INTEL_APLI_LHCRB_WM8731
+	tristate "Intel Apollo Lake-I Leaf Hill I2C Interface for WM8731 Codec "
+	depends on X86_INTEL_LPSS
+	---help---
+	  This option enables Apollo Lake-I Leaf Hill CRB I2C interface
+	  bus 3 access for wm8731 codec.
+	  If you do not have one of these chips, you should say N here.
+
+config X86_INTEL_APLI_LHCRB_AIC3107
+	tristate "Intel Apollo Lake-I Leaf Hill I2C Interface for AIC3107 Codec "
+	depends on X86_INTEL_LPSS
+	---help---
+	  This option enables Apollo Lake-I Leaf Hill CRB I2C interface
+	  bus 3 access for aic3107 codec.
+	  If you do not have one of these chips, you should say N here.
 
 # Alphabetically sorted list of Non standard 32 bit platforms
 
