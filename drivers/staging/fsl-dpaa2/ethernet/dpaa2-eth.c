@@ -362,10 +362,10 @@ static bool consume_frames(struct dpaa2_eth_channel *ch, int *rx_cleaned,
 			   int *tx_conf_cleaned)
 {
 	struct dpaa2_eth_priv *priv = ch->priv;
-	struct dpaa2_eth_fq *fq;
+	struct dpaa2_eth_fq *fq = NULL;
 	struct dpaa2_dq *dq;
 	const struct dpaa2_fd *fd;
-	bool has_cleaned = false;
+	int cleaned = 0;
 	int is_last;
 
 	do {
@@ -385,18 +385,24 @@ static bool consume_frames(struct dpaa2_eth_channel *ch, int *rx_cleaned,
 		prefetch(fd);
 
 		fq = (struct dpaa2_eth_fq *)dpaa2_dq_fqd_ctx(dq);
-		fq->stats.frames++;
-
 		fq->consume(priv, ch, fd, &ch->napi, fq->flowid);
-		has_cleaned = true;
-
-		if (fq->type == DPAA2_TX_CONF_FQ)
-			(*tx_conf_cleaned)++;
-		else
-			(*rx_cleaned)++;
+		cleaned++;
 	} while (!is_last);
 
-	return has_cleaned;
+	if (!cleaned)
+		return false;
+
+	/* All frames brought in store by a volatile dequeue
+	 * come from the same queue
+	 */
+	if (fq->type == DPAA2_TX_CONF_FQ)
+		*tx_conf_cleaned += cleaned;
+	else
+		*rx_cleaned += cleaned;
+
+	fq->stats.frames += cleaned;
+
+	return true;
 }
 
 /* Configure the egress frame annotation for timestamp update */
