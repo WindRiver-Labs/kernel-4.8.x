@@ -253,6 +253,7 @@
 			reg = <0x0 0x1560000 0x0 0x10000>;
 			interrupts = <0 62 0x4>;
 			clock-frequency = <0>;
+			clocks = <&clockgen 4 0>;
 			voltage-ranges = <1800 1800 3300 3300>;
 			sdhci,auto-cmd12;
 			big-endian;
@@ -265,6 +266,7 @@
 			reg = <0x0 0x1580000 0x0 0x10000>;
 			interrupts = <0 65 0x4>;
 			clock-frequency = <0>;
+			clocks = <&clockgen 4 0>;
 			voltage-ranges = <1800 1800 3300 3300>;
 			sdhci,auto-cmd12;
 			big-endian;
