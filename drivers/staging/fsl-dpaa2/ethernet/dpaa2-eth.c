@@ -401,6 +401,7 @@ static bool consume_frames(struct dpaa2_eth_channel *ch, int *rx_cleaned,
 		*rx_cleaned += cleaned;
 
 	fq->stats.frames += cleaned;
+	ch->stats.frames += cleaned;
 
 	return true;
 }
@@ -1041,7 +1042,7 @@ static int pull_channel(struct dpaa2_eth_channel *ch)
 static int dpaa2_eth_poll(struct napi_struct *napi, int budget)
 {
 	struct dpaa2_eth_channel *ch;
-	int cleaned, rx_cleaned = 0, tx_conf_cleaned = 0;
+	int  rx_cleaned = 0, tx_conf_cleaned = 0;
 	bool store_cleaned;
 	struct dpaa2_eth_priv *priv;
 	int err;
@@ -1065,26 +1066,18 @@ static int dpaa2_eth_poll(struct napi_struct *napi, int budget)
 		 */
 		if (rx_cleaned >= budget ||
 		    tx_conf_cleaned >= TX_CONF_PER_NAPI_POLL)
-			break;
+			return budget;
 	} while (store_cleaned);
 
-	if (rx_cleaned >= budget || tx_conf_cleaned >= TX_CONF_PER_NAPI_POLL)
-		cleaned = budget;
-	else
-		cleaned = max(rx_cleaned, 1);
+	/* We didn't consume the entire budget, finish napi and
+	 * re-enable data availability notifications */
+	napi_complete_done(napi, cleaned);
+	do {
+		err = dpaa2_io_service_rearm(NULL, &ch->nctx);
+		cpu_relax();
+	} while (err == -EBUSY);
 
-	if (cleaned < budget) {
-		napi_complete_done(napi, cleaned);
-		/* Re-enable data available notifications */
-		do {
-			err = dpaa2_io_service_rearm(NULL, &ch->nctx);
-			cpu_relax();
-		} while (err == -EBUSY);
-	}
-
-	ch->stats.frames += rx_cleaned + tx_conf_cleaned;
-
-	return cleaned;
+	return max(rx_cleaned, 1);
 }
 
 static void enable_ch_napi(struct dpaa2_eth_priv *priv)
