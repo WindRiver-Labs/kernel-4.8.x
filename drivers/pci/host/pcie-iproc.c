@@ -47,6 +47,8 @@
 
 #define CFG_IND_ADDR_MASK            0x00001ffc
 
+#define CFG_DATA_OFFSET              0x1FC
+#define CFG_ADDR_OFFSET              0x1F8
 #define CFG_ADDR_BUS_NUM_SHIFT       20
 #define CFG_ADDR_BUS_NUM_MASK        0x0ff00000
 #define CFG_ADDR_DEV_NUM_SHIFT       15
@@ -92,6 +94,7 @@
 
 #define PCI_EXP_CAP			0xac
 
+#define MAX_NUM_PAXC_PF			4
 #define IPROC_PCIE_REG_INVALID 0xffff
 
 /**
@@ -1205,7 +1208,7 @@ int iproc_pcie_setup(struct iproc_pcie *pcie, struct list_head *res)
 	struct device *dev;
 	int ret;
 	void *sysdata;
-	struct pci_bus *bus;
+	struct pci_bus *bus, *child;
 
 	dev = pcie->dev;
 
@@ -1278,6 +1281,9 @@ int iproc_pcie_setup(struct iproc_pcie *pcie, struct list_head *res)
 	if (pcie->map_irq)
 		pci_fixup_irqs(pci_common_swizzle, pcie->map_irq);
 
+	list_for_each_entry(child, &bus->children, node)
+		pcie_bus_configure_settings(child);
+
 	pci_bus_add_devices(bus);
 
 	return 0;
@@ -1307,6 +1313,106 @@ int iproc_pcie_remove(struct iproc_pcie *pcie)
 	return 0;
 }
 EXPORT_SYMBOL(iproc_pcie_remove);
+
+/**
+ * FIXME
+ * Hacky code to work around the ASIC issue with PAXC and Nitro
+ *
+ * 1. The bridge header fix should eventually be moved to pci/quirks.c
+ * 2. The Nitro fix should be moved to either Chimp firmware or the Nitro
+ * kernel driver, which we have no control at this point. Or, hopefully this
+ * may be fixed in NS2 B0
+ */
+static void quirk_paxc_bridge(struct pci_dev *pdev)
+{
+	struct iproc_pcie *pcie = iproc_data(pdev->bus);
+	int pf;
+
+	/* MPSS is not being set properly (as it is currently 0).  Add this as
+	 * a workaround until a fix can be added to chimp fw.  The MPS is being
+	 * set to 512 bytes.  So, I'll assume that the MPSS can be at least 512
+	 * (or a MPSS value of 2).
+	 */
+	pdev->pcie_mpss = 2;
+
+	if (pdev->hdr_type == PCI_HEADER_TYPE_BRIDGE) {
+		pdev->class = PCI_CLASS_BRIDGE_PCI << 8;
+
+#define PAXC_RX_DEBUG_CONTROL	0x28
+#define PAXC_RX_WR_INRC_AWID	(1 << 13)
+#define PAXC_RX_IGNORE_RDCMD_ORDERING	(1 << 12)
+#define PAXC_RX_WR_BURST	(4 << 9)
+#define PAXC_RX_RD_BURST	(4 << 6)
+#define PAXC_RX_IGNORE_BRESP	(1 << 5)
+#define PAXC_RX_FREE_CMPL_BUF	(7 << 2)
+#define PAXC_RX_FREE_ARID_CNT	(3)
+
+		/* Tune the PAXC RX for increased performance */
+		writel(PAXC_RX_WR_INRC_AWID | PAXC_RX_WR_BURST |
+		       PAXC_RX_RD_BURST | PAXC_RX_IGNORE_BRESP |
+		       PAXC_RX_FREE_CMPL_BUF | PAXC_RX_FREE_ARID_CNT |
+		       PAXC_RX_IGNORE_RDCMD_ORDERING,
+		       pcie->base + PAXC_RX_DEBUG_CONTROL);
+
+#define PAXC_TRANSACTION_SIZE_128B_ADDR 0x1000b4
+#define PAXC_TRANSACTION_SIZE_128B_DATA 0x102c50
+
+		writel(PAXC_TRANSACTION_SIZE_128B_ADDR,
+		       pcie->base + CFG_ADDR_OFFSET);
+		writel(PAXC_TRANSACTION_SIZE_128B_DATA,
+		       pcie->base + CFG_DATA_OFFSET);
+		return;
+	}
+#define PAXC_CFG_ECM_ADDR_OFFSET     0x1e0
+#define PAXC_CFG_ECM_DBG_EN_SHIFT    31
+#define PAXC_CFG_ECM_DBG_EN          BIT(PAXC_CFG_ECM_DBG_EN_SHIFT)
+#define PAXC_CFG_FUNC_SHIFT          12
+#define PAXC_CFG_FUNC_MASK           0x7000
+#define PAXC_CFG_FUNC(pf)            (((pf) << PAXC_CFG_FUNC_SHIFT) & \
+				      PAXC_CFG_FUNC_MASK)
+#define PAXC_CFG_ECM_DATA_OFFSET     0x1e4
+
+#define NITRO_MSI_CFG_OFFSET         0x4c4
+#define NITRO_QSIZE_OFFSET           0x4c0
+	for (pf = 0; pf < MAX_NUM_PAXC_PF; pf++) {
+		u32 val;
+
+		/*
+		 * TODO:
+		 * Need to figure out what these hardcoded values mean.
+		 * It's unbelievable that after weeks of poking around and
+		 * digging, there's still no one who can point me to a proper
+		 * Nitro documentation
+		 */
+		val = PAXC_CFG_ECM_DBG_EN | PAXC_CFG_FUNC(pf) |
+			NITRO_MSI_CFG_OFFSET;
+		writel(val, pcie->base + PAXC_CFG_ECM_ADDR_OFFSET);
+		writel(0x4, pcie->base + PAXC_CFG_ECM_DATA_OFFSET);
+
+		val = PAXC_CFG_ECM_DBG_EN | PAXC_CFG_FUNC(pf) |
+			NITRO_QSIZE_OFFSET;
+		writel(val, pcie->base + PAXC_CFG_ECM_ADDR_OFFSET);
+		writel(0xba80b, pcie->base + PAXC_CFG_ECM_DATA_OFFSET);
+	}
+	writel(0, pcie->base + PAXC_CFG_ECM_ADDR_OFFSET);
+}
+DECLARE_PCI_FIXUP_EARLY(PCI_VENDOR_ID_BROADCOM, PCI_DEVICE_ID_NX2_57810,
+			quirk_paxc_bridge);
+DECLARE_PCI_FIXUP_EARLY(PCI_VENDOR_ID_BROADCOM, 0x16cd, quirk_paxc_bridge);
+
+static void northstar_ns2_perftune(struct pci_dev *pdev)
+{
+#define NS2_CREDIT_REPORTING		0xa14
+#define NS2_CREDIT_REPORTING_INTERVAL	0x03402020
+
+	pci_bus_write_config_dword(pdev->bus, 0, NS2_CREDIT_REPORTING,
+				   NS2_CREDIT_REPORTING_INTERVAL);
+}
+DECLARE_PCI_FIXUP_FINAL(PCI_VENDOR_ID_BROADCOM, 0xd300, northstar_ns2_perftune);
+DECLARE_PCI_FIXUP_FINAL(PCI_VENDOR_ID_BROADCOM, 0xe711, northstar_ns2_perftune);
+DECLARE_PCI_FIXUP_FINAL(PCI_VENDOR_ID_BROADCOM, 0xd712, northstar_ns2_perftune);
+DECLARE_PCI_FIXUP_FINAL(PCI_VENDOR_ID_BROADCOM, 0xd713, northstar_ns2_perftune);
+DECLARE_PCI_FIXUP_FINAL(PCI_VENDOR_ID_BROADCOM, 0xd715, northstar_ns2_perftune);
 
 MODULE_AUTHOR("Ray Jui <rjui@broadcom.com>");
 MODULE_DESCRIPTION("Broadcom iPROC PCIe common driver");
