@@ -681,7 +681,7 @@ static int dpaa2_eth_tx(struct sk_buff *skb, struct net_device *net_dev)
 	struct dpaa2_fd fd;
 	struct rtnl_link_stats64 *percpu_stats;
 	struct dpaa2_eth_drv_stats *percpu_extras;
-	struct dpaa2_eth_fq fq;
+	struct dpaa2_eth_fq *fq;
 	u16 queue_mapping = skb_get_queue_mapping(skb);
 	int err, i;
 
@@ -729,10 +729,10 @@ static int dpaa2_eth_tx(struct sk_buff *skb, struct net_device *net_dev)
 	/* Tracing point */
 	trace_dpaa2_tx_fd(net_dev, &fd);
 
-	fq = priv->fq[queue_mapping];
+	fq = &priv->fq[queue_mapping];
 	for (i = 0; i < DPAA2_ETH_ENQUEUE_RETRIES; i++) {
 		err = dpaa2_io_service_enqueue_qd(NULL, priv->tx_qdid, 0,
-				fq.tx_qdbin, &fd);
+						  fq->tx_qdbin, &fd);
 		/* TODO: This doesn't work. Check on simulator.
 		 * err = dpaa2_io_service_enqueue_fq(NULL,
 		 *			priv->fq[0].fqid_tx, &fd);
