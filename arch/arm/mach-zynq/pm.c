@@ -27,7 +27,6 @@
 #include <linux/init.h>
 #include <linux/io.h>
 #include <linux/kernel.h>
-#include <linux/of_address.h>
 #include <linux/of_device.h>
 #include <linux/slab.h>
 #include <linux/suspend.h>
@@ -206,6 +205,35 @@ static const struct platform_suspend_ops zynq_pm_ops = {
 	.wake		= zynq_pm_wake,
 	.valid		= suspend_valid_only_mem,
 };
+
+/**
+ * zynq_pm_remap_ocm() - Remap OCM
+ * Returns a pointer to the mapped memory or NULL.
+ *
+ * Remap the OCM.
+ */
+static void __iomem *zynq_pm_remap_ocm(void)
+{
+	struct device_node *np;
+	struct resource res;
+	const char *comp = "xlnx,ps7-ocm";
+	void __iomem *base = NULL;
+
+	np = of_find_compatible_node(NULL, NULL, comp);
+	if (np) {
+		if (of_address_to_resource(np, 0, &res))
+			return NULL;
+		WARN_ON(!request_mem_region(res.start, resource_size(&res),
+					"OCM"));
+		base = __arm_ioremap(res.start, resource_size(&res), MT_MEMORY);
+		of_node_put(np);
+	} else {
+		pr_warn("%s: no compatible node found for '%s'\n", __func__,
+				comp);
+	}
+
+	return base;
+}
 
 /**
  * zynq_pm_ioremap() - Create IO mappings
