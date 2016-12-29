@@ -159,7 +159,7 @@ static int thunderx_gpio_probe(struct pci_dev *pdev, const struct pci_device_id 
 	}
 
 	chip->label = "thunderx-gpio";
-	chip->dev = &pdev->dev;
+	chip->parent = &pdev->dev;
 	chip->owner = THIS_MODULE;
 	chip->base = 0;
 	chip->can_sleep = false;
