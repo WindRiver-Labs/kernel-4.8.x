@@ -343,16 +343,6 @@ config MMC_SDHCI_ST
 	  If you have a controller with this interface, say Y or M here.
 	  If unsure, say N.
 
-config MMC_SDHCI_THUNDERX
-	tristate "MMC SD HCI support on Cavium's thunderx SoC"
-	depends on MMC && GPIO_THUNDERX
-	help
-	  This selects the Secure Digital Host Controller Interface in
-	  cavium's Thunderx SoCs.
-
-	  If you have a controller with this interface, say Y or M here.
-	  If unsure, say N.
-
 config MMC_OMAP
 	tristate "TI OMAP Multimedia Card Interface support"
 	depends on ARCH_OMAP
