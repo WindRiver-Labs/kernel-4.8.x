@@ -19,7 +19,6 @@
 #include <linux/interrupt.h>
 #include <sound/memalloc.h>
 #include "skl-sst-cldma.h"
-#include "skl-tplg-interface.h"
 
 struct sst_dsp;
 struct skl_sst;
@@ -144,7 +143,7 @@ struct skl_dsp_fw_ops {
 	int (*load_fw)(struct sst_dsp  *ctx);
 	/* FW module parser/loader */
 	int (*load_library)(struct sst_dsp *ctx,
-		struct skl_dfw_manifest *minfo);
+		struct skl_lib_info *linfo, int count);
 	int (*parse_fw)(struct sst_dsp *ctx);
 	int (*set_state_D0)(struct sst_dsp *ctx, unsigned int core_id);
 	int (*set_state_D3)(struct sst_dsp *ctx, unsigned int core_id);
@@ -228,5 +227,4 @@ int snd_skl_parse_uuids(struct sst_dsp *ctx, unsigned int offset);
 void skl_freeup_uuid_list(struct skl_sst *ctx);
 
 int skl_dsp_strip_extended_manifest(struct firmware *fw);
-
 #endif /*__SKL_SST_DSP_H__*/
