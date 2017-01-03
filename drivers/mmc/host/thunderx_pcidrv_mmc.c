@@ -128,7 +128,7 @@ static int thunder_mmc_probe(struct pci_dev *pdev, const struct pci_device_id *i
 		return ret;
 
 	host->global_pwr_gpiod = devm_gpiod_get_optional(&pdev->dev, "power",
-							 GPIOD_OUT_HIGH);
+							 GPIOD_OUT_LOW);
 	if (IS_ERR(host->global_pwr_gpiod))
 		return PTR_ERR(host->global_pwr_gpiod);
 
