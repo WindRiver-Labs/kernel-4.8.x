@@ -332,6 +332,15 @@ config MMC_OCTEON
 
 	  If unsure, say N.
 
+config MMC_THUNDERX
+	tristate "Cavium ThunderX Multimedia Card Interface support"
+	depends on GPIO_THUNDERX && PCI && 64BIT && (ARM64 || COMPILE_TEST)
+	help
+	  This selects Cavium ThunderX Multimedia card Interface.
+	  If you have an Cavium ARM64 board with a Multimedia Card slot,
+	  say Y or M here. If built as a module the module will be called
+	  thunderx_mmc.ko.
+
 config MMC_MOXART
 	tristate "MOXART SD/MMC Host Controller support"
 	depends on ARCH_MOXART && MMC
