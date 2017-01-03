@@ -7,15 +7,19 @@
  *
  * Copyright (C) 2012-2016 Cavium Inc.
  */
+#include <linux/clk.h>
 #include <linux/io.h>
 #include <linux/scatterlist.h>
+#include <linux/semaphore.h>
 #include <linux/mmc/host.h>
-
-#include <asm/octeon/octeon.h>
+#include <linux/of.h>
+#include <linux/pci.h>
 
 #define OCTEON_MAX_MMC			4
 
-#define OCT_MIO_NDF_DMA_CFG		0x00
+#if IS_ENABLED(CONFIG_OCTEON_MMC)
+
+#define OCT_MIO_EMM_DMA_CFG		0x00
 #define OCT_MIO_EMM_DMA_ADR		0x08
 
 #define OCT_MIO_EMM_CFG			0x00
@@ -34,12 +38,42 @@
 #define OCT_MIO_EMM_BUF_IDX		0xe0
 #define OCT_MIO_EMM_BUF_DAT		0xe8
 
+#else /* CONFIG_THUNDERX_MMC */
+
+#define OCT_MIO_EMM_DMA_CFG		0x180
+#define OCT_MIO_EMM_DMA_ADR		0x188
+#define OCT_MIO_EMM_DMA_INT		0x190
+#define OCT_MIO_EMM_DMA_INT_EN		0x1a0	/* ENA_W1S */
+
+#define OCT_MIO_EMM_CFG			0x2000
+#define OCT_MIO_EMM_SWITCH		0x2048
+#define OCT_MIO_EMM_DMA			0x2050
+#define OCT_MIO_EMM_CMD			0x2058
+#define OCT_MIO_EMM_RSP_STS		0x2060
+#define OCT_MIO_EMM_RSP_LO		0x2068
+#define OCT_MIO_EMM_RSP_HI		0x2070
+#define OCT_MIO_EMM_INT			0x2078
+#define OCT_MIO_EMM_INT_EN		0x2080
+#define OCT_MIO_EMM_WDOG		0x2088
+#define OCT_MIO_EMM_SAMPLE		0x2090
+#define OCT_MIO_EMM_STS_MASK		0x2098
+#define OCT_MIO_EMM_RCA			0x20a0
+#define OCT_MIO_EMM_BUF_IDX		0x20e0
+#define OCT_MIO_EMM_BUF_DAT		0x20e8
+
+#define OCT_MIO_EMM_INT_EN_SET		0x20b0
+#define OCT_MIO_EMM_INT_EN_CLR		0x20b8
+
+#endif
+
 struct octeon_mmc_host {
 	void __iomem	*base;
-	void __iomem	*ndf_base;
+	void __iomem	*dma_base;
 	u64	emm_cfg;
 	u64	n_minus_one;  /* OCTEON II workaround location */
 	int	last_slot;
+	struct  clk *clk;
+	int	sys_freq;
 
 	struct semaphore mmc_serializer;
 	struct mmc_request	*current_req;
@@ -49,7 +83,6 @@ struct octeon_mmc_host {
 	int sg_idx;
 	bool dma_active;
 
-	struct platform_device	*pdev;
 	struct gpio_desc *global_pwr_gpiod;
 	bool dma_err_pending;
 	bool big_dma_addr;
@@ -58,6 +91,20 @@ struct octeon_mmc_host {
 	bool has_ciu3;
 
 	struct octeon_mmc_slot	*slot[OCTEON_MAX_MMC];
+
+	void (*acquire_bus)(struct octeon_mmc_host *);
+	void (*release_bus)(struct octeon_mmc_host *);
+	void (*int_enable)(struct octeon_mmc_host *, u64);
+	/* required on MIPS, NOPs on ARM64 */
+	void (*lock_region)(u64, u64);
+	void (*unlock_region)(u64, u64);
+	void (*dmar_fixup)(struct octeon_mmc_host *, struct mmc_command *,
+			   struct mmc_data *, u64);
+
+#if IS_ENABLED(CONFIG_MMC_THUNDERX)
+	struct msix_entry	*mmc_msix;
+	unsigned int		msix_count;
+#endif
 };
 
 struct octeon_mmc_slot {
@@ -87,7 +134,261 @@ struct octeon_mmc_cr_mods {
 	u8 rtype_xor;
 };
 
-extern void l2c_lock_mem_region(u64 start, u64 len);
-extern void l2c_unlock_mem_region(u64 start, u64 len);
-extern void octeon_mmc_acquire_bus(struct octeon_mmc_host *host);
-extern void octeon_mmc_release_bus(struct octeon_mmc_host *host);
+/* Bitfield definitions */
+union cvmx_mio_emm_cmd {
+	uint64_t u64;
+	struct cvmx_mio_emm_cmd_s {
+#ifdef __BIG_ENDIAN_BITFIELD
+		uint64_t reserved_62_63:2;
+		uint64_t bus_id:2;
+		uint64_t cmd_val:1;
+		uint64_t reserved_56_58:3;
+		uint64_t dbuf:1;
+		uint64_t offset:6;
+		uint64_t reserved_43_48:6;
+		uint64_t ctype_xor:2;
+		uint64_t rtype_xor:3;
+		uint64_t cmd_idx:6;
+		uint64_t arg:32;
+#else
+		uint64_t arg:32;
+		uint64_t cmd_idx:6;
+		uint64_t rtype_xor:3;
+		uint64_t ctype_xor:2;
+		uint64_t reserved_43_48:6;
+		uint64_t offset:6;
+		uint64_t dbuf:1;
+		uint64_t reserved_56_58:3;
+		uint64_t cmd_val:1;
+		uint64_t bus_id:2;
+		uint64_t reserved_62_63:2;
+#endif
+	} s;
+	struct cvmx_mio_emm_cmd_s cn61xx;
+	struct cvmx_mio_emm_cmd_s cnf71xx;
+};
+
+union cvmx_mio_emm_dma {
+	uint64_t u64;
+	struct cvmx_mio_emm_dma_s {
+#ifdef __BIG_ENDIAN_BITFIELD
+		uint64_t reserved_62_63:2;
+		uint64_t bus_id:2;
+		uint64_t dma_val:1;
+		uint64_t sector:1;
+		uint64_t dat_null:1;
+		uint64_t thres:6;
+		uint64_t rel_wr:1;
+		uint64_t rw:1;
+		uint64_t multi:1;
+		uint64_t block_cnt:16;
+		uint64_t card_addr:32;
+#else
+		uint64_t card_addr:32;
+		uint64_t block_cnt:16;
+		uint64_t multi:1;
+		uint64_t rw:1;
+		uint64_t rel_wr:1;
+		uint64_t thres:6;
+		uint64_t dat_null:1;
+		uint64_t sector:1;
+		uint64_t dma_val:1;
+		uint64_t bus_id:2;
+		uint64_t reserved_62_63:2;
+#endif
+	} s;
+	struct cvmx_mio_emm_dma_s cn61xx;
+	struct cvmx_mio_emm_dma_s cnf71xx;
+};
+
+union cvmx_mio_emm_dma_cfg {
+	uint64_t u64;
+	struct cvmx_mio_emm_dma_cfg_s {
+#ifdef __BIG_ENDIAN_BITFIELD
+		uint64_t en:1;
+		uint64_t rw:1;
+		uint64_t clr:1;
+		uint64_t reserved_60_60:1;
+		uint64_t swap32:1;
+		uint64_t swap16:1;
+		uint64_t swap8:1;
+		uint64_t endian:1;
+		uint64_t size:20;
+		uint64_t adr:36;
+#else
+		uint64_t adr:36;
+		uint64_t size:20;
+		uint64_t endian:1;
+		uint64_t swap8:1;
+		uint64_t swap16:1;
+		uint64_t swap32:1;
+		uint64_t reserved_60_60:1;
+		uint64_t clr:1;
+		uint64_t rw:1;
+		uint64_t en:1;
+#endif
+	} s;
+	struct cvmx_mio_emm_dma_cfg_s cn52xx;
+	struct cvmx_mio_emm_dma_cfg_s cn61xx;
+	struct cvmx_mio_emm_dma_cfg_s cn63xx;
+	struct cvmx_mio_emm_dma_cfg_s cn63xxp1;
+	struct cvmx_mio_emm_dma_cfg_s cn66xx;
+	struct cvmx_mio_emm_dma_cfg_s cn68xx;
+	struct cvmx_mio_emm_dma_cfg_s cn68xxp1;
+	struct cvmx_mio_emm_dma_cfg_s cnf71xx;
+};
+
+union cvmx_mio_emm_int {
+	uint64_t u64;
+	struct cvmx_mio_emm_int_s {
+#ifdef __BIG_ENDIAN_BITFIELD
+		uint64_t reserved_7_63:57;
+		uint64_t switch_err:1;
+		uint64_t switch_done:1;
+		uint64_t dma_err:1;
+		uint64_t cmd_err:1;
+		uint64_t dma_done:1;
+		uint64_t cmd_done:1;
+		uint64_t buf_done:1;
+#else
+		uint64_t buf_done:1;
+		uint64_t cmd_done:1;
+		uint64_t dma_done:1;
+		uint64_t cmd_err:1;
+		uint64_t dma_err:1;
+		uint64_t switch_done:1;
+		uint64_t switch_err:1;
+		uint64_t reserved_7_63:57;
+#endif
+	} s;
+	struct cvmx_mio_emm_int_s cn61xx;
+	struct cvmx_mio_emm_int_s cnf71xx;
+};
+
+union cvmx_mio_emm_rsp_sts {
+	uint64_t u64;
+	struct cvmx_mio_emm_rsp_sts_s {
+#ifdef __BIG_ENDIAN_BITFIELD
+		uint64_t reserved_62_63:2;
+		uint64_t bus_id:2;
+		uint64_t cmd_val:1;
+		uint64_t switch_val:1;
+		uint64_t dma_val:1;
+		uint64_t dma_pend:1;
+		uint64_t reserved_29_55:27;
+		uint64_t dbuf_err:1;
+		uint64_t reserved_24_27:4;
+		uint64_t dbuf:1;
+		uint64_t blk_timeout:1;
+		uint64_t blk_crc_err:1;
+		uint64_t rsp_busybit:1;
+		uint64_t stp_timeout:1;
+		uint64_t stp_crc_err:1;
+		uint64_t stp_bad_sts:1;
+		uint64_t stp_val:1;
+		uint64_t rsp_timeout:1;
+		uint64_t rsp_crc_err:1;
+		uint64_t rsp_bad_sts:1;
+		uint64_t rsp_val:1;
+		uint64_t rsp_type:3;
+		uint64_t cmd_type:2;
+		uint64_t cmd_idx:6;
+		uint64_t cmd_done:1;
+#else
+		uint64_t cmd_done:1;
+		uint64_t cmd_idx:6;
+		uint64_t cmd_type:2;
+		uint64_t rsp_type:3;
+		uint64_t rsp_val:1;
+		uint64_t rsp_bad_sts:1;
+		uint64_t rsp_crc_err:1;
+		uint64_t rsp_timeout:1;
+		uint64_t stp_val:1;
+		uint64_t stp_bad_sts:1;
+		uint64_t stp_crc_err:1;
+		uint64_t stp_timeout:1;
+		uint64_t rsp_busybit:1;
+		uint64_t blk_crc_err:1;
+		uint64_t blk_timeout:1;
+		uint64_t dbuf:1;
+		uint64_t reserved_24_27:4;
+		uint64_t dbuf_err:1;
+		uint64_t reserved_29_55:27;
+		uint64_t dma_pend:1;
+		uint64_t dma_val:1;
+		uint64_t switch_val:1;
+		uint64_t cmd_val:1;
+		uint64_t bus_id:2;
+		uint64_t reserved_62_63:2;
+#endif
+	} s;
+	struct cvmx_mio_emm_rsp_sts_s cn61xx;
+	struct cvmx_mio_emm_rsp_sts_s cnf71xx;
+};
+
+union cvmx_mio_emm_sample {
+	uint64_t u64;
+	struct cvmx_mio_emm_sample_s {
+#ifdef __BIG_ENDIAN_BITFIELD
+		uint64_t reserved_26_63:38;
+		uint64_t cmd_cnt:10;
+		uint64_t reserved_10_15:6;
+		uint64_t dat_cnt:10;
+#else
+		uint64_t dat_cnt:10;
+		uint64_t reserved_10_15:6;
+		uint64_t cmd_cnt:10;
+		uint64_t reserved_26_63:38;
+#endif
+	} s;
+	struct cvmx_mio_emm_sample_s cn61xx;
+	struct cvmx_mio_emm_sample_s cnf71xx;
+};
+
+union cvmx_mio_emm_switch {
+	uint64_t u64;
+	struct cvmx_mio_emm_switch_s {
+#ifdef __BIG_ENDIAN_BITFIELD
+		uint64_t reserved_62_63:2;
+		uint64_t bus_id:2;
+		uint64_t switch_exe:1;
+		uint64_t switch_err0:1;
+		uint64_t switch_err1:1;
+		uint64_t switch_err2:1;
+		uint64_t reserved_49_55:7;
+		uint64_t hs_timing:1;
+		uint64_t reserved_43_47:5;
+		uint64_t bus_width:3;
+		uint64_t reserved_36_39:4;
+		uint64_t power_class:4;
+		uint64_t clk_hi:16;
+		uint64_t clk_lo:16;
+#else
+		uint64_t clk_lo:16;
+		uint64_t clk_hi:16;
+		uint64_t power_class:4;
+		uint64_t reserved_36_39:4;
+		uint64_t bus_width:3;
+		uint64_t reserved_43_47:5;
+		uint64_t hs_timing:1;
+		uint64_t reserved_49_55:7;
+		uint64_t switch_err2:1;
+		uint64_t switch_err1:1;
+		uint64_t switch_err0:1;
+		uint64_t switch_exe:1;
+		uint64_t bus_id:2;
+		uint64_t reserved_62_63:2;
+#endif
+	} s;
+	struct cvmx_mio_emm_switch_s cn61xx;
+	struct cvmx_mio_emm_switch_s cnf71xx;
+};
+
+/* Protoypes */
+irqreturn_t octeon_mmc_interrupt(int irq, void *dev_id);
+void octeon_mmc_reset_bus(struct octeon_mmc_slot *slot);
+void octeon_mmc_switch_to(struct octeon_mmc_slot *slot);
+int octeon_mmc_initlowlevel(struct octeon_mmc_slot *slot);
+int octeon_mmc_slot_probe(struct device *dev, struct octeon_mmc_host *host);
+int octeon_mmc_slot_remove(struct octeon_mmc_slot *slot);
+extern const struct mmc_host_ops octeon_mmc_ops;
