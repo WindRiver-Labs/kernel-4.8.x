@@ -322,6 +322,16 @@ config MMC_SDHCI_IPROC
 
 	  If unsure, say N.
 
+config MMC_OCTEON
+	tristate "Cavium OCTEON Multimedia Card Interface support"
+	depends on CAVIUM_OCTEON_SOC
+	help
+	  This selects Cavium OCTEON Multimedia card Interface.
+	  If you have an OCTEON board with a Multimedia Card slot,
+	  say Y or M here.
+
+	  If unsure, say N.
+
 config MMC_MOXART
 	tristate "MOXART SD/MMC Host Controller support"
 	depends on ARCH_MOXART && MMC
