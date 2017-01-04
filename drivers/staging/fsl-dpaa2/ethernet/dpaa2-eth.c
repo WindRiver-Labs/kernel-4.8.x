@@ -1071,7 +1071,7 @@ static int dpaa2_eth_poll(struct napi_struct *napi, int budget)
 
 	/* We didn't consume the entire budget, finish napi and
 	 * re-enable data availability notifications */
-	napi_complete_done(napi, cleaned);
+	napi_complete(napi);
 	do {
 		err = dpaa2_io_service_rearm(NULL, &ch->nctx);
 		cpu_relax();
