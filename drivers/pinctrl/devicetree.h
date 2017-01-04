@@ -18,12 +18,20 @@
 
 #ifdef CONFIG_OF
 
+bool pinctrl_dt_has_hogs(struct pinctrl_dev *pctldev);
+
 void pinctrl_dt_free_maps(struct pinctrl *p);
-int pinctrl_dt_to_map(struct pinctrl *p);
+int pinctrl_dt_to_map(struct pinctrl *p, struct pinctrl_dev *pctldev);
 
 #else
 
-static inline int pinctrl_dt_to_map(struct pinctrl *p)
+static inline bool pinctrl_dt_has_hogs(struct pinctrl_dev *pctldev)
+{
+	return false;
+}
+
+static inline int pinctrl_dt_to_map(struct pinctrl *p,
+				    struct pinctrl_dev *pctldev)
 {
 	return 0;
 }
