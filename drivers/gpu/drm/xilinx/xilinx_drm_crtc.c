@@ -176,7 +176,7 @@ static int xilinx_drm_crtc_mode_set(struct drm_crtc *base_crtc,
 					  adjusted_mode->hdisplay,
 					  adjusted_mode->vdisplay);
 	ret = xilinx_drm_plane_mode_set(base_crtc->primary,
-					base_crtc->fb, 0, 0,
+					base_crtc->primary->fb, 0, 0,
 					adjusted_mode->hdisplay,
 					adjusted_mode->vdisplay,
 					x, y,
@@ -225,7 +225,8 @@ static int xilinx_drm_crtc_mode_set_base(struct drm_crtc *base_crtc,
 					 struct drm_framebuffer *old_fb)
 {
 	/* configure a plane */
-	return _xilinx_drm_crtc_mode_set_base(base_crtc, base_crtc->fb, x, y);
+	return _xilinx_drm_crtc_mode_set_base(base_crtc, base_crtc->primary->fb,
+	       x, y);
 }
 
 /* load rgb LUT for crtc */
@@ -335,7 +336,7 @@ static int xilinx_drm_crtc_page_flip(struct drm_crtc *base_crtc,
 		return ret;
 	}
 
-	base_crtc->fb = fb;
+	base_crtc->primary->fb = fb;
 
 	if (event) {
 		event->pipe = 0;
