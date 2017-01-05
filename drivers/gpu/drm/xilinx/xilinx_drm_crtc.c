@@ -304,7 +304,7 @@ static void xilinx_drm_crtc_finish_page_flip(struct drm_crtc *base_crtc)
 	event = crtc->event;
 	crtc->event = NULL;
 	if (event) {
-		drm_send_vblank_event(base_crtc, event);
+		drm_crtc_send_vblank_event(base_crtc, event);
 		drm_crtc_vblank_put(base_crtc);
 	}
 	spin_unlock_irqrestore(&drm->event_lock, flags);
