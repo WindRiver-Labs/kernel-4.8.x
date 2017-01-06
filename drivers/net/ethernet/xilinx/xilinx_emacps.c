@@ -2160,7 +2160,6 @@ static void xemacps_reinit_for_txtimeout(struct work_struct *data)
 
 	napi_enable(&lp->napi);
 	tasklet_enable(&lp->tx_bdreclaim_tasklet);
-	lp->ndev->trans_start = jiffies;
 	netif_wake_queue(lp->ndev);
 }
 
@@ -2314,7 +2313,6 @@ static int xemacps_start_xmit(struct sk_buff *skb, struct net_device *ndev)
 			(regval | XEMACPS_NWCTRL_STARTTX_MASK));
 	spin_unlock_irqrestore(&lp->nwctrlreg_lock, flags);
 
-	ndev->trans_start = jiffies;
 	return 0;
 
 dma_err:
