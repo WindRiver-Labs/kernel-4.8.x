@@ -33,9 +33,8 @@
 #define DPAA2_ETH_DEBUGFS_H
 
 #include <linux/dcache.h>
-#include "dpaa2-eth.h"
 
-extern struct dpaa2_eth_priv *priv;
+struct dpaa2_eth_priv;
 
 struct dpaa2_debugfs {
 	struct dentry *dir;
