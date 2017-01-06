@@ -2268,7 +2268,7 @@ static struct dpaa2_eth_hash_fields default_hash_fields[] = {
 };
 
 /* Set RX hash options */
-int set_hash(struct dpaa2_eth_priv *priv)
+static int set_hash(struct dpaa2_eth_priv *priv)
 {
 	struct device *dev = priv->net_dev->dev.parent;
 	struct dpkg_profile_cfg cls_cfg;
@@ -2799,7 +2799,7 @@ static struct device_attribute dpaa2_eth_attrs[] = {
 	       dpaa2_eth_write_tx_shaping),
 };
 
-void dpaa2_eth_sysfs_init(struct device *dev)
+static void dpaa2_eth_sysfs_init(struct device *dev)
 {
 	int i, err;
 
@@ -2817,7 +2817,7 @@ undo:
 		device_remove_file(dev, &dpaa2_eth_attrs[--i]);
 }
 
-void dpaa2_eth_sysfs_remove(struct device *dev)
+static void dpaa2_eth_sysfs_remove(struct device *dev)
 {
 	int i;
 
