@@ -470,3 +470,9 @@ CMA Helper Functions Reference
 
 .. kernel-doc:: include/drm/drm_gem_cma_helper.h
    :internal:
+
+DRM Cache Handling
+==================
+
+.. kernel-doc:: drivers/gpu/drm/drm_cache.c
+   :export:
