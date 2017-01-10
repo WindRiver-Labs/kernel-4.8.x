@@ -705,7 +705,7 @@ do { \
 	MC_CMD_OP(cmd, 0,  0,  8, enum dpni_queue_type, qtype); \
 	MC_CMD_OP(cmd, 0,  8,  8, uint8_t, tc); \
 	MC_CMD_OP(cmd, 1,  0, 32, uint32_t, (cfg)->dest_cfg.dest_id); \
-	MC_CMD_OP(cmd, 1,  0, 16, uint16_t, (cfg)->notification_mode); \
+	MC_CMD_OP(cmd, 1, 32, 16, uint16_t, (cfg)->notification_mode); \
 	MC_CMD_OP(cmd, 1, 48,  8, uint8_t, (cfg)->dest_cfg.priority); \
 	MC_CMD_OP(cmd, 1, 56,  4, enum dpni_dest, (cfg)->dest_cfg.dest_type); \
 	MC_CMD_OP(cmd, 1, 60,  2, enum dpni_congestion_unit, (cfg)->units); \
