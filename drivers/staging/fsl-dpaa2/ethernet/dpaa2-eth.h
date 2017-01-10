@@ -270,6 +270,33 @@ struct dpaa2_faead {
  */
 #define DPAA2_ETH_ENQUEUE_RETRIES      10
 
+/* TODO: This should go to DPIO header? */
+struct dpaa2_cscn {
+	u8 verb;
+	u8 stat;
+	u8 state;
+	u8 reserved;
+	__le32 cgid;
+	__le64 ctx;
+};
+
+#define DPAA2_CSCN_SIZE			64
+#define DPAA2_CSCN_ALIGN		16
+
+#define DPAA2_CSCN_STATE_MASK		0x1
+#define DPAA2_CSCN_CONGESTED		1
+
+static inline bool dpaa2_cscn_state_congested(struct dpaa2_cscn *cscn)
+{
+	return ((cscn->state & DPAA2_CSCN_STATE_MASK) == DPAA2_CSCN_CONGESTED);
+}
+
+/* Tx congestion entry & exit thresholds, in number of bytes.
+ * We allow a maximum of 512KB worth of frames pending processing on the Tx
+ * queues of an interface
+ */
+#define DPAA2_ETH_TX_CONG_ENTRY_THRESH	(512 * 1024)
+#define DPAA2_ETH_TX_CONG_EXIT_THRESH	(DPAA2_ETH_TX_CONG_ENTRY_THRESH * 9/10)
 
 /* Driver statistics, other than those in struct rtnl_link_stats64.
  * These are usually collected per-CPU and aggregated by ethtool.
@@ -289,6 +316,8 @@ struct dpaa2_eth_drv_stats {
 struct dpaa2_eth_fq_stats {
 	/* Number of frames received on this queue */
 	__u64 frames;
+	/* Number of times this queue entered congestion */
+	__u64 congestion_entry;
 };
 
 /* Per-channel statistics */
@@ -463,6 +492,10 @@ struct dpaa2_eth_priv {
 
 	int num_bufs;
 	int refill_thresh;
+
+	/* Tx congestion notifications are written here */
+	void *cscn_mem;
+	dma_addr_t cscn_dma;
 
 	u8 num_fqs;
 	/* Tx queues are at the beginning of the array */

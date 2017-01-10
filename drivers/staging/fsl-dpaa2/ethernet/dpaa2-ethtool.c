@@ -74,6 +74,7 @@ static char dpaa2_ethtool_extras[][ETH_GSTRING_LEN] = {
 	"channel pull errors",
 	/* Number of notifications received */
 	"cdan",
+	"tx congestion state",
 #ifdef CONFIG_FSL_QBMAN_DEBUG
 	/* FQ stats */
 	"rx pending frames",
@@ -353,6 +354,8 @@ static void dpaa2_eth_get_ethtool_stats(struct net_device *net_dev,
 	*(data + i++) = portal_busy;
 	*(data + i++) = pull_err;
 	*(data + i++) = cdan;
+
+	*(data + i++) = dpaa2_cscn_state_congested(priv->cscn_mem);
 
 #ifdef CONFIG_FSL_QBMAN_DEBUG
 	for (j = 0; j < priv->num_fqs; j++) {
