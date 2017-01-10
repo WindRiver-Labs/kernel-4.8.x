@@ -18,6 +18,8 @@
 #include <linux/usb/pd_sink.h>
 #include <linux/platform_device.h>
 #include <linux/mfd/intel_soc_pmic.h>
+#include <linux/pci.h>
+#include <linux/pm_runtime.h>
 
 /* Register offsets */
 #define WCOVE_CHGRIRQ0		0x4e09
@@ -134,6 +136,7 @@ struct wcove_typec {
 	struct completion complete;
 	struct typec_capability cap;
 	struct typec_partner *partner;
+	struct pci_dev *xhci_dev;
 };
 
 enum wcove_typec_func {
@@ -199,6 +202,18 @@ static struct pd_sink_profile profile = {
 	.nr_ps = ARRAY_SIZE(profiles),
 	.active_ps = 2, /* voltage = 5V, current = 3A */
 };
+
+static int wcove_access_xhci(struct wcove_typec *wcove, bool enable)
+{
+	if (wcove->xhci_dev) {
+		if (enable) {
+			pm_runtime_get_sync(&wcove->xhci_dev->dev);
+		} else {
+			pm_runtime_put(&wcove->xhci_dev->dev);
+		}
+	}
+	return 0;
+}
 
 static int wcove_typec_func(struct wcove_typec *wcove,
 			    enum wcove_typec_func func, int param)
@@ -391,6 +406,7 @@ static irqreturn_t  wcove_typec_irq(int irq, void *data)
 				 WCOVE_ORIENTATION_NORMAL);
 
 		/* This makes sure the device controller is disconnected */
+		wcove_access_xhci(wcove, true);
 		wcove_typec_func(wcove, WCOVE_FUNC_ROLE, WCOVE_ROLE_HOST);
 
 		/* Port to default role */
@@ -398,6 +414,7 @@ static irqreturn_t  wcove_typec_irq(int irq, void *data)
 		typec_set_pwr_role(wcove->port, TYPEC_SINK);
 		typec_set_pwr_opmode(wcove->port, TYPEC_PWR_MODE_USB);
 
+		wcove_access_xhci(wcove, false);
 		/* reset the pd sink state */
 		if (wcove->pd_port_num >= 0)
 			pd_sink_reset_state(wcove->pd_port_num);
@@ -576,6 +593,8 @@ static int wcove_typec_probe(struct platform_device *pdev)
 	regmap_write(wcove->regmap, USBC_PD_CFG3, val);
 
 	platform_set_drvdata(pdev, wcove);
+
+	wcove->xhci_dev = pci_get_class(PCI_CLASS_SERIAL_USB_XHCI, NULL);
 	return 0;
 }
 
