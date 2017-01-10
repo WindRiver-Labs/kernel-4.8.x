@@ -38,6 +38,7 @@
 #include <linux/kthread.h>
 #include <linux/net_tstamp.h>
 #include <linux/msi.h>
+#include <net/busy_poll.h>
 
 #include "../../fsl-mc/include/mc.h"
 #include "../../fsl-mc/include/mc-sys.h"
@@ -293,6 +294,8 @@ static void dpaa2_eth_rx(struct dpaa2_eth_priv *priv,
 
 	percpu_stats->rx_packets++;
 	percpu_stats->rx_bytes += dpaa2_fd_get_len(fd);
+
+	skb_mark_napi_id(skb, napi);
 
 	napi_gro_receive(napi, skb);
 
@@ -1063,6 +1066,9 @@ static int dpaa2_eth_poll(struct napi_struct *napi, int budget)
 	ch = container_of(napi, struct dpaa2_eth_channel, napi);
 	priv = ch->priv;
 
+	if (!dpaa2_ch_lock_napi(ch))
+		return budget;
+
 	do {
 		err = pull_channel(ch);
 		if (unlikely(err))
@@ -1078,9 +1084,13 @@ static int dpaa2_eth_poll(struct napi_struct *napi, int budget)
 		 * or reached the Tx conf threshold, we're done.
 		 */
 		if (rx_cleaned >= budget ||
-		    tx_conf_cleaned >= TX_CONF_PER_NAPI_POLL)
+		    tx_conf_cleaned >= TX_CONF_PER_NAPI_POLL) {
+			dpaa2_ch_unlock_napi(ch);
 			return budget;
+		}
 	} while (store_cleaned);
+
+	dpaa2_ch_unlock_napi(ch);
 
 	/* We didn't consume the entire budget, finish napi and
 	 * re-enable data availability notifications */
@@ -1100,6 +1110,7 @@ static void enable_ch_napi(struct dpaa2_eth_priv *priv)
 
 	for (i = 0; i < priv->num_channels; i++) {
 		ch = priv->channel[i];
+		dpaa2_ch_init_lock(ch);
 		napi_enable(&ch->napi);
 	}
 }
@@ -1112,6 +1123,11 @@ static void disable_ch_napi(struct dpaa2_eth_priv *priv)
 	for (i = 0; i < priv->num_channels; i++) {
 		ch = priv->channel[i];
 		napi_disable(&ch->napi);
+		while (!dpaa2_ch_disable(ch)) {
+			dev_info_once(priv->net_dev->dev.parent,
+				      "Channel %d locked\n", ch->ch_id);
+			usleep_range(1000, 20000);
+		}
 	}
 }
 
@@ -1573,6 +1589,37 @@ static int dpaa2_eth_ioctl(struct net_device *dev, struct ifreq *rq, int cmd)
 	return -EINVAL;
 }
 
+#ifdef CONFIG_NET_RX_BUSY_POLL
+static int dpaa2_eth_busy_poll(struct napi_struct *napi)
+{
+	struct dpaa2_eth_channel *ch;
+	int cleaned = 0;
+	struct dpaa2_eth_priv *priv;
+
+	ch = container_of(napi, struct dpaa2_eth_channel, napi);
+	priv = ch->priv;
+
+	if (!netif_running(priv->net_dev))
+		return LL_FLUSH_FAILED;
+
+	if (!dpaa2_ch_lock_poll(ch))
+		return LL_FLUSH_BUSY;
+
+	if (likely(pull_channel(ch) == 0)) {
+		/* Refill pool if appropriate */
+		refill_pool(priv, ch, priv->bpid);
+		/* All frames in VDQ will be from the same queue
+		 * (either Rx or Tx conf)
+		 */
+		consume_frames(ch, &cleaned, &cleaned);
+	}
+
+	dpaa2_ch_unlock_poll(ch);
+
+	return cleaned;
+}
+#endif
+
 static const struct net_device_ops dpaa2_eth_ops = {
 	.ndo_open = dpaa2_eth_open,
 	.ndo_start_xmit = dpaa2_eth_tx,
@@ -1585,6 +1632,9 @@ static const struct net_device_ops dpaa2_eth_ops = {
 	.ndo_set_rx_mode = dpaa2_eth_set_rx_mode,
 	.ndo_set_features = dpaa2_eth_set_features,
 	.ndo_do_ioctl = dpaa2_eth_ioctl,
+#ifdef CONFIG_NET_RX_BUSY_POLL
+	.ndo_busy_poll = dpaa2_eth_busy_poll,
+#endif
 };
 
 static void cdan_cb(struct dpaa2_io_notification_ctx *ctx)
@@ -2711,6 +2761,7 @@ static void add_ch_napi(struct dpaa2_eth_priv *priv)
 		/* NAPI weight *MUST* be a multiple of DPAA2_ETH_STORE_SIZE */
 		netif_napi_add(priv->net_dev, &ch->napi, dpaa2_eth_poll,
 			       NAPI_POLL_WEIGHT);
+		napi_hash_add(&ch->napi);
 	}
 }
 
@@ -2721,6 +2772,7 @@ static void del_ch_napi(struct dpaa2_eth_priv *priv)
 
 	for (i = 0; i < priv->num_channels; i++) {
 		ch = priv->channel[i];
+		napi_hash_del(&ch->napi);
 		netif_napi_del(&ch->napi);
 	}
 }

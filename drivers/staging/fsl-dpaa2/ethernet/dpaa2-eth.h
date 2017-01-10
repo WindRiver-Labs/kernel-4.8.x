@@ -32,6 +32,7 @@
 #ifndef __DPAA2_ETH_H
 #define __DPAA2_ETH_H
 
+#include <linux/atomic.h>
 #include <linux/netdevice.h>
 #include <linux/if_vlan.h>
 #include "../../fsl-mc/include/fsl_dpaa2_io.h"
@@ -346,8 +347,87 @@ struct dpaa2_eth_channel {
 	struct dpaa2_io_store *store;
 	struct dpaa2_eth_priv *priv;
 	int buf_count;
+#ifdef CONFIG_NET_RX_BUSY_POLL
+	atomic_t state;
+#endif
 	struct dpaa2_eth_ch_stats stats;
 };
+
+#ifdef CONFIG_NET_RX_BUSY_POLL
+enum dpaa2_eth_channel_state {
+	DPAA2_CH_DISABLED = 0,
+	DPAA2_CH_NAPI,
+	DPAA2_CH_POLL,
+	DPAA2_CH_IDLE
+};
+
+static inline void dpaa2_ch_init_lock(struct dpaa2_eth_channel *ch)
+{
+	atomic_set(&ch->state, DPAA2_CH_IDLE);
+}
+
+static inline bool dpaa2_ch_lock_napi(struct dpaa2_eth_channel *ch)
+{
+	int ret = atomic_cmpxchg(&ch->state, DPAA2_CH_IDLE, DPAA2_CH_NAPI);
+
+	return ret == DPAA2_CH_IDLE;
+}
+
+static inline void dpaa2_ch_unlock_napi(struct dpaa2_eth_channel *ch)
+{
+	WARN_ON(atomic_read(&ch->state) != DPAA2_CH_NAPI);
+
+	atomic_set(&ch->state, DPAA2_CH_IDLE);
+}
+
+static inline bool dpaa2_ch_lock_poll(struct dpaa2_eth_channel *ch)
+{
+	int ret = atomic_cmpxchg(&ch->state, DPAA2_CH_IDLE, DPAA2_CH_POLL);
+
+	return ret == DPAA2_CH_IDLE;
+}
+
+static inline void dpaa2_ch_unlock_poll(struct dpaa2_eth_channel *ch)
+{
+	WARN_ON(atomic_read(&ch->state) != DPAA2_CH_POLL);
+
+	atomic_set(&ch->state, DPAA2_CH_IDLE);
+}
+
+static inline bool dpaa2_ch_disable(struct dpaa2_eth_channel *ch)
+{
+	int ret = atomic_cmpxchg(&ch->state, DPAA2_CH_IDLE, DPAA2_CH_DISABLED);
+
+	return ret == DPAA2_CH_IDLE;
+}
+#else
+static inline void dpaa2_ch_init_lock(struct dpaa2_eth_channel *ch)
+{
+}
+
+static inline bool dpaa2_ch_lock_napi(struct dpaa2_eth_channel *ch)
+{
+	return true;
+}
+
+static inline void dpaa2_ch_unlock_napi(struct dpaa2_eth_channel *ch)
+{
+}
+
+static inline bool dpaa2_ch_lock_poll(struct dpaa2_eth_channel *ch)
+{
+	return false;
+}
+
+static inline void dpaa2_ch_unlock_poll(struct dpaa2_eth_channel *ch)
+{
+}
+
+static inline bool dpaa2_ch_disable(struct dpaa2_eth_channel *ch)
+{
+	return true;
+}
+#endif
 
 struct dpaa2_eth_cls_rule {
 	struct ethtool_rx_flow_spec fs;
