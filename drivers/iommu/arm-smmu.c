@@ -620,7 +620,6 @@ static void arm_smmu_tlb_sync(void *cookie)
 void cavium_smmu_tlb_sync(struct device *dev)
 {
 	struct arm_smmu_device *smmu;
-	struct arm_smmu_master_cfg *cfg;
 
 	smmu = find_smmu_for_device(dev);
 	if (!smmu)
