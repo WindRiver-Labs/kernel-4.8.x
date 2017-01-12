@@ -109,7 +109,7 @@ struct acpi_button {
 
 static BLOCKING_NOTIFIER_HEAD(acpi_lid_notifier);
 static struct acpi_device *lid_device;
-static u8 lid_init_state = ACPI_BUTTON_LID_INIT_METHOD;
+static u8 lid_init_state = ACPI_BUTTON_LID_INIT_OPEN;
 
 /* --------------------------------------------------------------------------
                               FS Interface (/proc)
