@@ -403,6 +403,15 @@ config EDAC_AXXIA_SYSMEM_5500
 	  the System Memory error detection. System Memory error
 	  detection is interrupt driven.
 
+config EDAC_AXXIA_CMEM_5600
+	depends on ARCH_AXXIA
+	bool "AXXIA EDAC CMem Controller for 5600"
+	help
+	  Support for Configuration Memory Denali controller error
+	  detection on the AXXIA AXM56xx devices. This enables
+	  the Configuration Memory error detection. Configuration Memory error
+	  detection is interrupt driven.
+
 config EDAC_AXXIA_L3
 	tristate "AXXIA EDAC L3 Controller"
 	help
