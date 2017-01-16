@@ -353,7 +353,7 @@ static void stm_generic_unlink(struct stm_data *stm_data,
 	if (!drvdata || !drvdata->csdev)
 		return;
 
-	stm_disable(drvdata->csdev);
+	coresight_disable(drvdata->csdev);
 }
 
 static long stm_generic_set_options(struct stm_data *stm_data,
