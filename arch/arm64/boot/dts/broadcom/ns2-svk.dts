@@ -180,6 +180,35 @@
 		brcm,nand-oob-sector-size = <16>;
 		#address-cells = <1>;
 		#size-cells = <1>;
+
+		partition@0 {
+			label = "nboot";
+			reg = <0x00000000 0x00280000>; /*  2.5MB */
+			read-only;
+		};
+
+		partition@280000 {
+			label = "nenv";
+			reg = <0x00280000 0x00040000>; /* 0.25MB */
+			read-only;
+		};
+
+		partition@2c0000 {
+			label = "ndtb";
+			reg = <0x002c0000 0x00040000>; /* 0.25MB */
+			read-only;
+		};
+
+		partition@300000 {
+			label = "nsystem";
+			reg = <0x00300000 0x03d00000>; /*   61MB */
+			read-only;
+		};
+
+		partition@4000000 {
+			label = "nrootfs";
+			reg = <0x04000000 0x3c000000>; /*  960MB */
+		};
 	};
 };
 
