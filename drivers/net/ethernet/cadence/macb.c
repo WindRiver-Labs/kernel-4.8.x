@@ -1074,6 +1074,7 @@ static inline void macb_init_rx_ring(struct macb *bp)
 		addr += bp->rx_buffer_size;
 	}
 	bp->rx_ring[RX_RING_SIZE - 1].addr |= MACB_BIT(RX_WRAP);
+	bp->rx_tail = 0;
 }
 
 static int macb_rx(struct macb *bp, int budget)
