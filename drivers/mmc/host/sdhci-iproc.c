@@ -20,6 +20,7 @@
 #include <linux/mmc/host.h>
 #include <linux/of.h>
 #include <linux/of_device.h>
+#include <linux/of_address.h>
 #include "sdhci-pltfm.h"
 
 struct sdhci_iproc_data {
@@ -32,10 +33,17 @@ struct sdhci_iproc_data {
 struct sdhci_iproc_host {
 	const struct sdhci_iproc_data *data;
 	u32 shadow_cmd;
+	bool is_cmd_shadowed;
 	u32 shadow_blk;
+	void __iomem *idm_io_control;
 };
 
 #define REG_OFFSET_IN_BITS(reg) ((reg) << 3 & 0x18)
+/* NS2 specific #defines */
+
+#define SDIO_IDM_IO_CONTROL_DIRECT_OFFSET 0x0
+#define SDIO_IDM_RESET_CONTROL_OFFSET 0x3F8
+/* NS2 specific #defines */
 
 static inline u32 sdhci_iproc_readl(struct sdhci_host *host, int reg)
 {
@@ -142,6 +150,32 @@ static void sdhci_iproc_writeb(struct sdhci_host *host, u8 val, int reg)
 	sdhci_iproc_writel(host, newval, reg & ~3);
 }
 
+static const struct sdhci_ops sdhci_iproc_ns2_ops = {
+	.read_l = sdhci_iproc_readl,
+	.read_w = sdhci_iproc_readw,
+	.read_b = sdhci_iproc_readb,
+	.write_l = sdhci_iproc_writel,
+	.write_w = sdhci_iproc_writew,
+	.write_b = sdhci_iproc_writeb,
+	.set_clock = sdhci_set_clock,
+	.get_max_clock = sdhci_pltfm_clk_get_max_clock,
+	.set_bus_width = sdhci_set_bus_width,
+	.reset = sdhci_reset,
+	.set_uhs_signaling = sdhci_set_uhs_signaling,
+};
+
+static const struct sdhci_pltfm_data sdhci_iproc_ns2_pltfm_data = {
+	.quirks = SDHCI_QUIRK_MULTIBLOCK_READ_ACMD12 | SDHCI_QUIRK_DATA_TIMEOUT_USES_SDCLK,
+	.quirks2 = SDHCI_QUIRK2_ACMD23_BROKEN,
+	.ops = &sdhci_iproc_ns2_ops,
+};
+
+static const struct sdhci_iproc_data iproc_ns2_data = {
+	.pdata = &sdhci_iproc_ns2_pltfm_data,
+	.caps = 0x05E90000,
+	.caps1 = 0x00000064,
+};
+
 static const struct sdhci_ops sdhci_iproc_ops = {
 	.read_l = sdhci_iproc_readl,
 	.read_w = sdhci_iproc_readw,
@@ -195,6 +229,7 @@ static const struct sdhci_iproc_data bcm2835_data = {
 static const struct of_device_id sdhci_iproc_of_match[] = {
 	{ .compatible = "brcm,bcm2835-sdhci", .data = &bcm2835_data },
 	{ .compatible = "brcm,sdhci-iproc-cygnus", .data = &iproc_data },
+	{ .compatible = "brcm,sdhci-iproc-ns2", .data = &iproc_ns2_data },
 	{ }
 };
 MODULE_DEVICE_TABLE(of, sdhci_iproc_of_match);
@@ -207,6 +242,8 @@ static int sdhci_iproc_probe(struct platform_device *pdev)
 	struct sdhci_iproc_host *iproc_host;
 	struct sdhci_pltfm_host *pltfm_host;
 	int ret;
+	struct device *dev = &pdev->dev;
+	struct device_node *np = dev->of_node;
 
 	match = of_match_device(sdhci_iproc_of_match, &pdev->dev);
 	if (!match)
@@ -241,6 +278,31 @@ static int sdhci_iproc_probe(struct platform_device *pdev)
 	if (iproc_host->data->pdata->quirks & SDHCI_QUIRK_MISSING_CAPS) {
 		host->caps = iproc_host->data->caps;
 		host->caps1 = iproc_host->data->caps1;
+	}
+
+	if (of_device_is_compatible(np, "brcm,sdhci-iproc-ns2")) {
+		/* IDM reset (for NS2) */
+		iproc_host->idm_io_control = of_iomap(np, 1);
+		if (IS_ERR_OR_NULL(iproc_host->idm_io_control)) {
+			dev_err(dev,
+				"of_iomap failed for idm_io_control, %d\n",
+				ret);
+			ret = -ENOMEM;
+			goto err;
+		}
+
+		writel(0x00201401, iproc_host->idm_io_control +
+				   SDIO_IDM_IO_CONTROL_DIRECT_OFFSET);
+
+		/* Reset SDIO device */
+		writel(0x1, iproc_host->idm_io_control +
+			    SDIO_IDM_RESET_CONTROL_OFFSET);
+		mdelay(100);
+
+		/* Release reset */
+		writel(0x0, iproc_host->idm_io_control +
+			    SDIO_IDM_RESET_CONTROL_OFFSET);
+		mdelay(100);
 	}
 
 	ret = sdhci_add_host(host);

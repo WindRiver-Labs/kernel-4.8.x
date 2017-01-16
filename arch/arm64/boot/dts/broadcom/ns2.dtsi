@@ -639,18 +639,21 @@
 		};
 
 		sdio0: sdhci@66420000 {
-			compatible = "brcm,sdhci-iproc-cygnus";
-			reg = <0x66420000 0x100>;
+			compatible = "brcm,sdhci-iproc-ns2";
+			reg = sdio_base_addr0: <0x66420000 0x8080>,
+			idm_io_control0: <0x67013408 0x190>;
+			reg-names = "sdio_base_addr", "idm_io_control";
 			interrupts = <GIC_SPI 421 IRQ_TYPE_LEVEL_HIGH>;
 			bus-width = <8>;
-			no-1-8-v;
 			clocks = <&sdio_clk>;
 			status = "disabled";
 		};
 
 		sdio1: sdhci@66430000 {
-			compatible = "brcm,sdhci-iproc-cygnus";
-			reg = <0x66430000 0x100>;
+			compatible = "brcm,sdhci-iproc-ns2";
+			reg = sdio_base_addr1: <0x66430000 0x8080>,
+			idm_io_control1: <0x67014408 0x190>;
+			reg-names = "sdio_base_addr", "idm_io_control";
 			interrupts = <GIC_SPI 422 IRQ_TYPE_LEVEL_HIGH>;
 			bus-width = <8>;
 			clocks = <&sdio_clk>;
