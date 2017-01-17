@@ -85,9 +85,42 @@
 };
 
 &i2c1 {
-	status = "ok";
-};
+	clock-frequency = <100000>;
+	status = "okay";
+	mux@70 {
+		compatible = "nxp,pca9544";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg = <0x70>;
 
+		i2c@0 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0>;
+
+			tlv320aic3x: tlv320aic3x@18 {
+				compatible = "ti,tlv320aic3x";
+				reg = <0x18>;
+				ai3x-micbias-vg = <2>;
+				gpio-reset = <&pca9673_gpio_expander 13 0>;
+				status = "okay";
+			};
+		};
+
+		i2c@3 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <3>;
+			pca9673_gpio_expander: gpio@24 {
+				compatible = "nxp,pca9673";
+				reg = <0x24>;
+				#gpio-cells = <2>;
+				gpio-controller;
+				status = "okay";
+			};
+		};
+	};
+};
 &uart0 {
 	status = "ok";
 };
