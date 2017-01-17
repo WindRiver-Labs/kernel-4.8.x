@@ -286,7 +286,7 @@ void xilinx_drm_crtc_cancel_page_flip(struct drm_crtc *base_crtc,
 	event = crtc->event;
 	if (event && (event->base.file_priv == file)) {
 		crtc->event = NULL;
-		event->base.destroy(&event->base);
+		drm_event_cancel_free(drm, &event->base);
 		drm_crtc_vblank_put(base_crtc);
 	}
 	spin_unlock_irqrestore(&drm->event_lock, flags);
