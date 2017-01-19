@@ -99,7 +99,7 @@ vmfs_fill_cache(struct file *filp, struct dir_context *dirent,
 
 	DEBUG1("name=%s\n", qname->name);
 
-	qname->hash = full_name_hash(qname->name, qname->len);
+	qname->hash = full_name_hash(NULL, qname->name, qname->len);
 
 	if (dentry->d_op && dentry->d_op->d_hash) {
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 38)
