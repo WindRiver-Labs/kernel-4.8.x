@@ -32,11 +32,14 @@ int vmfs_symlink(struct inode *inode, struct dentry *dentry,
 	return vmfs_proc_symlink(server_from_dentry(dentry), dentry, oldname);
 }
 
-static void *vmfs_follow_link(struct dentry *dentry, struct nameidata *nd)
+const char *vmfs_get_link(struct dentry *dentry, struct inode *inode, struct delayed_call *done)
 {
 	char *link = __getname();
 
-	DEBUG1("followlink of %s/%s\n", DENTRY_PATH(dentry));
+	DEBUG1("get link of %s/%s\n", DENTRY_PATH(dentry));
+
+	if (!dentry)
+		return ERR_PTR(-ECHILD);
 
 	if (!link) {
 		link = ERR_PTR(-ENOMEM);
@@ -50,20 +53,10 @@ static void *vmfs_follow_link(struct dentry *dentry, struct nameidata *nd)
 			link[len] = 0;
 		}
 	}
-	nd_set_link(nd, link);
-	return NULL;
-}
-
-static void vmfs_put_link(struct dentry *dentry, struct nameidata *nd, void *p)
-{
-	char *s = nd_get_link(nd);
-
-	if (!IS_ERR(s))
-		__putname(s);
+	return d_inode(dentry)->i_private;
 }
 
 const struct inode_operations vmfs_link_inode_operations = {
 	.readlink = generic_readlink,
-	.follow_link = vmfs_follow_link,
-	.put_link = vmfs_put_link,
+	.get_link = vmfs_get_link,
 };
