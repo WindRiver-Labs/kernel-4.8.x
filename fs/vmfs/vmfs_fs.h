@@ -61,6 +61,13 @@ struct vmfs_cache_head {
 	int eof;
 };
 
+#define PAGE_CACHE_SHIFT	PAGE_SHIFT
+#define PAGE_CACHE_SIZE		PAGE_SIZE
+#define PAGE_CACHE_MASK		PAGE_MASK
+#define PAGE_CACHE_ALIGN(addr)	(((addr)+PAGE_CACHE_SIZE-1)&PAGE_CACHE_MASK)
+
+#define page_cache_get(page)		get_page(page)
+#define page_cache_release(page)	put_page(page)
 #define VMFS_DIRCACHE_SIZE  ((int)(PAGE_CACHE_SIZE/sizeof(struct dentry *)))
 union vmfs_dir_cache {
 	struct vmfs_cache_head head;
