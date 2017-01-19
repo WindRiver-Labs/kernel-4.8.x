@@ -126,7 +126,6 @@ xylon_drm_connector_create(struct drm_device *dev,
 	if (!connector)
 		return ERR_PTR(-ENOMEM);
 
-	connector->base.encoder = base_encoder;
 	connector->base.polled = DRM_CONNECTOR_POLL_CONNECT |
 				 DRM_CONNECTOR_POLL_DISCONNECT;
 
@@ -152,6 +151,8 @@ xylon_drm_connector_create(struct drm_device *dev,
 		DRM_ERROR("failed attach encoder connector\n");
 		goto err_attach;
 	}
+
+	connector->base.encoder = base_encoder;
 	connector->encoder = base_encoder;
 
 	return &connector->base;
