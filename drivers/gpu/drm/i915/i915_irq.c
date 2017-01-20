@@ -1206,6 +1206,9 @@ static void gen6_pm_rps_work(struct work_struct *work)
 			adj *= 2;
 		else /* CHV needs even encode values */
 			adj = IS_CHERRYVIEW(dev_priv) ? 2 : 1;
+
+		if (new_delay >= dev_priv->rps.max_freq_softlimit)
+			adj = 0;
 		/*
 		 * For better performance, jump directly
 		 * to RPe if we're below it.
@@ -1227,6 +1230,9 @@ static void gen6_pm_rps_work(struct work_struct *work)
 			adj *= 2;
 		else /* CHV needs even encode values */
 			adj = IS_CHERRYVIEW(dev_priv) ? -2 : -1;
+
+		if (new_delay <= dev_priv->rps.min_freq_softlimit)
+			adj = 0;
 	} else { /* unknown event */
 		adj = 0;
 	}
