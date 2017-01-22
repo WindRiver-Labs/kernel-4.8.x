@@ -2492,7 +2492,6 @@ static const struct xilinx_dma_config axivdma_config = {
 static const struct of_device_id xilinx_dma_of_ids[] = {
 	{ .compatible = "xlnx,axi-dma-1.00.a", .data = &axidma_config },
 	{ .compatible = "xlnx,axi-cdma-1.00.a", .data = &axicdma_config },
-	{ .compatible = "xlnx,axi-vdma-1.00.a", .data = &axivdma_config },
 	{}
 };
 MODULE_DEVICE_TABLE(of, xilinx_dma_of_ids);
