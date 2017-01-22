@@ -1039,7 +1039,7 @@ static int xilinx_vdma_terminate_all(struct dma_chan *dchan)
  *
  * Return: '0' on success and failure value on error
  */
-int xilinx_vdma_channel_set_config(struct dma_chan *dchan,
+int xilinx_axivdma_channel_set_config(struct dma_chan *dchan,
 					struct xilinx_vdma_config *cfg)
 {
 	struct xilinx_vdma_chan *chan = to_xilinx_chan(dchan);
@@ -1089,7 +1089,7 @@ int xilinx_vdma_channel_set_config(struct dma_chan *dchan,
 
 	return 0;
 }
-EXPORT_SYMBOL(xilinx_vdma_channel_set_config);
+EXPORT_SYMBOL(xilinx_axivdma_channel_set_config);
 
 /* -----------------------------------------------------------------------------
  * Probe and remove
