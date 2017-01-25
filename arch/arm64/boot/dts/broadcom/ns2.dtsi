@@ -88,13 +88,13 @@
 	timer {
 		compatible = "arm,armv8-timer";
 		interrupts = <GIC_PPI 13 (GIC_CPU_MASK_RAW(0xff) |
-			      IRQ_TYPE_LEVEL_LOW)>,
+			      IRQ_TYPE_EDGE_RISING)>,
 			     <GIC_PPI 14 (GIC_CPU_MASK_RAW(0xff) |
-			      IRQ_TYPE_LEVEL_LOW)>,
+			      IRQ_TYPE_EDGE_RISING)>,
 			     <GIC_PPI 11 (GIC_CPU_MASK_RAW(0xff) |
-			      IRQ_TYPE_LEVEL_LOW)>,
+			      IRQ_TYPE_EDGE_RISING)>,
 			     <GIC_PPI 10 (GIC_CPU_MASK_RAW(0xff) |
-			      IRQ_TYPE_LEVEL_LOW)>;
+			      IRQ_TYPE_EDGE_RISING)>;
 	};
 
 	pmu {
@@ -234,6 +234,7 @@
 			#dma-cells = <1>;
 			#dma-channels = <8>;
 			#dma-requests = <32>;
+			dma-coherent;
 			clocks = <&iprocslow>;
 			clock-names = "apb_pclk";
 		};
@@ -654,7 +655,7 @@
 			reg = <0x66300000 0xcf0>;
 			interrupts = <GIC_SPI 429 IRQ_TYPE_LEVEL_HIGH>;
 			phys = <&usb3_phy0>;
-			phy-names = "usb3-phy";
+			phy-names = "usb";
 			dma-coherent;
 			needs-reset-on-resume;
 			status = "disabled";
@@ -671,7 +672,7 @@
 			reg = <0x66310000 0xcf0>;
 			interrupts = <GIC_SPI 433 IRQ_TYPE_LEVEL_HIGH>;
 			phys = <&usb3_phy1>;
-			phy-names = "usb3-phy";
+			phy-names = "usb";
 			dma-coherent;
 			needs-reset-on-resume;
 			status = "disabled";
@@ -845,6 +846,7 @@
 			phys = <&usbdrd_phy>;
 			phy-names = "usb2drd";
 			extcon = <&usbdrd_phy>;
+			dma-coherent;
 			status = "disabled";
 		};
 
