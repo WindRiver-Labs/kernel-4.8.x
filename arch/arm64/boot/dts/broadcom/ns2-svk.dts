@@ -56,18 +56,6 @@
 	};
 };
 
-&ehci0 {
-	status = "ok";
-};
-
-&ehci1 {
-	status = "ok";
-};
-
-&ehci2 {
-	status = "ok";
-};
-
 &enet {
 	status = "ok";
 };
@@ -149,11 +137,25 @@
 	status = "ok";
 };
 
-&udc_dwc {
-	status = "ok";
-};
 &ssp0 {
 	status = "ok";
+
+	slic@0 {
+		compatible = "silabs,si3226x";
+		reg = <0>;
+		spi-max-frequency = <5000000>;
+		spi-cpha = <1>;
+		spi-cpol = <1>;
+		pl022,hierarchy = <0>;
+		pl022,interface = <0>;
+		pl022,slave-tx-disable = <0>;
+		pl022,com-mode = <0>;
+		pl022,rx-level-trig = <1>;
+		pl022,tx-level-trig = <1>;
+		pl022,ctrl-len = <11>;
+		pl022,wait-state = <0>;
+		pl022,duplex = <0>;
+	};
 };
 
 &ssp1 {
@@ -182,28 +184,33 @@
 
 &pinctrl {
 	pinctrl-names = "default";
-	pinctrl-0 = <&nand_sel &usb2_sel>;
+	pinctrl-0 = <&nand_sel &uart0_sel &uart1_sel &uart2_sel &usb2_sel>;
 	nand_sel: nand_sel {
 		function = "nand";
 		groups = "nand_grp";
+	};
+
+	uart0_sel: uart0_sel {
+		function = "uart0";
+		groups = "uart0_rts_cts_grp", "uart0_in_out_grp",
+			 "uart0_modem_grp";
+	};
+
+	uart1_sel: uart1_sel {
+		function = "uart1";
+		groups = "uart1_dcd_dsr_grp", "uart1_ri_dtr_grp",
+			 "uart1_rts_cts_grp", "uart1_in_out_grp";
+	};
+
+	uart2_sel: uart2_sel {
+		function = "uart2";
+		groups = "uart2_rts_cts_grp";
 	};
 
 	usb2_sel: usb2_sel {
 		pins = "usb2_presence_indication";
 		bias-pull-up;
 	};
-};
-
-&ohci0 {
-	status = "ok";
-};
-
-&ohci1 {
-	status = "ok";
-};
-
-&ohci2 {
-	status = "ok";
 };
 
 &sata_phy0 {
@@ -320,30 +327,36 @@
 	};
 };
 
-&usbphy0 {
-	status = "ok";
-};
+&qspi {
+	bspi-sel = <0>;
+	flash: m25p80@0 {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		compatible = "m25p80";
+		reg = <0x0>;
+		spi-max-frequency = <12500000>;
+		m25p,fast-read;
+		spi-cpol;
+		spi-cpha;
 
-&usbphy1 {
-	status = "ok";
-};
+		partition@0 {
+			label = "boot";
+			reg = <0x00000000 0x000a0000>;
+		};
 
-&usbdrd_phy {
-	status = "ok";
-};
+		partition@a0000 {
+			label = "env";
+			reg = <0x000a0000 0x00060000>;
+		};
 
-&usb3_phy0 {
-	status = "ok";
-};
+		partition@100000 {
+			label = "system";
+			reg = <0x00100000 0x00600000>;
+		};
 
-&usb3_phy1 {
-	status = "ok";
-};
-
-&xhci0 {
-	status = "ok";
-};
-
-&xhci1 {
-	status = "ok";
+		partition@700000 {
+			label = "rootfs";
+			reg = <0x00700000 0x01900000>;
+		};
+	};
 };

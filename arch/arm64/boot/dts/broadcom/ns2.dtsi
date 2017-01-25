@@ -30,8 +30,6 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-/memreserve/ 0x81000000 0x00200000;
-
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 #include <dt-bindings/clock/bcm-ns2.h>
 
@@ -236,7 +234,6 @@
 			#dma-cells = <1>;
 			#dma-channels = <8>;
 			#dma-requests = <32>;
-			dma-coherent;
 			clocks = <&iprocslow>;
 			clock-names = "apb_pclk";
 		};
@@ -279,31 +276,7 @@
 				     <GIC_SPI 260 IRQ_TYPE_LEVEL_HIGH>,
 				     <GIC_SPI 261 IRQ_TYPE_LEVEL_HIGH>,
 				     <GIC_SPI 262 IRQ_TYPE_LEVEL_HIGH>;
-			mmu-masters = <&dma1 0x408>;
-			#iommu-cells = <0>;
-		};
-
-		dma1: dma@66330000 {
-			compatible = "arm,pl330", "arm,primecell";
-			reg = <0x66330000 0x1000>;
-			interrupts = <GIC_SPI 410 IRQ_TYPE_LEVEL_HIGH>,
-					<GIC_SPI 411 IRQ_TYPE_LEVEL_HIGH>,
-					<GIC_SPI 412 IRQ_TYPE_LEVEL_HIGH>,
-					<GIC_SPI 413 IRQ_TYPE_LEVEL_HIGH>,
-					<GIC_SPI 414 IRQ_TYPE_LEVEL_HIGH>,
-					<GIC_SPI 415 IRQ_TYPE_LEVEL_HIGH>,
-					<GIC_SPI 416 IRQ_TYPE_LEVEL_HIGH>,
-					<GIC_SPI 417 IRQ_TYPE_LEVEL_HIGH>,
-					<GIC_SPI 418 IRQ_TYPE_LEVEL_HIGH>;
-			#dma-cells = <1>;
-			#dma-channels = <8>;
-			#dma-requests = <32>;
-			dma-coherent;
-			copy_align = <7>;
-			clocks = <&iprocslow>;
-			clock-names = "apb_pclk";
-			#stream-id-cells = <1>;
-			iommus = <&smmu>;
+			#iommu-cells = <1>;
 		};
 
 		pinctrl: pinctrl@6501d130 {
@@ -681,7 +654,7 @@
 			reg = <0x66300000 0xcf0>;
 			interrupts = <GIC_SPI 429 IRQ_TYPE_LEVEL_HIGH>;
 			phys = <&usb3_phy0>;
-			phy-names = "usb";
+			phy-names = "usb3-phy";
 			dma-coherent;
 			needs-reset-on-resume;
 			status = "disabled";
@@ -698,7 +671,7 @@
 			reg = <0x66310000 0xcf0>;
 			interrupts = <GIC_SPI 433 IRQ_TYPE_LEVEL_HIGH>;
 			phys = <&usb3_phy1>;
-			phy-names = "usb";
+			phy-names = "usb3-phy";
 			dma-coherent;
 			needs-reset-on-resume;
 			status = "disabled";
@@ -710,11 +683,11 @@
 			reg = <0x66310e00 0x1ac>;
 		};
 
-               sata_phy: sata_phy@663f0100 {
-                       compatible = "brcm,iproc-ns2-sata-phy";
-                       reg = <0x663f0100 0x1f00>,
-                             <0x663f004c 0x10>;
-                       reg-names = "phy", "phy-ctrl";
+		sata_phy: sata_phy@663f0100 {
+			compatible = "brcm,iproc-ns2-sata-phy";
+			reg = <0x663f0100 0x1f00>,
+			      <0x663f004c 0x10>;
+			reg-names = "phy", "phy-ctrl";
 			#address-cells = <1>;
 			#size-cells = <0>;
 
@@ -872,7 +845,6 @@
 			phys = <&usbdrd_phy>;
 			phy-names = "usb2drd";
 			extcon = <&usbdrd_phy>;
-			dma-coherent;
 			status = "disabled";
 		};
 
