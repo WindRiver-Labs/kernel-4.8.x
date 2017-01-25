@@ -55,12 +55,7 @@
 #define DRD_HOST_VAL		0x803
 #define DRD_DEV_VAL		0x807
 #define DRD_AFE_VAL		0xc0000001
-/* DRD_IOTCTRL_VAL does not include AxCACHE, which is preserved */
 #define DRD_IOCTRL_VAL		0x3dee001
-#define DRD_IOCTL_ARCACHE_W	4
-#define DRD_IOCTL_ARCACHE_R	6
-#define DRD_IOCTL_AWCACHE_W	4
-#define DRD_IOCTL_AWCACHE_R	2
 #define STRAP_CTRL_VAL		0x7ff0001
 #define GPIO_DELAY		20
 #define PHY_WQ_DELAY		msecs_to_jiffies(550)
@@ -144,11 +139,7 @@ static int ns2_drd_phy_init(struct phy *phy)
 	writel(DRD_AFE_VAL, driver->icfgdrd_regs + ICFG_DRD_AFE);
 
 	/* Configure IDM IO control register*/
-	/* preserve AxCACHE settings */
-	val = readl(driver->idmdrd_io_ctrl);
-	val &= ((((1 << DRD_IOCTL_ARCACHE_W) - 1) << DRD_IOCTL_ARCACHE_R) |
-		(((1 << DRD_IOCTL_AWCACHE_W) - 1) << DRD_IOCTL_AWCACHE_R));
-	writel(DRD_IOCTRL_VAL | val, driver->idmdrd_io_ctrl);
+	writel(DRD_IOCTRL_VAL, driver->idmdrd_io_ctrl);
 
 	val = readl(driver->icfgdrd_regs + ICFG_FSM_CTRL);
 
