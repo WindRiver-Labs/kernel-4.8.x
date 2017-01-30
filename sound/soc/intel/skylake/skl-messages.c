@@ -1171,6 +1171,7 @@ int skl_free_dsp(struct skl *skl)
 	if (!ops)
 		return -EIO;
 
+	skl_module_sysfs_exit(skl->skl_sst);
 	ops->cleanup(bus->dev, ctx);
 
 	if (ctx->dsp->addr.lpe)
