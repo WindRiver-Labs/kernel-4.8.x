@@ -2079,6 +2079,7 @@ static int setup_dpni(struct fsl_mc_device *ls_dev)
 	struct dpaa2_eth_priv *priv;
 	struct net_device *net_dev;
 	struct dpni_buffer_layout buf_layout;
+	struct dpni_link_cfg cfg = {0};
 	int err;
 
 	net_dev = dev_get_drvdata(dev);
@@ -2192,11 +2193,21 @@ static int setup_dpni(struct fsl_mc_device *ls_dev)
 	if (!priv->cls_rule)
 		goto err_cls_rule;
 
-	priv->num_bufs = DPAA2_ETH_NUM_BUFS_TD;
-	priv->refill_thresh = DPAA2_ETH_REFILL_THRESH_TD;
+	/* Enable flow control */
+	cfg.options = DPNI_LINK_OPT_AUTONEG | DPNI_LINK_OPT_PAUSE;
+
+	err = dpni_set_link_cfg(priv->mc_io, 0, priv->mc_token, &cfg);
+	if (err) {
+		netdev_err(net_dev, "ERROR %d setting link cfg", err);
+		goto err_set_link_cfg;
+	}
+
+	priv->num_bufs = DPAA2_ETH_NUM_BUFS_FC;
+	priv->refill_thresh = DPAA2_ETH_REFILL_THRESH_FC;
 
 	return 0;
 
+err_set_link_cfg:
 err_cls_rule:
 err_tx_cong:
 err_data_offset:
@@ -2569,13 +2580,6 @@ static int bind_dpni(struct dpaa2_eth_priv *priv)
 		}
 		if (err)
 			return err;
-	}
-
-	/* pause frames are disabled by default, so enable taildrops */
-	err = setup_fqs_taildrop(priv, true);
-	if (err) {
-		dev_err(dev, "setup_fqs_taildrop() failed\n");
-		return err;
 	}
 
 	err = dpni_get_qdid(priv->mc_io, 0, priv->mc_token, DPNI_QUEUE_TX,
