@@ -34,10 +34,10 @@ config OMAP_REMOTEPROC
 
 config ZYNQ_REMOTEPROC
 	tristate "Support ZYNQ remoteproc"
-	depends on ARCH_ZYNQ
+	depends on ARCH_ZYNQ && SMP && !DEBUG_SG
 	select REMOTEPROC
-	select RPMSG
-	select SMP
+	select RPMSG_VIRTIO
+	select HOTPLUG_CPU
 	help
 	  Say y here to support Xilinx ZynQ remote processors (the second
 	  ARM CORTEX-A9 cpu) via the remote processor framework.
