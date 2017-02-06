@@ -492,6 +492,7 @@ struct dpaa2_eth_priv {
 	u16 bpid;
 	u16 tx_qdid;
 
+	int tx_pause_frames;
 	int num_bufs;
 	int refill_thresh;
 
