@@ -117,3 +117,8 @@
 &dpmac12 {
 	phy-handle = <&mdio0_phy15>;
 };
+
+&esdhc {
+	mmc-hs200-1_8v;
+	status = "okay";
+};
