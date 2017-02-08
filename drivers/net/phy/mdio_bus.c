@@ -419,6 +419,10 @@ struct phy_device *mdiobus_scan(struct mii_bus *bus, int addr)
 	int err;
 
 	phydev = get_phy_device(bus, addr, false);
+	/* FIXME with correct way of accessing Clasue 45 */
+	if (IS_ERR(phydev) || phydev == NULL)
+		phydev = get_phy_device(bus, addr, true);
+
 	if (IS_ERR(phydev))
 		return phydev;
 

@@ -1089,6 +1089,25 @@ static int pfe_eth_mdio_mux(u8 muxval)
 
 }
 
+static int pfe_eth_mdio_write_addr(struct mii_bus *bus, int mii_id,
+				   int dev_addr, int regnum)
+{
+	struct pfe_eth_priv_s *priv = (struct pfe_eth_priv_s *)bus->priv;
+
+	__raw_writel(EMAC_MII_DATA_PA(mii_id) |
+		     EMAC_MII_DATA_RA(dev_addr) |
+		     EMAC_MII_DATA_TA | EMAC_MII_DATA(regnum),
+		     priv->PHY_baseaddr + EMAC_MII_DATA_REG);
+
+	if (pfe_eth_gemac_phy_timeout(priv, EMAC_MDIO_TIMEOUT)) {
+		netdev_err(priv->dev, "%s: phy MDIO address write timeout\n",
+				__func__);
+		return -1;
+	}
+
+	return 0;
+}
+
 static int pfe_eth_mdio_write(struct mii_bus *bus, int mii_id, int regnum, u16 value)
 {
 	struct pfe_eth_priv_s *priv = (struct pfe_eth_priv_s *)bus->priv;
@@ -1096,16 +1115,27 @@ static int pfe_eth_mdio_write(struct mii_bus *bus, int mii_id, int regnum, u16 v
 	/*FIXME Dirty hack to configure mux */
 	if(priv->mdio_muxval) {
 		if(mii_id == 0x1)
-			pfe_eth_mdio_mux(0x1);
-		else
 			pfe_eth_mdio_mux(0x2);
+		else
+			pfe_eth_mdio_mux(0x3);
 	}
 
-	/* start a write op */
-	__raw_writel(EMAC_MII_DATA_ST | EMAC_MII_DATA_OP_WR |
-			EMAC_MII_DATA_PA(mii_id) | EMAC_MII_DATA_RA(regnum) |
-			EMAC_MII_DATA_TA | EMAC_MII_DATA(value),
-			priv->PHY_baseaddr + EMAC_MII_DATA_REG);
+	if (regnum & MII_ADDR_C45) {
+		pfe_eth_mdio_write_addr(bus, mii_id, (regnum >> 16) & 0x1f,
+					regnum & 0xffff);
+		__raw_writel(EMAC_MII_DATA_OP_CL45_WR |
+			     EMAC_MII_DATA_PA(mii_id) |
+			     EMAC_MII_DATA_RA((regnum >> 16) & 0x1f) |
+			     EMAC_MII_DATA_TA | EMAC_MII_DATA(value),
+			     priv->PHY_baseaddr + EMAC_MII_DATA_REG);
+	} else {
+		/* start a write op */
+		__raw_writel(EMAC_MII_DATA_ST | EMAC_MII_DATA_OP_WR |
+			     EMAC_MII_DATA_PA(mii_id) |
+			     EMAC_MII_DATA_RA(regnum) |
+			     EMAC_MII_DATA_TA | EMAC_MII_DATA(value),
+			     priv->PHY_baseaddr + EMAC_MII_DATA_REG);
+	}
 
 	if (pfe_eth_gemac_phy_timeout(priv, EMAC_MDIO_TIMEOUT)){
 		netdev_err(priv->dev, "%s: phy MDIO write timeout\n", __func__);
@@ -1125,15 +1155,27 @@ static int pfe_eth_mdio_read(struct mii_bus *bus, int mii_id, int regnum)
 	/*FIXME Dirty hack to configure mux */
 	if(priv->mdio_muxval){
 		if(mii_id == 0x1)
-			pfe_eth_mdio_mux(0x1);
-		else
 			pfe_eth_mdio_mux(0x2);
+		else
+			pfe_eth_mdio_mux(0x3);
 	}
 
-	/* start a read op */
-	__raw_writel(EMAC_MII_DATA_ST | EMAC_MII_DATA_OP_RD |
-			EMAC_MII_DATA_PA(mii_id) | EMAC_MII_DATA_RA(regnum) |
-			EMAC_MII_DATA_TA, priv->PHY_baseaddr + EMAC_MII_DATA_REG);
+	if (regnum & MII_ADDR_C45) {
+		pfe_eth_mdio_write_addr(bus, mii_id, (regnum >> 16) & 0x1f,
+					regnum & 0xffff);
+		__raw_writel(EMAC_MII_DATA_OP_CL45_RD |
+			     EMAC_MII_DATA_PA(mii_id) |
+			     EMAC_MII_DATA_RA((regnum >> 16) & 0x1f) |
+			     EMAC_MII_DATA_TA,
+			     priv->PHY_baseaddr + EMAC_MII_DATA_REG);
+	} else {
+		/* start a read op */
+		__raw_writel(EMAC_MII_DATA_ST | EMAC_MII_DATA_OP_RD |
+			     EMAC_MII_DATA_PA(mii_id) |
+			     EMAC_MII_DATA_RA(regnum) |
+			     EMAC_MII_DATA_TA, priv->PHY_baseaddr +
+			     EMAC_MII_DATA_REG);
+	}
 
 	if (pfe_eth_gemac_phy_timeout( priv, EMAC_MDIO_TIMEOUT))	{
 		netdev_err(priv->dev, "%s: phy MDIO read timeout\n", __func__);
@@ -1411,7 +1453,11 @@ static void ls1012a_configure_serdes(struct net_device *dev)
 {
 	struct pfe_eth_priv_s *priv = pfe->eth.eth_priv[0];  // FIXME This will not work for EMAC2 as SGMII
         /*int value,sgmii_2500=0; */
+	int sgmii_2500 = 0;
 	struct mii_bus *bus = priv->mii_bus;
+
+	if (priv->einfo->mii_config == PHY_INTERFACE_MODE_SGMII_2500)
+		sgmii_2500 = 1;
 
 	netif_info(priv, drv, dev, "%s\n", __func__);
         /* PCS configuration done with corresponding GEMAC */
@@ -1421,10 +1467,18 @@ static void ls1012a_configure_serdes(struct net_device *dev)
 #if 1
        /*These settings taken from validtion team */
         pfe_eth_mdio_write(bus, 0, 0x0, 0x8000);
-        pfe_eth_mdio_write(bus, 0, 0x14, 0xb); 
-        pfe_eth_mdio_write(bus, 0, 0x4, 0x1a1);
-        pfe_eth_mdio_write(bus, 0, 0x12, 0x400);
-        pfe_eth_mdio_write(bus, 0, 0x13, 0x0);
+	if (sgmii_2500) {
+		pfe_eth_mdio_write(bus, 0, 0x14, 0x9);
+		pfe_eth_mdio_write(bus, 0, 0x4, 0x4001);
+		pfe_eth_mdio_write(bus, 0, 0x12, 0xa120);
+		pfe_eth_mdio_write(bus, 0, 0x13, 0x7);
+	} else {
+		pfe_eth_mdio_write(bus, 0, 0x14, 0xb);
+		pfe_eth_mdio_write(bus, 0, 0x4, 0x1a1);
+		pfe_eth_mdio_write(bus, 0, 0x12, 0x400);
+		pfe_eth_mdio_write(bus, 0, 0x13, 0x0);
+	}
+
         pfe_eth_mdio_write(bus, 0, 0x0, 0x1140);
         return;
 #else
@@ -1478,7 +1532,9 @@ static int pfe_phy_init(struct net_device *dev)
 	interface = pfe_get_interface(dev);
 #else
 	interface = priv->einfo->mii_config;
-	if(interface == PHY_INTERFACE_MODE_SGMII) {
+	if ((interface == PHY_INTERFACE_MODE_SGMII) ||
+	    (interface == PHY_INTERFACE_MODE_SGMII_2500)) {
+
 		/*Configure SGMII PCS */
 		if(pfe->scfg) {
 			/*Config MDIO from serdes */
