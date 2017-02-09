@@ -1422,7 +1422,7 @@ static int xilinx_drm_dp_sub_parse_of(struct xilinx_drm_dp_sub *dp_sub)
 	struct device_node *node = dp_sub->dev->of_node;
 	const char *string;
 	u32 fmt, i;
-	bool ret;
+	int ret;
 
 	ret = of_property_read_string(node, "xlnx,output-fmt", &string);
 	if (ret < 0) {
