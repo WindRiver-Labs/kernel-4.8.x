@@ -1113,11 +1113,18 @@ static int pfe_eth_mdio_write(struct mii_bus *bus, int mii_id, int regnum, u16 v
 	struct pfe_eth_priv_s *priv = (struct pfe_eth_priv_s *)bus->priv;
 
 	/*FIXME Dirty hack to configure mux */
-	if(priv->mdio_muxval) {
-		if(mii_id == 0x1)
-			pfe_eth_mdio_mux(0x2);
-		else
-			pfe_eth_mdio_mux(0x3);
+	if (priv->mdio_muxval) {
+		if (regnum & MII_ADDR_C45) {
+			if (mii_id == 0x1)
+				pfe_eth_mdio_mux(0x2);
+			else
+				pfe_eth_mdio_mux(0x3);
+		} else {
+			if (mii_id == 0x1)
+				pfe_eth_mdio_mux(0x1);
+			else
+				pfe_eth_mdio_mux(0x2);
+		}
 	}
 
 	if (regnum & MII_ADDR_C45) {
@@ -1153,11 +1160,18 @@ static int pfe_eth_mdio_read(struct mii_bus *bus, int mii_id, int regnum)
 	u16 value = 0;
 
 	/*FIXME Dirty hack to configure mux */
-	if(priv->mdio_muxval){
-		if(mii_id == 0x1)
-			pfe_eth_mdio_mux(0x2);
-		else
-			pfe_eth_mdio_mux(0x3);
+	if (priv->mdio_muxval) {
+		if (regnum & MII_ADDR_C45) {
+			if (mii_id == 0x1)
+				pfe_eth_mdio_mux(0x2);
+			else
+				pfe_eth_mdio_mux(0x3);
+		} else {
+			if (mii_id == 0x1)
+				pfe_eth_mdio_mux(0x1);
+			else
+				pfe_eth_mdio_mux(0x2);
+		}
 	}
 
 	if (regnum & MII_ADDR_C45) {
