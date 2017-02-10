@@ -199,15 +199,6 @@ static int dpaa2_eth_set_pauseparam(struct net_device *net_dev,
 		goto out;
 	}
 
-	/* If the DPNI is up and autonegotiation is active, the user
-	 * won't be able to change flow control settings.
-	 */
-	if ((state.options & DPNI_LINK_OPT_AUTONEG) && netif_running(net_dev)) {
-		netdev_warn(net_dev,
-		"ERROR disable interface autonegotiation first.\n");
-		return -EACCES;
-	}
-
 	cfg.rate = state.rate;
 	cfg.options = state.options;
 	current_tx_pause = !!(cfg.options & DPNI_LINK_OPT_PAUSE) ^
