@@ -136,14 +136,6 @@ static int dpaa2_eth_set_settings(struct net_device *net_dev,
 
 	netdev_dbg(net_dev, "Setting link parameters...");
 
-	/* Due to a temporary MC limitation, the DPNI must be down
-	 * in order to be able to change link settings. Taking steps to let
-	 * the user know that.
-	 */
-	if (netif_running(net_dev)) {
-		netdev_warn(net_dev, "Sorry, interface must be brought down first.\n");
-		return -EACCES;
-
 	/* Need to interrogate on link state to get flow control params */
 	err = dpni_get_link_state(priv->mc_io, 0, priv->mc_token, &state);
 	if (err) {
