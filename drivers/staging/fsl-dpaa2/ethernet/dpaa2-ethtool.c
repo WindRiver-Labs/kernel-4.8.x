@@ -130,6 +130,7 @@ static int dpaa2_eth_set_settings(struct net_device *net_dev,
 				  struct ethtool_cmd *cmd)
 {
 	struct dpaa2_eth_priv *priv = netdev_priv(net_dev);
+	struct dpni_link_state state = {0};
 	struct dpni_link_cfg cfg = {0};
 	int err = 0;
 
@@ -142,8 +143,15 @@ static int dpaa2_eth_set_settings(struct net_device *net_dev,
 	if (netif_running(net_dev)) {
 		netdev_warn(net_dev, "Sorry, interface must be brought down first.\n");
 		return -EACCES;
+
+	/* Need to interrogate on link state to get flow control params */
+	err = dpni_get_link_state(priv->mc_io, 0, priv->mc_token, &state);
+	if (err) {
+		netdev_err(net_dev, "ERROR %d getting link state", err);
+		goto out;
 	}
 
+	cfg.options = state.options;
 	cfg.rate = ethtool_cmd_speed(cmd);
 	if (cmd->autoneg == AUTONEG_ENABLE)
 		cfg.options |= DPNI_LINK_OPT_AUTONEG;
@@ -161,6 +169,7 @@ static int dpaa2_eth_set_settings(struct net_device *net_dev,
 		 */
 		netdev_dbg(net_dev, "ERROR %d setting link cfg", err);
 
+out:
 	return err;
 }
 
