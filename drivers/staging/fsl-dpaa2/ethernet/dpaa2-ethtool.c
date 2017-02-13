@@ -176,9 +176,8 @@ static void dpaa2_eth_get_pauseparam(struct net_device *net_dev,
 	if (err)
 		netdev_dbg(net_dev, "ERROR %d getting link state", err);
 
-	/* TODO: handle pause frame autonegotiation */
-	pause->autoneg = 0;
-
+	/* for now, pause frames autonegotiation is not separate */
+	pause->autoneg = !!(state.options & DPNI_LINK_OPT_AUTONEG);
 	pause->rx_pause = !!(state.options & DPNI_LINK_OPT_PAUSE);
 	pause->tx_pause = pause->rx_pause ^
 		!!(state.options & DPNI_LINK_OPT_ASYM_PAUSE);
@@ -203,6 +202,10 @@ static int dpaa2_eth_set_pauseparam(struct net_device *net_dev,
 	cfg.options = state.options;
 	current_tx_pause = !!(cfg.options & DPNI_LINK_OPT_PAUSE) ^
 			   !!(cfg.options & DPNI_LINK_OPT_ASYM_PAUSE);
+
+	if (pause->autoneg != !!(state.options & DPNI_LINK_OPT_AUTONEG))
+		netdev_warn(net_dev,
+			"WARN: Can't change pause frames autoneg separately\n");
 
 	if (pause->rx_pause)
 		cfg.options |= DPNI_LINK_OPT_PAUSE;
