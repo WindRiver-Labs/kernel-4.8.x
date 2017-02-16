@@ -1367,7 +1367,7 @@ MODULE_DEVICE_TABLE(of, xilinx_vdma_of_ids);
 
 static struct platform_driver xilinx_vdma_driver = {
 	.driver = {
-		.name = "xilinx-vdma",
+		.name = "xilinx-axivdma",
 		.of_match_table = xilinx_vdma_of_ids,
 	},
 	.probe = xilinx_vdma_probe,
