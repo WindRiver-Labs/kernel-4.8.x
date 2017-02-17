@@ -59,6 +59,7 @@
 #define TMC_AXICTL_PROT_CTL_B1	BIT(1)
 #define TMC_AXICTL_SCT_GAT_MODE	BIT(7)
 #define TMC_AXICTL_WR_BURST_16	0xF00
+#define TMC_AXICTL_WR_BURST_08	0x700
 /* TMC_FFCR - 0x304 */
 #define TMC_FFCR_FLUSHMAN_BIT	6
 #define TMC_FFCR_EN_FMT		BIT(0)
@@ -98,7 +99,8 @@ enum tmc_mem_intf_width {
  * @buf:	area of memory where trace data get sent.
  * @paddr:	DMA start location in RAM.
  * @vaddr:	virtual representation of @paddr.
- * @size:	@buf size.
+ * @size:	trace buffer size.
+ * @len:	size of the available trace.
  * @mode:	how this TMC is being used.
  * @config_type: TMC variant, must be of type @tmc_config_type.
  * @memwidth:	width of the memory interface databus, in bytes.
@@ -115,6 +117,7 @@ struct tmc_drvdata {
 	dma_addr_t		paddr;
 	void __iomem		*vaddr;
 	u32			size;
+	u32			len;
 	local_t			mode;
 	enum tmc_config_type	config_type;
 	enum tmc_mem_intf_width	memwidth;
