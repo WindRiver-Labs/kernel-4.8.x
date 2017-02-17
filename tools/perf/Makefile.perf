@@ -86,6 +86,9 @@ include ../scripts/utilities.mak
 #
 # Define FEATURES_DUMP to provide features detection dump file
 # and bypass the feature detection
+#
+# Define NO_CSTRACE if you do not want CoreSight trace decoding support
+#
 
 # As per kernel Makefile, avoid funny character set dependencies
 unexport LC_ALL
@@ -429,6 +432,9 @@ $(PERF_IN): prepare FORCE
 	@(test -f ../../include/asm-generic/bitops/fls64.h && ( \
         (diff -B ../include/asm-generic/bitops/fls64.h ../../include/asm-generic/bitops/fls64.h >/dev/null) \
         || echo "Warning: tools/include/asm-generic/bitops/fls64.h differs from kernel" >&2 )) || true
+	@(test -f ../../include/linux/coresight-pmu.h && ( \
+	(diff -B ../include/linux/coresight-pmu.h ../../include/linux/coresight-pmu.h >/dev/null) \
+	|| echo "Warning: tools/include/linux/coresight-pmu.h differs from kernel" >&2 )) || true
 	$(Q)$(MAKE) $(build)=perf
 
 $(OUTPUT)perf: $(PERFLIBS) $(PERF_IN) $(LIBTRACEEVENT_DYNAMIC_LIST)
