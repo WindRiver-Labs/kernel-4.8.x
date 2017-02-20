@@ -384,16 +384,14 @@ static int register_extcon_notifier(struct ns2_phy_driver *phy_driver,
 	edev = phy_driver->edev;
 
 	/* Register for device change notification */
-	ret = extcon_register_interest(&phy_driver->extcon_dev, edev->name,
-				       "USB", &phy_driver->dev_nb);
+	ret = extcon_register_notifier(edev, EXTCON_USB, &phy_driver->dev_nb);
 	if (ret < 0) {
 		dev_err(dev, "can't register extcon_dev for %s\n", edev->name);
 		return ret;
 	}
 
 	/* Register for host change notification */
-	ret = extcon_register_interest(&phy_driver->extcon_host, edev->name,
-				       "USB-HOST", &phy_driver->host_nb);
+	ret = extcon_register_notifier(edev, EXTCON_USB_HOST, &phy_driver->dev_nb);
 	if (ret < 0) {
 		dev_err(dev, "can't register extcon_dev for %s\n", edev->name);
 		goto err_dev;
@@ -420,9 +418,9 @@ static int register_extcon_notifier(struct ns2_phy_driver *phy_driver,
 	return 0;
 
 err_host:
-	extcon_unregister_interest(&phy_driver->extcon_dev);
+	extcon_unregister_notifier(edev, EXTCON_USB_HOST, &phy_driver->dev_nb);
 err_dev:
-	extcon_unregister_interest(&phy_driver->extcon_host);
+	extcon_unregister_notifier(edev, EXTCON_USB, &phy_driver->dev_nb);
 	return ret;
 }
 
