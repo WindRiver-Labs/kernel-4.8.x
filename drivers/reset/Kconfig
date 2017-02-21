@@ -29,6 +29,7 @@ config TI_SYSCON_RESET
 
 config ZYNQMP_RESET_CONTROLLER
 	bool "Xilinx ZYNQMP Reset Controller Support"
+	depends on ARCH_ZYNQMP
         help
 	 ZYNQMP Reset Controller support.
 
