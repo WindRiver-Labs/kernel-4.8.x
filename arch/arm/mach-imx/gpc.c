@@ -531,6 +531,12 @@ static int __init imx_gpc_init(struct device_node *node,
 	}
 
 	/*
+	 * Clear the OF_POPULATED flag set in of_irq_init so that
+	 * later the GPC power domain driver will not be skipped.
+	 */
+	of_node_clear_flag(node, OF_POPULATED);
+
+	/*
 	 * If there are CPU isolation timing settings in dts,
 	 * update them according to dts, otherwise, keep them
 	 * with default value in registers.
@@ -564,12 +570,6 @@ static int __init imx_gpc_init(struct device_node *node,
 	val |= cpu_pdnscr_iso2sw << GPC_PGC_CPU_SW2ISO_SHIFT;
 	val |= cpu_pdnscr_iso << GPC_PGC_CPU_SW_SHIFT;
 	writel_relaxed(val, gpc_base + GPC_PGC_CPU_PDNSCR);
-
-	/*
-	 * Clear the OF_POPULATED flag set in of_irq_init so that
-	 * later the GPC power domain driver will not be skipped.
-	 */
-	of_node_clear_flag(node, OF_POPULATED);
 
 	return 0;
 }
