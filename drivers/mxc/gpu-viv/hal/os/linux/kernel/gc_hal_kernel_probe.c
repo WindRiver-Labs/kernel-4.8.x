@@ -528,11 +528,14 @@ long drv_ioctl(
     gcsHAL_PRIVATE_DATA_PTR data;
     gctINT32 i, count;
     gckVIDMEM_NODE nodeObject;
+    unsigned int ua_flags;
 
     gcmkHEADER_ARG(
         "filp=0x%08X ioctlCode=0x%08X arg=0x%08X",
         filp, ioctlCode, arg
         );
+
+    ua_flags = uaccess_save_and_enable();
 
     if (filp == gcvNULL)
     {
@@ -689,6 +692,7 @@ long drv_ioctl(
     if (status == gcvSTATUS_INTERRUPTED)
     {
         gcmkFOOTER();
+        uaccess_restore(ua_flags);
         return -ERESTARTSYS;
     }
 
@@ -739,10 +743,14 @@ long drv_ioctl(
 
     /* Success. */
     gcmkFOOTER_NO();
+    uaccess_restore(ua_flags);
+
     return 0;
 
 OnError:
     gcmkFOOTER();
+    uaccess_restore(ua_flags);
+
     return -ENOTTY;
 }
 
