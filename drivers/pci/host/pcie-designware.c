@@ -172,11 +172,21 @@ static void dw_pcie_prog_outbound_atu(struct pcie_port *pp, int index,
 	dw_pcie_readl_rc(pp, PCIE_ATU_CR2, &val);
 }
 
+static void dw_pcie_msi_mask_irq(struct irq_data *data)
+{
+	struct msi_desc *desc = irq_data_get_msi_desc(data);
+
+	if (!desc)
+		return;
+
+	pci_msi_mask_irq(data);
+}
+
 static struct irq_chip dw_msi_irq_chip = {
 	.name = "PCI-MSI",
 	.irq_enable = pci_msi_unmask_irq,
 	.irq_disable = pci_msi_mask_irq,
-	.irq_mask = pci_msi_mask_irq,
+	.irq_mask = dw_pcie_msi_mask_irq,
 	.irq_unmask = pci_msi_unmask_irq,
 };
 
