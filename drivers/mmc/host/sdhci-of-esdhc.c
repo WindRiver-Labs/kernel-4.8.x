@@ -848,10 +848,12 @@ static void esdhc_set_uhs_signaling(struct sdhci_host *host, unsigned int uhs)
 static const struct of_device_id scfg_device_ids[] = {
 	{ .compatible = "fsl,t1040-scfg", },
 	{ .compatible = "fsl,ls1012a-scfg", },
+	{ .compatible = "fsl,ls1046a-scfg", },
 	{}
 };
 #define SCFG_SDHCIOVSELCR	0x408
 #define SDHCIOVSELCR_TGLEN	0x80000000
+#define SDHCIOVSELCR_VSELVAL	0x60000000
 #define SDHCIOVSELCR_SDHC_VS	0x00000001
 
 void esdhc_signal_voltage_switch(struct sdhci_host *host,
@@ -877,10 +879,20 @@ void esdhc_signal_voltage_switch(struct sdhci_host *host,
 		}
 		if (scfg_base) {
 			scfg_sdhciovselcr = SDHCIOVSELCR_TGLEN |
+					    SDHCIOVSELCR_VSELVAL;
+			iowrite32be(scfg_sdhciovselcr,
+				scfg_base + SCFG_SDHCIOVSELCR);
+
+			val |= ESDHC_VOLT_SEL;
+			sdhci_writel(host, val, ESDHC_PROCTL);
+			mdelay(5);
+
+			scfg_sdhciovselcr = SDHCIOVSELCR_TGLEN |
 					    SDHCIOVSELCR_SDHC_VS;
 			iowrite32be(scfg_sdhciovselcr,
 				scfg_base + SCFG_SDHCIOVSELCR);
 			iounmap(scfg_base);
+			break;
 		}
 		val |= ESDHC_VOLT_SEL;
 		sdhci_writel(host, val, ESDHC_PROCTL);
