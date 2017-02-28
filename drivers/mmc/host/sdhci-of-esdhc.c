@@ -1002,7 +1002,11 @@ static void esdhc_init(struct platform_device *pdev, struct sdhci_host *host)
 		esdhc->peripheral_clock = be32_to_cpup(val);
 	} else {
 		clk = of_clk_get(np, 0);
-		if (!IS_ERR(clk))
+		if (IS_ERR(clk))
+			return;
+		if (of_device_is_compatible(np, "fsl,ls1046a-esdhc"))
+			esdhc->peripheral_clock = clk_get_rate(clk) / 2;
+		else
 			esdhc->peripheral_clock = clk_get_rate(clk);
 	}
 }
