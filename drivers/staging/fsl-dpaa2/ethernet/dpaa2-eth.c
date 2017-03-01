@@ -908,7 +908,7 @@ static int add_bufs(struct dpaa2_eth_priv *priv, u16 bpid)
 		 * area the device is using.
 		 */
 		buf = PTR_ALIGN(buf + priv->rx_extra_head,
-				      DPAA2_ETH_RX_BUF_ALIGN);
+				      priv->rx_buf_align);
 
 		addr = dma_map_single(dev, buf, DPAA2_ETH_RX_BUF_SIZE,
 				      DMA_FROM_DEVICE);
@@ -2111,6 +2111,12 @@ static int setup_dpni(struct fsl_mc_device *ls_dev)
 		goto err_get_attr;
 	}
 
+	/* due to a limitation in WRIOP 1.0.0 (ERR009354), the Rx buf
+	 * align value must be a multiple of 256 */
+	priv->rx_buf_align =
+		priv->dpni_attrs.wriop_version & 0x3ff ?
+		DPAA2_ETH_RX_BUF_ALIGN : DPAA2_ETH_RX_BUF_ALIGN_V1;
+
 	/* Update number of logical FQs in netdev */
 	err = netif_set_real_num_tx_queues(net_dev,
 			dpaa2_eth_queue_count(priv));
@@ -2131,7 +2137,7 @@ static int setup_dpni(struct fsl_mc_device *ls_dev)
 	buf_layout.pass_parser_result = true;
 	buf_layout.pass_frame_status = true;
 	buf_layout.private_data_size = DPAA2_ETH_SWA_SIZE;
-	buf_layout.data_align = DPAA2_ETH_RX_BUF_ALIGN;
+	buf_layout.data_align = priv->rx_buf_align;
 	buf_layout.options = DPNI_BUF_LAYOUT_OPT_PARSER_RESULT |
 			     DPNI_BUF_LAYOUT_OPT_FRAME_STATUS |
 			     DPNI_BUF_LAYOUT_OPT_PRIVATE_DATA_SIZE |
@@ -2716,7 +2722,7 @@ static int netdev_init(struct net_device *net_dev)
 	 */
 	rx_req_headroom = LL_RESERVED_SPACE(net_dev) - ETH_HLEN;
 	rx_headroom = ALIGN(DPAA2_ETH_RX_HWA_SIZE + DPAA2_ETH_SWA_SIZE,
-			DPAA2_ETH_RX_BUF_ALIGN);
+			priv->rx_buf_align);
 	if (rx_req_headroom > rx_headroom)
 		priv->rx_extra_head = ALIGN(rx_req_headroom - rx_headroom, 4);
 
