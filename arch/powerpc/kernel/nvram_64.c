@@ -579,7 +579,7 @@ static int nvram_pstore_init(void)
 	nvram_pstore_info.buf = oops_data;
 	nvram_pstore_info.bufsize = oops_data_sz;
 
-	spin_lock_init(&nvram_pstore_info.buf_lock);
+	raw_spin_lock_init(&nvram_pstore_info.buf_lock);
 
 	rc = pstore_register(&nvram_pstore_info);
 	if (rc && (rc != -EPERM))
