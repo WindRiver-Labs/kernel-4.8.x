@@ -99,6 +99,7 @@
 #define DPAA2_ETH_RX_BUF_SIZE		2048
 #define DPAA2_ETH_TX_BUF_ALIGN		64
 #define DPAA2_ETH_RX_BUF_ALIGN		64
+#define DPAA2_ETH_RX_BUF_ALIGN_V1	256
 #define DPAA2_ETH_NEEDED_HEADROOM(p_priv) \
 	((p_priv)->tx_data_offset + DPAA2_ETH_TX_BUF_ALIGN)
 
@@ -114,7 +115,7 @@
  */
 #define DPAA2_ETH_BUF_RAW_SIZE(p_priv) \
 	(DPAA2_ETH_SKB_SIZE(p_priv) + \
-	DPAA2_ETH_RX_BUF_ALIGN)
+	p_priv->rx_buf_align)
 
 /* PTP nominal frequency 1GHz */
 #define DPAA2_PTP_NOMINAL_FREQ_PERIOD_NS 1
@@ -484,6 +485,7 @@ struct dpaa2_eth_priv {
 	bool ts_rx_en; /* Rx timestamping enabled */
 
 	u16 tx_data_offset;
+	u16 rx_buf_align;
 	/* Rx extra headroom space */
 	u16 rx_extra_head;
 
