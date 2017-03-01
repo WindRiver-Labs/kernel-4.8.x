@@ -681,7 +681,7 @@ static int alloc_rsp_fq_cpu(struct device *qidev, unsigned int cpu)
 
 	opts.we_mask = QM_INITFQ_WE_FQCTRL | QM_INITFQ_WE_DESTWQ |
 		QM_INITFQ_WE_CONTEXTB | QM_INITFQ_WE_CONTEXTA |
-		QM_INITFQ_WE_CGID | QMAN_INITFQ_FLAG_LOCAL;
+		QM_INITFQ_WE_CGID;
 
 	opts.fqd.fq_ctrl = QM_FQCTRL_CTXASTASHING |
 			   QM_FQCTRL_CPCSTASH |
