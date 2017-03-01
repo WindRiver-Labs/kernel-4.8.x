@@ -1554,7 +1554,7 @@ static int skl_tplg_pga_event(struct snd_soc_dapm_widget *w,
 
 	return 0;
 }
-static int skl_tplg_dsp_log_get(struct snd_kcontrol *kcontrol,
+int skl_tplg_dsp_log_get(struct snd_kcontrol *kcontrol,
 					struct snd_ctl_elem_value *ucontrol)
 {
 	struct snd_soc_platform *platform = snd_soc_kcontrol_platform(kcontrol);
@@ -1567,7 +1567,7 @@ static int skl_tplg_dsp_log_get(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
-static int skl_tplg_dsp_log_set(struct snd_kcontrol *kcontrol,
+int skl_tplg_dsp_log_set(struct snd_kcontrol *kcontrol,
 					struct snd_ctl_elem_value *ucontrol)
 {
 	struct snd_soc_platform *platform = snd_soc_kcontrol_platform(kcontrol);
@@ -1579,7 +1579,6 @@ static int skl_tplg_dsp_log_set(struct snd_kcontrol *kcontrol,
 
 	return 0;
 }
-
 
 static int skl_tplg_tlv_control_get(struct snd_kcontrol *kcontrol,
 			unsigned int __user *data, unsigned int size)
