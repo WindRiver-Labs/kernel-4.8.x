@@ -35,6 +35,7 @@
 #include <linux/phy.h>
 #include <linux/io.h>
 #include <linux/uaccess.h>
+#include <linux/of_fdt.h>
 
 #include <asm/irq.h>
 
@@ -420,7 +421,8 @@ struct phy_device *mdiobus_scan(struct mii_bus *bus, int addr)
 
 	phydev = get_phy_device(bus, addr, false);
 	/* FIXME with correct way of accessing Clasue 45 */
-	if (IS_ERR(phydev) || phydev == NULL)
+	if ((IS_ERR(phydev) || phydev == NULL) &&
+		of_find_node_by_path("/pfe@04000000/ethernet@0"))
 		phydev = get_phy_device(bus, addr, true);
 
 	if (IS_ERR(phydev))
