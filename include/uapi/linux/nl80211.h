@@ -322,7 +322,7 @@
  * @NL80211_CMD_GET_SCAN: get scan results
  * @NL80211_CMD_TRIGGER_SCAN: trigger a new scan with the given parameters
  *	%NL80211_ATTR_TX_NO_CCK_RATE is used to decide whether to send the
- *	probe requests at CCK rate or not. %NL80211_ATTR_MAC can be used to
+ *	probe requests at CCK rate or not. %NL80211_ATTR_BSSID can be used to
  *	specify a BSSID to scan for; if not included, the wildcard BSSID will
  *	be used.
  * @NL80211_CMD_NEW_SCAN_RESULTS: scan notification (as a reply to
@@ -1867,6 +1867,9 @@ enum nl80211_commands {
  * @NL80211_ATTR_MESH_PEER_AID: Association ID for the mesh peer (u16). This is
  *	used to pull the stored data for mesh peer in power save state.
  *
+ * @NL80211_ATTR_BSSID: The BSSID of the AP. Note that %NL80211_ATTR_MAC is also
+ *	used in various commands/events for specifying the BSSID.
+ *
  * @NUM_NL80211_ATTR: total number of nl80211_attrs available
  * @NL80211_ATTR_MAX: highest attribute number currently defined
  * @__NL80211_ATTR_AFTER_LAST: internal use
@@ -2260,6 +2263,8 @@ enum nl80211_attrs {
 	NL80211_ATTR_MEASUREMENT_DURATION_MANDATORY,
 
 	NL80211_ATTR_MESH_PEER_AID,
+
+	NL80211_ATTR_BSSID,
 
 	/* add attributes here, update the policy in nl80211.c */
 
