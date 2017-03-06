@@ -7354,6 +7354,7 @@ gckOS_WaitSignal(
 {
     gceSTATUS status = gcvSTATUS_OK;
     gcsSIGNAL_PTR signal;
+    long ret;
 
     gcmkHEADER_ARG("Os=0x%X Signal=0x%X Wait=0x%08X", Os, Signal, Wait);
 
@@ -7365,15 +7366,12 @@ gckOS_WaitSignal(
 
     gcmkASSERT(signal->id == (gctUINT32)(gctUINTPTR_T)Signal);
 
-    might_sleep();
 
-    spin_lock_irq(&signal->obj.wait.lock);
-
-    if (signal->obj.done)
+    if (completion_done(&signal->obj))
     {
         if (!signal->manualReset)
         {
-            signal->obj.done = 0;
+	    reinit_completion(&signal->obj);
         }
 
         status = gcvSTATUS_OK;
@@ -7389,47 +7387,17 @@ gckOS_WaitSignal(
             ? MAX_SCHEDULE_TIMEOUT
             : Wait * HZ / 1000;
 
-        DECLARE_WAITQUEUE(wait, current);
-        wait.flags |= WQ_FLAG_EXCLUSIVE;
-        __add_wait_queue_tail(&signal->obj.wait, &wait);
-
-        while (gcvTRUE)
-        {
-            if (signal_pending(current))
-            {
+	ret = wait_for_completion_interruptible_timeout(&signal->obj, timeout);
+	if (ret == -ERESTARTSYS) {
                 /* Interrupt received. */
-                status = gcvSTATUS_INTERRUPTED;
-                break;
-            }
-
-            __set_current_state(TASK_INTERRUPTIBLE);
-            spin_unlock_irq(&signal->obj.wait.lock);
-            timeout = schedule_timeout(timeout);
-            spin_lock_irq(&signal->obj.wait.lock);
-
-            if (signal->obj.done)
-            {
-                if (!signal->manualReset)
-                {
-                    signal->obj.done = 0;
-                }
-
-                status = gcvSTATUS_OK;
-                break;
-            }
-
-            if (timeout == 0)
-            {
-
-                status = gcvSTATUS_TIMEOUT;
-                break;
-            }
-        }
-
-        __remove_wait_queue(&signal->obj.wait, &wait);
+		status = gcvSTATUS_INTERRUPTED;
+	} else if (ret) {
+		if (!signal->manualReset)
+			reinit_completion(&signal->obj);
+		status = gcvSTATUS_OK;
+	} else
+		status = gcvSTATUS_TIMEOUT;
     }
-
-    spin_unlock_irq(&signal->obj.wait.lock);
 
 OnError:
     /* Return status. */
