@@ -689,7 +689,7 @@ static int do_cls(struct net_device *net_dev,
 	rule_cfg.key_size = cls_key_size(priv);
 
 	/* allocate twice the key size, for the actual key and for mask */
-	dma_mem =  kzalloc(rule_cfg.key_size * 2, GFP_DMA | GFP_KERNEL);
+	dma_mem = kzalloc(rule_cfg.key_size * 2, GFP_DMA | GFP_KERNEL);
 	if (!dma_mem)
 		return -ENOMEM;
 
@@ -717,12 +717,9 @@ static int do_cls(struct net_device *net_dev,
 
 	dma_unmap_single(dev, rule_cfg.key_iova,
 			 rule_cfg.key_size * 2, DMA_TO_DEVICE);
-	if (err) {
-		netdev_err(net_dev, "dpaa2_add/remove_cls() error %d\n", err);
-		goto err_free_mem;
-	}
 
-	return 0;
+	if (err)
+		netdev_err(net_dev, "dpaa2_add/remove_cls() error %d\n", err);
 
 err_free_mem:
 	kfree(dma_mem);
