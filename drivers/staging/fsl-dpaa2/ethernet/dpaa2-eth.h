@@ -89,9 +89,7 @@
 	(DPAA2_ETH_NUM_BUFS_TD - DPAA2_ETH_BUFS_PER_CMD)
 
 /* Buffer quota per queue to use when flow control is active. */
-#define DPAA2_ETH_NUM_BUFS_FC		32
-#define DPAA2_ETH_REFILL_THRESH_FC	\
-	(DPAA2_ETH_NUM_BUFS_FC - DPAA2_ETH_BUFS_PER_CMD)
+#define DPAA2_ETH_NUM_BUFS_FC		256
 
 /* Hardware requires alignment for ingress/egress buffer addresses
  * and ingress buffer lengths.
