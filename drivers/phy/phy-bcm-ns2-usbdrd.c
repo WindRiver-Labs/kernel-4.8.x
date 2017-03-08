@@ -261,7 +261,7 @@ static int ns2_drd_phy_poweron(struct phy *phy)
 		writel(val, driver->idmdrd_rst_ctrl);
 
 		/* Give hardware time to settle */
-		usleep_range(150, 300);
+		udelay(300);
 
 		/* port over current Polarity */
 		val = readl(driver->usb2h_strap_reg);
