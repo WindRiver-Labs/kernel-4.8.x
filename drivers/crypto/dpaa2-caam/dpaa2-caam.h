@@ -49,6 +49,12 @@
 /* NAPI weight *must* be a multiple of the store size. */
 #define DPAA2_CAAM_NAPI_WEIGHT	64
 
+/* The congestion entrance threshold was chosen so that on LS2088
+ * we support the maximum throughput for the available memory
+ */
+#define DPAA2_SEC_CONG_ENTRY_THRESH	(128 * 1024 * 1024)
+#define DPAA2_SEC_CONG_EXIT_THRESH	(DPAA2_SEC_CONG_ENTRY_THRESH * 9/10)
+
 /**
  * dpaa2_caam_priv - driver private data
  * @dpseci_id: DPSECI object unique ID
@@ -57,6 +63,12 @@
  * @dpseci_attr: DPSECI attributes
  * @rx_queue_attr: array of Rx queue attributes
  * @tx_queue_attr: array of Tx queue attributes
+ * @cscn_mem: pointer to memory region containing the
+ *	dpaa2_cscn struct; it's size is larger than
+ *	sizeof(struct dpaa2_cscn) to accommodate alignment
+ * @cscn_mem_aligned: pointer to struct dpaa2_cscn; it is computed
+ *	as PTR_ALIGN(cscn_mem, DPAA2_CSCN_ALIGN)
+ * @cscn_dma: dma address used by the QMAN to write CSCN messages
  * @dev: device associated with the DPSECI object
  * @mc_io: pointer to MC portal's I/O object
  * @ppriv: per CPU pointers to privata data
@@ -71,6 +83,11 @@ struct dpaa2_caam_priv {
 	struct dpseci_rx_queue_attr rx_queue_attr[DPSECI_PRIO_NUM];
 	struct dpseci_tx_queue_attr tx_queue_attr[DPSECI_PRIO_NUM];
 	int num_pairs;
+
+	/* congestion */
+	void *cscn_mem;
+	void *cscn_mem_aligned;
+	dma_addr_t cscn_dma;
 
 	struct device *dev;
 	struct fsl_mc_io *mc_io;

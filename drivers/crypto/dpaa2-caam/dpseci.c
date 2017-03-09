@@ -437,9 +437,9 @@ int dpseci_get_sec_attr(struct fsl_mc_io		*mc_io,
 	return 0;
 }
 
-int dpseci_get_sec_counters(struct fsl_mc_io		*mc_io,
-			    uint32_t			cmd_flags,
-		uint16_t			token,
+int dpseci_get_sec_counters(struct fsl_mc_io *mc_io,
+		uint32_t cmd_flags,
+		uint16_t token,
 		struct dpseci_sec_counters *counters)
 {
 	struct mc_command cmd = { 0 };
@@ -525,6 +525,48 @@ int dpseci_get_opr(struct fsl_mc_io *mc_io,
 
 	/* retrieve response parameters */
 	DPSECI_RSP_GET_OPR(cmd, cfg, qry);
+
+	return 0;
+}
+
+int dpseci_set_congestion_notification(struct fsl_mc_io *mc_io,
+			uint32_t cmd_flags,
+			uint16_t token,
+			const struct dpseci_congestion_notification_cfg *cfg)
+{
+	struct mc_command cmd = { 0 };
+
+	/* prepare command */
+	cmd.header = mc_encode_cmd_header(
+			DPSECI_CMDID_SET_CONGESTION_NOTIFICATION,
+			cmd_flags,
+			token);
+	DPSECI_CMD_SET_CONGESTION_NOTIFICATION(cmd, cfg);
+
+	/* send command to mc */
+	return mc_send_command(mc_io, &cmd);
+}
+
+int dpseci_get_congestion_notification(struct fsl_mc_io *mc_io,
+			uint32_t cmd_flags,
+			uint16_t token,
+			struct dpseci_congestion_notification_cfg *cfg)
+{
+	struct mc_command cmd = { 0 };
+	int err;
+
+	/* prepare command */
+	cmd.header = mc_encode_cmd_header(
+			DPSECI_CMDID_GET_CONGESTION_NOTIFICATION,
+			cmd_flags,
+			token);
+
+	/* send command to mc */
+	err = mc_send_command(mc_io, &cmd);
+	if (err)
+		return err;
+
+	DPSECI_RSP_GET_CONGESTION_NOTIFICATION(cmd, cfg);
 
 	return 0;
 }
