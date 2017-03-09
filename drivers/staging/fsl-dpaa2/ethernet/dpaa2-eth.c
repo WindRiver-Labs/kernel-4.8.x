@@ -126,16 +126,11 @@ static struct sk_buff *build_linear_skb(struct dpaa2_eth_priv *priv,
 	u16 fd_offset = dpaa2_fd_get_offset(fd);
 	u32 fd_length = dpaa2_fd_get_len(fd);
 
-	/* Leave enough extra space in the headroom to make sure the skb is
-	 * not realloc'd in forwarding scenarios. This has been previously
-	 * allocated when seeding the buffer pools.
-	 */
-	skb = build_skb(fd_vaddr - priv->rx_extra_head,
-			DPAA2_ETH_SKB_SIZE(priv));
+	skb = build_skb(fd_vaddr, DPAA2_ETH_SKB_SIZE);
 	if (unlikely(!skb))
 		return NULL;
 
-	skb_reserve(skb, fd_offset + priv->rx_extra_head);
+	skb_reserve(skb, fd_offset);
 	skb_put(skb, fd_length);
 
 	ch->buf_count--;
@@ -177,7 +172,7 @@ static struct sk_buff *build_frag_skb(struct dpaa2_eth_priv *priv,
 
 		if (i == 0) {
 			/* We build the skb around the first data buffer */
-			skb = build_skb(sg_vaddr, DPAA2_ETH_SKB_SIZE(priv));
+			skb = build_skb(sg_vaddr, DPAA2_ETH_SKB_SIZE);
 			if (unlikely(!skb))
 				return NULL;
 
@@ -904,11 +899,7 @@ static int add_bufs(struct dpaa2_eth_priv *priv, u16 bpid)
 		if (unlikely(!buf))
 			goto err_alloc;
 
-		/* Leave extra IP headroom in front of the actual
-		 * area the device is using.
-		 */
-		buf = PTR_ALIGN(buf + priv->rx_extra_head,
-				      priv->rx_buf_align);
+		buf = PTR_ALIGN(buf, priv->rx_buf_align);
 
 		addr = dma_map_single(dev, buf, DPAA2_ETH_RX_BUF_SIZE,
 				      DMA_FROM_DEVICE);
@@ -2140,10 +2131,12 @@ static int setup_dpni(struct fsl_mc_device *ls_dev)
 	buf_layout.pass_frame_status = true;
 	buf_layout.private_data_size = DPAA2_ETH_SWA_SIZE;
 	buf_layout.data_align = priv->rx_buf_align;
+	buf_layout.data_head_room = DPAA2_ETH_RX_HEAD_ROOM;
 	buf_layout.options = DPNI_BUF_LAYOUT_OPT_PARSER_RESULT |
 			     DPNI_BUF_LAYOUT_OPT_FRAME_STATUS |
 			     DPNI_BUF_LAYOUT_OPT_PRIVATE_DATA_SIZE |
-			     DPNI_BUF_LAYOUT_OPT_DATA_ALIGN;
+			     DPNI_BUF_LAYOUT_OPT_DATA_ALIGN |
+			     DPNI_BUF_LAYOUT_OPT_DATA_HEAD_ROOM;
 	err = dpni_set_buffer_layout(priv->mc_io, 0, priv->mc_token,
 				     DPNI_QUEUE_RX, &buf_layout);
 	if (err) {
@@ -2721,10 +2714,13 @@ static int netdev_init(struct net_device *net_dev)
 	 * forwarding path.
 	 */
 	rx_req_headroom = LL_RESERVED_SPACE(net_dev) - ETH_HLEN;
-	rx_headroom = ALIGN(DPAA2_ETH_RX_HWA_SIZE + DPAA2_ETH_SWA_SIZE,
-			priv->rx_buf_align);
+	rx_headroom = ALIGN(DPAA2_ETH_RX_HWA_SIZE + DPAA2_ETH_SWA_SIZE +
+			DPAA2_ETH_RX_HEAD_ROOM, priv->rx_buf_align);
 	if (rx_req_headroom > rx_headroom)
-		priv->rx_extra_head = ALIGN(rx_req_headroom - rx_headroom, 4);
+		dev_info_once(dev,
+			"Required headroom (%d) greater than available (%d).\n"
+			"This will impact performance due to reallocations.\n",
+			rx_req_headroom, rx_headroom);
 
 	/* Our .ndo_init will be called herein */
 	err = register_netdev(net_dev);
