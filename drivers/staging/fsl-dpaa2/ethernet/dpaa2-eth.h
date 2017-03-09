@@ -102,9 +102,8 @@
 	((p_priv)->tx_data_offset + DPAA2_ETH_TX_BUF_ALIGN)
 
 /* rx_extra_head prevents reallocations in L3 processing. */
-#define DPAA2_ETH_SKB_SIZE(p_priv) \
+#define DPAA2_ETH_SKB_SIZE \
 	(DPAA2_ETH_RX_BUF_SIZE + \
-	 (p_priv)->rx_extra_head + \
 	 SKB_DATA_ALIGN(sizeof(struct skb_shared_info)))
 
 /* Hardware only sees DPAA2_ETH_RX_BUF_SIZE, but we need to allocate ingress
@@ -112,11 +111,16 @@
  * for alignment restrictions.
  */
 #define DPAA2_ETH_BUF_RAW_SIZE(p_priv) \
-	(DPAA2_ETH_SKB_SIZE(p_priv) + \
+	(DPAA2_ETH_SKB_SIZE + \
 	p_priv->rx_buf_align)
 
 /* PTP nominal frequency 1GHz */
 #define DPAA2_PTP_NOMINAL_FREQ_PERIOD_NS 1
+
+/* Leave enough extra space in the headroom to make sure the skb is
+ * not realloc'd in forwarding scenarios.
+ */
+#define DPAA2_ETH_RX_HEAD_ROOM		192
 
 /* We are accommodating a skb backpointer and some S/G info
  * in the frame's software annotation. The hardware
@@ -484,8 +488,6 @@ struct dpaa2_eth_priv {
 
 	u16 tx_data_offset;
 	u16 rx_buf_align;
-	/* Rx extra headroom space */
-	u16 rx_extra_head;
 
 	u16 bpid;
 	u16 tx_qdid;
