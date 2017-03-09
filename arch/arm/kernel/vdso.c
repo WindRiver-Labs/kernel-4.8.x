@@ -149,7 +149,9 @@ static void __init vdso_nullpatch_one(struct elfinfo *lib, const char *symname)
 	if (!sym)
 		return;
 
+	set_kernel_text_rw();
 	sym->st_name = 0;
+	set_kernel_text_ro();
 }
 
 static void __init patch_vdso(void *ehdr)
