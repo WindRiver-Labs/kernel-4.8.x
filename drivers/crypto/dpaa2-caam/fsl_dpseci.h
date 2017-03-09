@@ -662,4 +662,77 @@ int dpseci_get_opr(struct fsl_mc_io *mc_io,
 			 struct opr_cfg *cfg,
 			 struct opr_qry *qry);
 
+/**
+ * enum dpseci_congestion_unit - DPSECI congestion units
+ * @DPSECI_CONGESTION_UNIT_BYTES: bytes units
+ * @DPSECI_CONGESTION_UNIT_FRAMES: frames units
+ */
+enum dpseci_congestion_unit {
+	DPSECI_CONGESTION_UNIT_BYTES = 0,
+	DPSECI_CONGESTION_UNIT_FRAMES
+};
+
+#define DPSECI_CGN_MODE_WRITE_MEM_ON_ENTER		0x00000001
+#define DPSECI_CGN_MODE_WRITE_MEM_ON_EXIT		0x00000002
+#define DPSECI_CGN_MODE_COHERENT_WRITE			0x00000004
+#define DPSECI_CGN_MODE_NOTIFY_DEST_ON_ENTER		0x00000008
+#define DPSECI_CGN_MODE_NOTIFY_DEST_ON_EXIT		0x00000010
+#define DPSECI_CGN_MODE_INTR_COALESCING_DISABLED	0x00000020
+
+/**
+ * struct dpseci_congestion_notification_cfg - congestion notification
+ *	configuration
+ * @units: units type
+ * @threshold_entry: above this threshold we enter a congestion state.
+ *	set it to '0' to disable it
+ * @threshold_exit: below this threshold we exit the congestion state.
+ * @message_ctx: The context that will be part of the CSCN message
+ * @message_iova: I/O virtual address (must be in DMA-able memory),
+ *	must be 16B aligned;
+ * @dest_cfg: CSCN can be send to either DPIO or DPCON WQ channel
+ * @notification_mode: Mask of available options; use 'DPSECI_CGN_MODE_<X>'
+ *  values
+ */
+struct dpseci_congestion_notification_cfg {
+	enum dpseci_congestion_unit units;
+	uint32_t threshold_entry;
+	uint32_t threshold_exit;
+	uint64_t message_ctx;
+	uint64_t message_iova;
+	struct dpseci_dest_cfg dest_cfg;
+	uint16_t notification_mode;
+};
+
+/**
+ * dpseci_set_congestion_notification() - Set congestion group
+ *	notification configuration
+ * @mc_io:	Pointer to MC portal's I/O object
+ * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
+ * @token:	Token of DPSECI object
+ * @cfg:	congestion notification configuration
+ *
+ * Return:	'0' on Success; error code otherwise.
+ */
+int dpseci_set_congestion_notification(struct fsl_mc_io	*mc_io,
+			uint32_t cmd_flags,
+			uint16_t token,
+			const struct dpseci_congestion_notification_cfg *cfg);
+
+/**
+ * dpseci_get_congestion_notification() - Get congestion group
+ *	notification configuration
+ * @mc_io:	Pointer to MC portal's I/O object
+ * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
+ * @token:	Token of DPSECI object
+ * @cfg:	congestion notification configuration
+ *
+ * Return:	'0' on Success; error code otherwise.
+ */
+int dpseci_get_congestion_notification(struct fsl_mc_io	*mc_io,
+			uint32_t cmd_flags,
+			uint16_t token,
+			struct dpseci_congestion_notification_cfg *cfg);
+
+
+
 #endif /* __FSL_DPSECI_H */
