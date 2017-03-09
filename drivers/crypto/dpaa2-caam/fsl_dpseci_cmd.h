@@ -34,7 +34,7 @@
 
 /* DPSECI Version */
 #define DPSECI_VER_MAJOR				5
-#define DPSECI_VER_MINOR				0
+#define DPSECI_VER_MINOR				1
 
 /* Command IDs */
 
@@ -64,6 +64,9 @@
 #define DPSECI_CMDID_GET_SEC_COUNTERS                   0x1991
 #define DPSECI_CMDID_SET_OPR				0x19A1
 #define DPSECI_CMDID_GET_OPR				0x19B1
+
+#define DPSECI_CMDID_SET_CONGESTION_NOTIFICATION	0x1701
+#define DPSECI_CMDID_GET_CONGESTION_NOTIFICATION	0x1711
 
 /*                cmd, param, offset, width, type, arg_name */
 #define DPSECI_CMD_OPEN(cmd, dpseci_id) \
@@ -260,6 +263,32 @@ do { \
 	MC_RSP_OP(cmd, 4, 32, 16, uint16_t, (qry)->ea_tptr); \
 	MC_RSP_OP(cmd, 5, 0, 16, uint16_t, (qry)->opr_vid); \
 	MC_RSP_OP(cmd, 5, 32, 16, uint16_t, (qry)->opr_id); \
+} while (0)
+
+#define DPSECI_CMD_SET_CONGESTION_NOTIFICATION(cmd, cfg) \
+do { \
+	MC_CMD_OP(cmd, 0,  0, 32, uint32_t, (cfg)->dest_cfg.dest_id); \
+	MC_CMD_OP(cmd, 0,  0, 16, uint16_t, (cfg)->notification_mode); \
+	MC_CMD_OP(cmd, 0, 48,  8, uint8_t, (cfg)->dest_cfg.priority); \
+	MC_CMD_OP(cmd, 0, 56,  4, enum dpseci_dest, (cfg)->dest_cfg.dest_type);\
+	MC_CMD_OP(cmd, 0, 60,  2, enum dpseci_congestion_unit, (cfg)->units); \
+	MC_CMD_OP(cmd, 1,  0, 64, uint64_t, (cfg)->message_iova); \
+	MC_CMD_OP(cmd, 2,  0, 64, uint64_t, (cfg)->message_ctx); \
+	MC_CMD_OP(cmd, 3,  0, 32, uint32_t, (cfg)->threshold_entry); \
+	MC_CMD_OP(cmd, 3, 32, 32, uint32_t, (cfg)->threshold_exit); \
+} while (0)
+
+#define DPSECI_RSP_GET_CONGESTION_NOTIFICATION(cmd, cfg) \
+do { \
+	MC_RSP_OP(cmd, 1,  0, 32, uint32_t, (cfg)->dest_cfg.dest_id); \
+	MC_RSP_OP(cmd, 1,  0, 16, uint16_t, (cfg)->notification_mode); \
+	MC_RSP_OP(cmd, 1, 48,  8, uint8_t, (cfg)->dest_cfg.priority); \
+	MC_RSP_OP(cmd, 1, 56,  4, enum dpseci_dest, (cfg)->dest_cfg.dest_type);\
+	MC_RSP_OP(cmd, 1, 60,  2, enum dpseci_congestion_unit, (cfg)->units); \
+	MC_RSP_OP(cmd, 2,  0, 64, uint64_t, (cfg)->message_iova); \
+	MC_RSP_OP(cmd, 3,  0, 64, uint64_t, (cfg)->message_ctx); \
+	MC_RSP_OP(cmd, 4,  0, 32, uint32_t, (cfg)->threshold_entry); \
+	MC_RSP_OP(cmd, 4, 32, 32, uint32_t, (cfg)->threshold_exit); \
 } while (0)
 
 #endif /* _FSL_DPSECI_CMD_H */

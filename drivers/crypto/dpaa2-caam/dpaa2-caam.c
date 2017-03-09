@@ -4896,11 +4896,24 @@ static int dpaa2_dpseci_bind(struct dpaa2_caam_priv *priv)
 	return err;
 }
 
+static void dpaa2_dpseci_congestion_free(struct dpaa2_caam_priv *priv)
+{
+	struct device *dev = priv->dev;
+
+	if (!priv->cscn_mem)
+		return;
+
+	dma_unmap_single(dev, priv->cscn_dma, DPAA2_CSCN_SIZE,
+			DMA_FROM_DEVICE);
+	kfree(priv->cscn_mem);
+}
+
 static void dpaa2_dpseci_free(struct dpaa2_caam_priv *priv)
 {
 	struct device *dev = priv->dev;
 	struct fsl_mc_device *ls_dev = to_fsl_mc_device(dev);
 
+	dpaa2_dpseci_congestion_free(priv);
 	dpseci_close(priv->mc_io, 0, ls_dev->mc_handle);
 }
 
@@ -5015,6 +5028,56 @@ static int dpaa2_dpseci_poll(struct napi_struct *napi, int budget)
 	return cleaned;
 }
 
+static int dpaa2_dpseci_congestion_setup(struct dpaa2_caam_priv *priv,
+					u16 token)
+{
+	struct dpseci_congestion_notification_cfg cong_notif_cfg = { 0 };
+	struct device *dev = priv->dev;
+	int err;
+
+	if (priv->major_ver <= 5 && priv->minor_ver < 1)
+		return 0;
+
+	priv->cscn_mem = kzalloc(DPAA2_CSCN_SIZE + DPAA2_CSCN_ALIGN,
+					GFP_KERNEL | GFP_DMA);
+	if (!priv->cscn_mem)
+		return -ENOMEM;
+
+	priv->cscn_mem_aligned = PTR_ALIGN(priv->cscn_mem, DPAA2_CSCN_ALIGN);
+	priv->cscn_dma = dma_map_single(dev, priv->cscn_mem_aligned,
+					DPAA2_CSCN_SIZE, DMA_FROM_DEVICE);
+	if (dma_mapping_error(dev, priv->cscn_dma)) {
+		dev_err(dev, "Error mapping CSCN memory area\n");
+		err = -ENOMEM;
+		goto err_dma_map;
+	}
+
+	cong_notif_cfg.units = DPSECI_CONGESTION_UNIT_BYTES;
+	cong_notif_cfg.threshold_entry = DPAA2_SEC_CONG_ENTRY_THRESH;
+	cong_notif_cfg.threshold_exit = DPAA2_SEC_CONG_EXIT_THRESH;
+	cong_notif_cfg.message_ctx = (u64)priv;
+	cong_notif_cfg.message_iova = priv->cscn_dma;
+	cong_notif_cfg.notification_mode = DPSECI_CGN_MODE_WRITE_MEM_ON_ENTER |
+					DPSECI_CGN_MODE_WRITE_MEM_ON_EXIT |
+					DPSECI_CGN_MODE_COHERENT_WRITE;
+
+	err = dpseci_set_congestion_notification(priv->mc_io, 0, token,
+						&cong_notif_cfg);
+	if (err) {
+		dev_err(dev, "dpseci_set_congestion_notification failed\n");
+		goto err_set_cong;
+	}
+
+	return 0;
+
+err_set_cong:
+	dma_unmap_single(dev, priv->cscn_dma, DPAA2_CSCN_SIZE, DMA_FROM_DEVICE);
+err_dma_map:
+	kfree(priv->cscn_mem);
+
+	return err;
+}
+
 static int __cold dpaa2_dpseci_setup(struct fsl_mc_device *ls_dev)
 {
 	struct device *dev = &ls_dev->dev;
@@ -5051,6 +5114,12 @@ static int __cold dpaa2_dpseci_setup(struct fsl_mc_device *ls_dev)
 		goto err_get_vers;
 	}
 
+	err = dpaa2_dpseci_congestion_setup(priv, ls_dev->mc_handle);
+	if (err) {
+		dev_err(dev, "setup_congestion() failed\n");
+		goto err_get_vers;
+	}
+
 	priv->num_pairs = min(priv->dpseci_attr.num_rx_queues,
 			      priv->dpseci_attr.num_tx_queues);
 
@@ -5059,7 +5128,7 @@ static int __cold dpaa2_dpseci_setup(struct fsl_mc_device *ls_dev)
 					  &priv->rx_queue_attr[i]);
 		if (err) {
 			dev_err(dev, "dpseci_get_rx_queue() failed\n");
-			goto err_get_vers;
+			goto err_get_rx_queue;
 		}
 	}
 
@@ -5068,7 +5137,7 @@ static int __cold dpaa2_dpseci_setup(struct fsl_mc_device *ls_dev)
 					  &priv->tx_queue_attr[i]);
 		if (err) {
 			dev_err(dev, "dpseci_get_tx_queue() failed\n");
-			goto err_get_vers;
+			goto err_get_rx_queue;
 		}
 	}
 
@@ -5091,6 +5160,8 @@ static int __cold dpaa2_dpseci_setup(struct fsl_mc_device *ls_dev)
 
 	return 0;
 
+err_get_rx_queue:
+	dpaa2_dpseci_congestion_free(priv);
 err_get_vers:
 	dpseci_close(priv->mc_io, 0, ls_dev->mc_handle);
 err_open:
@@ -5360,6 +5431,16 @@ int dpaa2_caam_enqueue(struct device *dev, struct caam_request *req)
 
 	if (IS_ERR(req))
 		return PTR_ERR(req);
+
+	if (priv->cscn_mem) {
+		dma_sync_single_for_cpu(priv->dev, priv->cscn_dma,
+					DPAA2_CSCN_SIZE,
+					DMA_FROM_DEVICE);
+		if (unlikely(dpaa2_cscn_state_congested(priv->cscn_mem_aligned))) {
+			dev_dbg_ratelimited(dev, "Dropping request\n");
+			return -EBUSY;
+		}
+	}
 
 	dpaa2_fl_set_flc(&req->fd_flt[1], req->flc_dma);
 
