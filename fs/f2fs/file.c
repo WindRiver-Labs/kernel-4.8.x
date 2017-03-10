@@ -570,8 +570,7 @@ int truncate_blocks(struct inode *inode, u64 from, bool lock)
 	}
 
 	if (f2fs_has_inline_data(inode)) {
-		if (truncate_inline_inode(ipage, from))
-			set_page_dirty(ipage);
+		truncate_inline_inode(inode, ipage, from);
 		f2fs_put_page(ipage, 1);
 		truncate_page = true;
 		goto out;
