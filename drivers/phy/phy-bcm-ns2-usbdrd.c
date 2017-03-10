@@ -384,14 +384,16 @@ static int register_extcon_notifier(struct ns2_phy_driver *phy_driver,
 	edev = phy_driver->edev;
 
 	/* Register for device change notification */
-	ret = extcon_register_notifier(edev, EXTCON_USB, &phy_driver->dev_nb);
+	ret = extcon_register_notifier(edev, EXTCON_USB,
+				       &phy_driver->dev_nb);
 	if (ret < 0) {
 		dev_err(dev, "can't register extcon_dev for %s\n", edev->name);
 		return ret;
 	}
 
 	/* Register for host change notification */
-	ret = extcon_register_notifier(edev, EXTCON_USB_HOST, &phy_driver->dev_nb);
+	ret = extcon_register_notifier(edev, EXTCON_USB_HOST,
+				       &phy_driver->host_nb);
 	if (ret < 0) {
 		dev_err(dev, "can't register extcon_dev for %s\n", edev->name);
 		goto err_dev;
@@ -418,9 +420,11 @@ static int register_extcon_notifier(struct ns2_phy_driver *phy_driver,
 	return 0;
 
 err_host:
-	extcon_unregister_notifier(edev, EXTCON_USB_HOST, &phy_driver->dev_nb);
+	ret = extcon_unregister_notifier(edev, EXTCON_USB_HOST,
+					&phy_driver->host_nb);
 err_dev:
-	extcon_unregister_notifier(edev, EXTCON_USB, &phy_driver->dev_nb);
+	ret = extcon_unregister_notifier(edev, EXTCON_USB,
+					&phy_driver->dev_nb);
 	return ret;
 }
 
@@ -428,12 +432,27 @@ static struct phy_ops ops = {
 	.init		= ns2_drd_phy_init,
 	.power_on	= ns2_drd_phy_poweron,
 	.power_off	= ns2_drd_phy_shutdown,
+	.owner		= THIS_MODULE,
 };
 
 static const struct of_device_id ns2_drd_phy_dt_ids[] = {
 	{ .compatible = "brcm,ns2-drd-phy", },
 	{ }
 };
+
+static int ns2_drd_phy_remove(struct platform_device *pdev)
+{
+	struct ns2_phy_driver *driver = dev_get_drvdata(&pdev->dev);
+
+	if (driver->edev) {
+		extcon_unregister_notifier(driver->edev, EXTCON_USB_HOST,
+					  &driver->host_nb);
+		extcon_unregister_notifier(driver->edev, EXTCON_USB,
+					  &driver->dev_nb);
+	}
+
+	return 0;
+}
 
 static int ns2_drd_phy_probe(struct platform_device *pdev)
 {
@@ -456,32 +475,32 @@ static int ns2_drd_phy_probe(struct platform_device *pdev)
 
 	spin_lock_init(&driver->lock);
 
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "icfg");
 	driver->icfgdrd_regs = devm_ioremap_resource(dev, res);
 	if (IS_ERR(driver->icfgdrd_regs))
 		return PTR_ERR(driver->icfgdrd_regs);
 
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 1);
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "rst-ctrl");
 	driver->idmdrd_rst_ctrl = devm_ioremap_resource(dev, res);
 	if (IS_ERR(driver->idmdrd_rst_ctrl))
 		return PTR_ERR(driver->idmdrd_rst_ctrl);
 
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 2);
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "crmu-ctrl");
 	driver->crmu_usb2_ctrl = devm_ioremap_resource(dev, res);
 	if (IS_ERR(driver->crmu_usb2_ctrl))
 		return PTR_ERR(driver->crmu_usb2_ctrl);
 
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 3);
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "usb2-strap");
 	driver->usb2h_strap_reg = devm_ioremap_resource(dev, res);
 	if (IS_ERR(driver->usb2h_strap_reg))
 		return PTR_ERR(driver->usb2h_strap_reg);
 
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 4);
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "idmdrd");
 	driver->idmdrd_io_ctrl = devm_ioremap_resource(dev, res);
 	if (IS_ERR(driver->idmdrd_io_ctrl))
 		return PTR_ERR(driver->idmdrd_io_ctrl);
 
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 5);
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "apbx-idm");
 	driver->apbx_idm_io_ctrl = devm_ioremap_resource(dev, res);
 	if (IS_ERR(driver->apbx_idm_io_ctrl))
 		return PTR_ERR(driver->apbx_idm_io_ctrl);
@@ -494,8 +513,8 @@ static int ns2_drd_phy_probe(struct platform_device *pdev)
 	}
 	driver->vbus_gpiod = devm_gpiod_get(&pdev->dev, "vbus", GPIOD_IN);
 	if (IS_ERR(driver->vbus_gpiod)) {
-		dev_err(dev, "failed to get ID GPIO\n");
-		return PTR_ERR(driver->id_gpiod);
+		dev_err(dev, "failed to get VBUS GPIO\n");
+		return PTR_ERR(driver->vbus_gpiod);
 	}
 
 	driver->edev = devm_extcon_dev_allocate(dev, usb_extcon_cable);
@@ -594,6 +613,7 @@ MODULE_DEVICE_TABLE(of, ns2_drd_phy_dt_ids);
 
 static struct platform_driver ns2_drd_phy_driver = {
 	.probe = ns2_drd_phy_probe,
+	.remove = ns2_drd_phy_remove,
 	.driver = {
 		.name = "bcm-ns2-usbphy",
 		.of_match_table = of_match_ptr(ns2_drd_phy_dt_ids),
