@@ -516,7 +516,6 @@ static int ns2_usb3_phy_probe(struct mdio_device *mdiodev)
 		}
 
 		phy_set_drvdata(iphy->phy, iphy);
-		ns2_usb3_phy_init(iphy->phy);
 		cnt++;
 	}
 
