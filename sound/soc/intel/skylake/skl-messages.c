@@ -285,6 +285,7 @@ int skl_init_dsp(struct skl *skl)
 	if (ret < 0)
 		return ret;
 
+	skl->skl_sst->dsp_ops = ops;
 	dev_dbg(bus->dev, "dsp registration status=%d\n", ret);
 
 	return ret;
@@ -295,16 +296,11 @@ int skl_free_dsp(struct skl *skl)
 	struct hdac_ext_bus *ebus = &skl->ebus;
 	struct hdac_bus *bus = ebus_to_hbus(ebus);
 	struct skl_sst *ctx = skl->skl_sst;
-	int index;
 
 	/* disable  ppcap interrupt */
 	snd_hdac_ext_bus_ppcap_int_enable(&skl->ebus, false);
 
-	index = skl_get_dsp_ops(skl->pci->device);
-	if (index  < 0)
-		return -EIO;
-
-	dsp_ops[index].cleanup(bus->dev, ctx);
+	ctx->dsp_ops->cleanup(bus->dev, ctx);
 
 	if (ctx->dsp->addr.lpe)
 		iounmap(ctx->dsp->addr.lpe);
