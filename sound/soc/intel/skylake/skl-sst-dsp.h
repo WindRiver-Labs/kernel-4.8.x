@@ -227,4 +227,6 @@ int snd_skl_parse_uuids(struct sst_dsp *ctx, unsigned int offset);
 void skl_freeup_uuid_list(struct skl_sst *ctx);
 
 int skl_dsp_strip_extended_manifest(struct firmware *fw);
+void skl_dsp_enable_notification(struct skl_sst *ctx, bool enable);
+
 #endif /*__SKL_SST_DSP_H__*/
