@@ -273,27 +273,6 @@ struct dpaa2_faead {
  */
 #define DPAA2_ETH_ENQUEUE_RETRIES      10
 
-/* TODO: This should go to DPIO header? */
-struct dpaa2_cscn {
-	u8 verb;
-	u8 stat;
-	u8 state;
-	u8 reserved;
-	__le32 cgid;
-	__le64 ctx;
-};
-
-#define DPAA2_CSCN_SIZE			64
-#define DPAA2_CSCN_ALIGN		16
-
-#define DPAA2_CSCN_STATE_MASK		0x1
-#define DPAA2_CSCN_CONGESTED		1
-
-static inline bool dpaa2_cscn_state_congested(struct dpaa2_cscn *cscn)
-{
-	return ((cscn->state & DPAA2_CSCN_STATE_MASK) == DPAA2_CSCN_CONGESTED);
-}
-
 /* Tx congestion entry & exit thresholds, in number of bytes.
  * We allow a maximum of 512KB worth of frames pending processing on the Tx
  * queues of an interface
