@@ -45,7 +45,7 @@
 };
 
 &gem0 {
-	compatible = "cdns,gem", "xlnx,ps7-ethernet-1.00.a";
+	compatible = "xlnx,ps7-ethernet-1.00.a";
 	status = "okay";
 	clocks = <&clkc 30>, <&clkc 13>;
 	clock-names =  "aper_clk", "ref_clk";
