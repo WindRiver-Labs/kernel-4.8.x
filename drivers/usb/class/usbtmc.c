@@ -1477,6 +1477,7 @@ static int usbtmc_probe(struct usb_interface *intf,
 		data->iin_urb = usb_alloc_urb(0, GFP_KERNEL);
 		if (!data->iin_urb) {
 			dev_err(&intf->dev, "Failed to allocate int urb\n");
+			retcode = -ENOMEM;
 			goto error_register;
 		}
 
@@ -1488,6 +1489,7 @@ static int usbtmc_probe(struct usb_interface *intf,
 					GFP_KERNEL);
 		if (!data->iin_buffer) {
 			dev_err(&intf->dev, "Failed to allocate int buf\n");
+			retcode = -ENOMEM;
 			goto error_register;
 		}
 
