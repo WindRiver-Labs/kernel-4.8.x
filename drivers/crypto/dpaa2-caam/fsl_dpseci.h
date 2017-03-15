@@ -1,4 +1,4 @@
-/* Copyright 2013-2015 Freescale Semiconductor Inc.
+/* Copyright 2013-2016 Freescale Semiconductor Inc.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -37,6 +37,8 @@
  */
 
 struct fsl_mc_io;
+struct opr_cfg;
+struct opr_qry;
 
 /**
  * General DPSECI macros
@@ -90,7 +92,20 @@ int dpseci_close(struct fsl_mc_io	*mc_io,
 		 uint16_t		token);
 
 /**
+ * Enable the Order Restoration support
+ */
+#define DPSECI_OPT_HAS_OPR					0x000040
+
+/**
+ * Order Point Records are shared for the entire DPSECI
+ */
+#define DPSECI_OPT_OPR_SHARED				0x000080
+
+/**
  * struct dpseci_cfg - Structure representing DPSECI configuration
+ * @options: Any combination of the following options:
+ *		DPSECI_OPT_HAS_OPR
+ *		DPSECI_OPT_OPR_SHARED
  * @num_tx_queues: num of queues towards the SEC
  * @num_rx_queues: num of queues back from the SEC
  * @priorities: Priorities for the SEC hardware processing;
@@ -99,6 +114,7 @@ int dpseci_close(struct fsl_mc_io	*mc_io,
  *		valid priorities are configured with values 1-8;
  */
 struct dpseci_cfg {
+	uint32_t options;
 	uint8_t num_tx_queues;
 	uint8_t num_rx_queues;
 	uint8_t priorities[DPSECI_PRIO_NUM];
@@ -107,9 +123,10 @@ struct dpseci_cfg {
 /**
  * dpseci_create() - Create the DPSECI object
  * @mc_io:	Pointer to MC portal's I/O object
+ * @dprc_token:	Parent container token; '0' for default container
  * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
  * @cfg:	Configuration structure
- * @token:	Returned token; use in subsequent API calls
+ * @obj_id: returned object id
  *
  * Create the DPSECI object, allocate required resources and
  * perform required initialization.
@@ -117,31 +134,39 @@ struct dpseci_cfg {
  * The object can be created either by declaring it in the
  * DPL file, or by calling this function.
  *
- * This function returns a unique authentication token,
- * associated with the specific object ID and the specific MC
- * portal; this token must be used in all subsequent calls to
- * this specific object. For objects that are created using the
- * DPL file, call dpseci_open() function to get an authentication
- * token first.
+ * The function accepts an authentication token of a parent
+ * container that this object should be assigned to. The token
+ * can be '0' so the object will be assigned to the default container.
+ * The newly created object can be opened with the returned
+ * object id and using the container's associated tokens and MC portals.
  *
  * Return:	'0' on Success; Error code otherwise.
  */
 int dpseci_create(struct fsl_mc_io		*mc_io,
+		  uint16_t			dprc_token,
 		  uint32_t			cmd_flags,
 		  const struct dpseci_cfg	*cfg,
-		  uint16_t			*token);
+		  uint32_t			*obj_id);
 
 /**
  * dpseci_destroy() - Destroy the DPSECI object and release all its resources.
  * @mc_io:	Pointer to MC portal's I/O object
+ * @dprc_token: Parent container token; '0' for default container
  * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
- * @token:	Token of DPSECI object
+ * @object_id:	The object id; it must be a valid id within the container that
+ * created this object;
+ *
+ * The function accepts the authentication token of the parent container that
+ * created the object (not the one that currently owns the object). The object
+ * is searched within parent using the provided 'object_id'.
+ * All tokens to the object must be closed before calling destroy.
  *
  * Return:	'0' on Success; error code otherwise.
  */
 int dpseci_destroy(struct fsl_mc_io	*mc_io,
+		   uint16_t		dprc_token,
 		   uint32_t		cmd_flags,
-		   uint16_t		token);
+		   uint32_t		object_id);
 
 /**
  * dpseci_enable() - Enable the DPSECI, allow sending and receiving frames.
@@ -192,54 +217,6 @@ int dpseci_is_enabled(struct fsl_mc_io	*mc_io,
 int dpseci_reset(struct fsl_mc_io	*mc_io,
 		 uint32_t		cmd_flags,
 		 uint16_t		token);
-
-/**
- * struct dpseci_irq_cfg - IRQ configuration
- * @addr:	Address that must be written to signal a message-based interrupt
- * @val:	Value to write into irq_addr address
- * @irq_num: A user defined number associated with this IRQ
- */
-struct dpseci_irq_cfg {
-	     uint64_t		addr;
-	     uint32_t		val;
-	     int		irq_num;
-};
-
-/**
- * dpseci_set_irq() - Set IRQ information for the DPSECI to trigger an interrupt
- * @mc_io:	Pointer to MC portal's I/O object
- * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
- * @token:	Token of DPSECI object
- * @irq_index:	Identifies the interrupt index to configure
- * @irq_cfg:	IRQ configuration
- *
- * Return:	'0' on Success; Error code otherwise.
- */
-int dpseci_set_irq(struct fsl_mc_io		*mc_io,
-		   uint32_t			cmd_flags,
-		   uint16_t			token,
-		   uint8_t			irq_index,
-		   struct dpseci_irq_cfg	*irq_cfg);
-
-/**
- * dpseci_get_irq() - Get IRQ information from the DPSECI
- *
- * @mc_io:	Pointer to MC portal's I/O object
- * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
- * @token:	Token of DPSECI object
- * @irq_index:	The interrupt index to configure
- * @type:	Interrupt type: 0 represents message interrupt
- *		type (both irq_addr and irq_val are valid)
- * @irq_cfg:	IRQ attributes
- *
- * Return:	'0' on Success; Error code otherwise.
- */
-int dpseci_get_irq(struct fsl_mc_io		*mc_io,
-		   uint32_t			cmd_flags,
-		   uint16_t			token,
-		   uint8_t			irq_index,
-		   int				*type,
-		   struct dpseci_irq_cfg	*irq_cfg);
 
 /**
  * dpseci_set_irq_enable() - Set overall interrupt state.
@@ -297,7 +274,7 @@ int dpseci_get_irq_enable(struct fsl_mc_io	*mc_io,
 int dpseci_set_irq_mask(struct fsl_mc_io	*mc_io,
 			uint32_t		cmd_flags,
 			uint16_t		token,
-			uint8_t		irq_index,
+			uint8_t			irq_index,
 			uint32_t		mask);
 
 /**
@@ -316,7 +293,7 @@ int dpseci_set_irq_mask(struct fsl_mc_io	*mc_io,
 int dpseci_get_irq_mask(struct fsl_mc_io	*mc_io,
 			uint32_t		cmd_flags,
 			uint16_t		token,
-			uint8_t		irq_index,
+			uint8_t			irq_index,
 			uint32_t		*mask);
 
 /**
@@ -358,23 +335,13 @@ int dpseci_clear_irq_status(struct fsl_mc_io	*mc_io,
 /**
  * struct dpseci_attr - Structure representing DPSECI attributes
  * @id: DPSECI object ID
- * @version: DPSECI version
  * @num_tx_queues: number of queues towards the SEC
  * @num_rx_queues: number of queues back from the SEC
  */
 struct dpseci_attr {
-	int		id;
-	/**
-	 * struct version - DPSECI version
-	 * @major: DPSECI major version
-	 * @minor: DPSECI minor version
-	 */
-	struct {
-		uint16_t major;
-		uint16_t minor;
-	} version;
-	uint8_t num_tx_queues;
-	uint8_t num_rx_queues;
+	int	id;
+	uint8_t	num_tx_queues;
+	uint8_t	num_rx_queues;
 };
 
 /**
@@ -421,7 +388,7 @@ enum dpseci_dest {
 struct dpseci_dest_cfg {
 	enum dpseci_dest	dest_type;
 	int			dest_id;
-	uint8_t		priority;
+	uint8_t			priority;
 };
 
 /**
@@ -431,17 +398,17 @@ struct dpseci_dest_cfg {
 /**
  * Select to modify the user's context associated with the queue
  */
-#define DPSECI_QUEUE_OPT_USER_CTX	0x00000001
+#define DPSECI_QUEUE_OPT_USER_CTX		0x00000001
 
 /**
  * Select to modify the queue's destination
  */
-#define DPSECI_QUEUE_OPT_DEST		0x00000002
+#define DPSECI_QUEUE_OPT_DEST			0x00000002
 
 /**
  * Select to modify the queue's order preservation
  */
-#define DPSECI_QUEUE_OPT_ORDER_PRESERVATION    0x00000004
+#define DPSECI_QUEUE_OPT_ORDER_PRESERVATION	0x00000004
 
 /**
  * struct dpseci_rx_queue_cfg - DPSECI RX queue configuration
@@ -573,26 +540,26 @@ int dpseci_get_tx_queue(struct fsl_mc_io		*mc_io,
  * in this version of SEC.
  * @aes_acc_num: The number of copies of the AES module that are implemented
  * in this version of SEC.
- */
+ **/
 
 struct dpseci_sec_attr {
 	uint16_t	ip_id;
 	uint8_t	major_rev;
 	uint8_t	minor_rev;
-	uint8_t     era;
-	uint8_t     deco_num;
-	uint8_t     zuc_auth_acc_num;
-	uint8_t     zuc_enc_acc_num;
-	uint8_t     snow_f8_acc_num;
-	uint8_t     snow_f9_acc_num;
-	uint8_t     crc_acc_num;
-	uint8_t     pk_acc_num;
-	uint8_t     kasumi_acc_num;
-	uint8_t     rng_acc_num;
-	uint8_t     md_acc_num;
-	uint8_t     arc4_acc_num;
-	uint8_t     des_acc_num;
-	uint8_t     aes_acc_num;
+	uint8_t	era;
+	uint8_t	deco_num;
+	uint8_t	zuc_auth_acc_num;
+	uint8_t	zuc_enc_acc_num;
+	uint8_t	snow_f8_acc_num;
+	uint8_t	snow_f9_acc_num;
+	uint8_t	crc_acc_num;
+	uint8_t	pk_acc_num;
+	uint8_t	kasumi_acc_num;
+	uint8_t	rng_acc_num;
+	uint8_t	md_acc_num;
+	uint8_t	arc4_acc_num;
+	uint8_t	des_acc_num;
+	uint8_t	aes_acc_num;
 };
 
 /**
@@ -607,7 +574,7 @@ struct dpseci_sec_attr {
 int dpseci_get_sec_attr(struct fsl_mc_io		*mc_io,
 			uint32_t			cmd_flags,
 			uint16_t			token,
-			struct dpseci_sec_attr *attr);
+			struct dpseci_sec_attr		*attr);
 
 /**
  * struct dpseci_sec_counters - Structure representing global SEC counters and
@@ -641,7 +608,58 @@ struct dpseci_sec_counters {
  */
 int dpseci_get_sec_counters(struct fsl_mc_io		*mc_io,
 			    uint32_t			cmd_flags,
-		uint16_t			token,
-		struct dpseci_sec_counters *counters);
+			    uint16_t			token,
+			    struct dpseci_sec_counters	*counters);
+
+/**
+ * dpseci_get_api_version() - Get Data Path SEC Interface API version
+ * @mc_io:  Pointer to MC portal's I/O object
+ * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
+ * @major_ver:	Major version of data path sec API
+ * @minor_ver:	Minor version of data path sec API
+ *
+ * Return:  '0' on Success; Error code otherwise.
+ */
+int dpseci_get_api_version(struct fsl_mc_io *mc_io,
+			   uint32_t cmd_flags,
+			   uint16_t *major_ver,
+			   uint16_t *minor_ver);
+
+/**
+ * dpseci_set_opr() - Set Order Restoration configuration.
+ * @mc_io:		Pointer to MC portal's I/O object
+ * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
+ * @token:		Token of DPSECI object
+ * @index:	The queue index
+ * @options:	Configuration mode options
+ *				can be OPR_OPT_CREATE or OPR_OPT_RETIRE
+ * @cfg:		Configuration options for the OPR
+ *
+ * Return:	'0' on Success; Error code otherwise.
+ */
+int dpseci_set_opr(struct fsl_mc_io *mc_io,
+	      uint32_t cmd_flags,
+	      uint16_t token,
+		  uint8_t index,
+		  uint8_t options,
+		  struct opr_cfg *cfg);
+
+/**
+ * dpseci_get_opr() - Retrieve Order Restoration config and query.
+ * @mc_io:		Pointer to MC portal's I/O object
+ * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
+ * @token:		Token of DPSECI object
+ * @index:	The queue index
+ * @cfg:		Returned OPR configuration
+ * @qry:		Returned OPR query
+ *
+ * Return:	'0' on Success; Error code otherwise.
+ */
+int dpseci_get_opr(struct fsl_mc_io *mc_io,
+		      uint32_t cmd_flags,
+		     uint16_t token,
+			 uint8_t index,
+			 struct opr_cfg *cfg,
+			 struct opr_qry *qry);
 
 #endif /* __FSL_DPSECI_H */

@@ -5037,11 +5037,18 @@ static int __cold dpaa2_dpseci_setup(struct fsl_mc_device *ls_dev)
 
 	dev_info(dev, "Opened dpseci object successfully\n");
 
+	err = dpseci_get_api_version(priv->mc_io, 0, &priv->major_ver,
+					&priv->minor_ver);
+	if (err) {
+		dev_err(dev, "dpseci_get_api_version() failed\n");
+		goto err_get_vers;
+	}
+
 	err = dpseci_get_attributes(priv->mc_io, 0, ls_dev->mc_handle,
 				    &priv->dpseci_attr);
 	if (err) {
 		dev_err(dev, "dpseci_get_attributes() failed\n");
-		goto err_get_attr;
+		goto err_get_vers;
 	}
 
 	priv->num_pairs = min(priv->dpseci_attr.num_rx_queues,
@@ -5052,7 +5059,7 @@ static int __cold dpaa2_dpseci_setup(struct fsl_mc_device *ls_dev)
 					  &priv->rx_queue_attr[i]);
 		if (err) {
 			dev_err(dev, "dpseci_get_rx_queue() failed\n");
-			goto err_get_attr;
+			goto err_get_vers;
 		}
 	}
 
@@ -5061,7 +5068,7 @@ static int __cold dpaa2_dpseci_setup(struct fsl_mc_device *ls_dev)
 					  &priv->tx_queue_attr[i]);
 		if (err) {
 			dev_err(dev, "dpseci_get_tx_queue() failed\n");
-			goto err_get_attr;
+			goto err_get_vers;
 		}
 	}
 
@@ -5084,7 +5091,7 @@ static int __cold dpaa2_dpseci_setup(struct fsl_mc_device *ls_dev)
 
 	return 0;
 
-err_get_attr:
+err_get_vers:
 	dpseci_close(priv->mc_io, 0, ls_dev->mc_handle);
 err_open:
 	return err;
@@ -5109,8 +5116,8 @@ static int dpaa2_dpseci_enable(struct dpaa2_caam_priv *priv)
 	}
 
 	dev_info(dev, "DPSECI version %d.%d\n",
-		 priv->dpseci_attr.version.major,
-		 priv->dpseci_attr.version.minor);
+		 priv->major_ver,
+		 priv->minor_ver);
 
 	return 0;
 }

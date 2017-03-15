@@ -131,6 +131,14 @@ enum mc_cmd_status {
 #define MC_RSP_OP(_cmd, _param, _offset, _width, _type, _arg) \
 		(_arg = (_type)mc_dec(_cmd.params[_param], (_offset), (_width)))
 
+/* cmd, param, offset, width, type, arg_name */
+#define CMD_CREATE_RSP_GET_OBJ_ID_PARAM0(cmd, object_id) \
+	MC_RSP_OP(cmd, 0, 0,  32, uint32_t, object_id)
+
+/* cmd, param, offset, width, type, arg_name */
+#define CMD_DESTROY_SET_OBJ_ID_PARAM0(cmd, object_id) \
+	MC_CMD_OP(cmd, 0, 0,  32,  uint32_t,  object_id)
+
 #define MC_CMD_HDR_CMDID_MASK		0xFFF0
 #define MC_CMD_HDR_CMDID_SHIFT		4
 #define MC_CMD_HDR_TOKEN_MASK		0xFFC0

@@ -52,6 +52,8 @@
 /**
  * dpaa2_caam_priv - driver private data
  * @dpseci_id: DPSECI object unique ID
+ * @major_ver: DPSECI major version
+ * @minor_ver: DPSECI minor version
  * @dpseci_attr: DPSECI attributes
  * @rx_queue_attr: array of Rx queue attributes
  * @tx_queue_attr: array of Tx queue attributes
@@ -61,6 +63,9 @@
  */
 struct dpaa2_caam_priv {
 	int dpsec_id;
+
+	uint16_t major_ver;
+	uint16_t minor_ver;
 
 	struct dpseci_attr dpseci_attr;
 	struct dpseci_rx_queue_attr rx_queue_attr[DPSECI_PRIO_NUM];
