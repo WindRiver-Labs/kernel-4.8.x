@@ -1,4 +1,4 @@
-/* Copyright 2013-2015 Freescale Semiconductor Inc.
+/* Copyright 2013-2016 Freescale Semiconductor Inc.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -32,6 +32,7 @@
 
 #include "../../../drivers/staging/fsl-mc/include/mc-sys.h"
 #include "../../../drivers/staging/fsl-mc/include/mc-cmd.h"
+#include "../../../drivers/staging/fsl-mc/include/fsl_dpopr.h"
 #include "fsl_dpseci.h"
 #include "fsl_dpseci_cmd.h"
 
@@ -75,10 +76,11 @@ int dpseci_close(struct fsl_mc_io *mc_io,
 	return mc_send_command(mc_io, &cmd);
 }
 
-int dpseci_create(struct fsl_mc_io *mc_io,
-		  uint32_t cmd_flags,
-		  const struct dpseci_cfg *cfg,
-		  uint16_t *token)
+int dpseci_create(struct fsl_mc_io	*mc_io,
+		  uint16_t	dprc_token,
+		uint32_t	cmd_flags,
+		const struct dpseci_cfg	*cfg,
+		uint32_t	*obj_id)
 {
 	struct mc_command cmd = { 0 };
 	int err;
@@ -86,7 +88,7 @@ int dpseci_create(struct fsl_mc_io *mc_io,
 	/* prepare command */
 	cmd.header = mc_encode_cmd_header(DPSECI_CMDID_CREATE,
 					  cmd_flags,
-					  0);
+					  dprc_token);
 	DPSECI_CMD_CREATE(cmd, cfg);
 
 	/* send command to mc*/
@@ -95,22 +97,24 @@ int dpseci_create(struct fsl_mc_io *mc_io,
 		return err;
 
 	/* retrieve response parameters */
-	*token = MC_CMD_HDR_READ_TOKEN(cmd.header);
+	CMD_CREATE_RSP_GET_OBJ_ID_PARAM0(cmd, *obj_id);
 
 	return 0;
 }
 
-int dpseci_destroy(struct fsl_mc_io *mc_io,
-		   uint32_t cmd_flags,
-		   uint16_t token)
+int dpseci_destroy(struct fsl_mc_io	*mc_io,
+		   uint16_t	dprc_token,
+		uint32_t	cmd_flags,
+		uint32_t	object_id)
 {
 	struct mc_command cmd = { 0 };
 
 	/* prepare command */
 	cmd.header = mc_encode_cmd_header(DPSECI_CMDID_DESTROY,
 					  cmd_flags,
-					  token);
-
+					  dprc_token);
+	/* set object id to destroy */
+	CMD_DESTROY_SET_OBJ_ID_PARAM0(cmd, object_id);
 	/* send command to mc*/
 	return mc_send_command(mc_io, &cmd);
 }
@@ -178,51 +182,6 @@ int dpseci_reset(struct fsl_mc_io *mc_io,
 	cmd.header = mc_encode_cmd_header(DPSECI_CMDID_RESET,
 					  cmd_flags,
 					  token);
-
-	/* send command to mc*/
-	return mc_send_command(mc_io, &cmd);
-}
-
-int dpseci_get_irq(struct fsl_mc_io *mc_io,
-		   uint32_t cmd_flags,
-		   uint16_t token,
-		   uint8_t irq_index,
-		   int *type,
-		   struct dpseci_irq_cfg *irq_cfg)
-{
-	struct mc_command cmd = { 0 };
-	int err;
-
-	/* prepare command */
-	cmd.header = mc_encode_cmd_header(DPSECI_CMDID_GET_IRQ,
-					  cmd_flags,
-					  token);
-	DPSECI_CMD_GET_IRQ(cmd, irq_index);
-
-	/* send command to mc*/
-	err = mc_send_command(mc_io, &cmd);
-	if (err)
-		return err;
-
-	/* retrieve response parameters */
-	DPSECI_RSP_GET_IRQ(cmd, *type, irq_cfg);
-
-	return 0;
-}
-
-int dpseci_set_irq(struct fsl_mc_io *mc_io,
-		   uint32_t cmd_flags,
-		   uint16_t token,
-		   uint8_t irq_index,
-		   struct dpseci_irq_cfg *irq_cfg)
-{
-	struct mc_command cmd = { 0 };
-
-	/* prepare command */
-	cmd.header = mc_encode_cmd_header(DPSECI_CMDID_SET_IRQ,
-					  cmd_flags,
-					  token);
-	DPSECI_CMD_SET_IRQ(cmd, irq_index, irq_cfg);
 
 	/* send command to mc*/
 	return mc_send_command(mc_io, &cmd);
@@ -379,7 +338,7 @@ int dpseci_get_attributes(struct fsl_mc_io *mc_io,
 		return err;
 
 	/* retrieve response parameters */
-	DPSECI_RSP_GET_ATTR(cmd, attr);
+	DPSECI_RSP_GET_ATTRIBUTES(cmd, attr);
 
 	return 0;
 }
@@ -498,6 +457,74 @@ int dpseci_get_sec_counters(struct fsl_mc_io		*mc_io,
 
 	/* retrieve response parameters */
 	DPSECI_RSP_GET_SEC_COUNTERS(cmd, counters);
+
+	return 0;
+}
+
+int dpseci_get_api_version(struct fsl_mc_io *mc_io,
+			   uint32_t cmd_flags,
+			   uint16_t *major_ver,
+			   uint16_t *minor_ver)
+{
+	struct mc_command cmd = { 0 };
+	int err;
+
+	cmd.header = mc_encode_cmd_header(DPSECI_CMDID_GET_API_VERSION,
+					cmd_flags,
+					0);
+
+	err = mc_send_command(mc_io, &cmd);
+	if (err)
+		return err;
+
+	DPSECI_RSP_GET_API_VERSION(cmd, *major_ver, *minor_ver);
+
+	return 0;
+}
+
+int dpseci_set_opr(struct fsl_mc_io *mc_io,
+	      uint32_t cmd_flags,
+	      uint16_t token,
+		  uint8_t index,
+		  uint8_t options,
+		  struct opr_cfg *cfg)
+{
+	struct mc_command cmd = { 0 };
+
+	/* prepare command */
+	cmd.header = mc_encode_cmd_header(
+			DPSECI_CMDID_SET_OPR,
+			cmd_flags,
+			token);
+	DPSECI_CMD_SET_OPR(cmd, index, options, cfg);
+
+	/* send command to mc*/
+	return mc_send_command(mc_io, &cmd);
+}
+
+int dpseci_get_opr(struct fsl_mc_io *mc_io,
+		      uint32_t cmd_flags,
+		     uint16_t token,
+			 uint8_t index,
+			 struct opr_cfg *cfg,
+			 struct opr_qry *qry)
+{
+	struct mc_command cmd = { 0 };
+	int err;
+
+	/* prepare command */
+	cmd.header = mc_encode_cmd_header(DPSECI_CMDID_GET_OPR,
+					  cmd_flags,
+					  token);
+	DPSECI_CMD_GET_OPR(cmd, index);
+
+	/* send command to mc*/
+	err = mc_send_command(mc_io, &cmd);
+	if (err)
+		return err;
+
+	/* retrieve response parameters */
+	DPSECI_RSP_GET_OPR(cmd, cfg, qry);
 
 	return 0;
 }
