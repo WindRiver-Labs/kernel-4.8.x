@@ -2314,7 +2314,7 @@ static int gpmi_nand_init(struct gpmi_nand_data *this)
 
 	if (chip->bbt_options & NAND_BBT_USE_FLASH) {
 		chip->bbt_options |= NAND_BBT_NO_OOB;
-	if (of_property_read_bool(this->dev->of_node,
+		if (of_property_read_bool(this->dev->of_node,
 				"fsl,legacy-bch-geometry"))
 		this->legacy_bch_geometry = true;
 
