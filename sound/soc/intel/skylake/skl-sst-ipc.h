@@ -267,7 +267,7 @@ int skl_ipc_set_large_config(struct sst_generic_ipc *ipc,
 
 int skl_ipc_get_large_config(struct sst_generic_ipc *ipc,
 		struct skl_ipc_large_config_msg *msg, u32 *param,
-		u32 *txparam, u32 size);
+		u32 *txparam, u32 tx_bytes, size_t *rx_bytes);
 
 int skl_ipc_set_d0ix(struct sst_generic_ipc *ipc,
 		struct skl_ipc_d0ix_msg *msg);
