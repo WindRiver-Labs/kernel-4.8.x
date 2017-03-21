@@ -763,6 +763,8 @@ sa_subsys: subsys@24080000 {
 	#size-cells = <1>;
 	ranges = <0 0x24080000 0x40000>;
 	compatible = "simple-bus";
+	dma-coherent;
+	dma-ranges;
 
 	sa_config: subsys@0 {
 		compatible      = "syscon";
