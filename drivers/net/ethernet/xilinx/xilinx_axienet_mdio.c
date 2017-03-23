@@ -99,7 +99,7 @@ static int axienet_mdio_write(struct mii_bus *bus, int phy_id, int reg,
 	if (ret < 0)
 		return ret;
 
-	axienet_iow(lp, XAE_MDIO_MWD_OFFSET, (u32) val);
+	axienet_iow(lp, XAE_MDIO_MWD_OFFSET, (u32)val);
 	axienet_iow(lp, XAE_MDIO_MCR_OFFSET,
 		    (((phy_id << XAE_MDIO_MCR_PHYAD_SHIFT) &
 		      XAE_MDIO_MCR_PHYAD_MASK) |
@@ -205,7 +205,7 @@ issue:
 	np1 = of_get_parent(lp->phy_node);
 	of_address_to_resource(np1, 0, &res);
 	snprintf(bus->id, MII_BUS_ID_SIZE, "%.8llx",
-		 (unsigned long long) res.start);
+		 (unsigned long long)res.start);
 
 	bus->priv = lp;
 	bus->name = "Xilinx Axi Ethernet MDIO";
