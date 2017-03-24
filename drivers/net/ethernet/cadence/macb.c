@@ -3675,11 +3675,6 @@ static int __maybe_unused macb_suspend(struct device *dev)
 		macb_writel(bp, IER, MACB_BIT(WOL));
 		macb_writel(bp, WOL, MACB_BIT(MAG));
 		enable_irq_wake(bp->queues[0].irq);
-	} else {
-		clk_disable_unprepare(bp->tx_clk);
-		clk_disable_unprepare(bp->hclk);
-		clk_disable_unprepare(bp->pclk);
-		clk_disable_unprepare(bp->rx_clk);
 	}
 
 	return 0;
@@ -3695,11 +3690,6 @@ static int __maybe_unused macb_resume(struct device *dev)
 		macb_writel(bp, IDR, MACB_BIT(WOL));
 		macb_writel(bp, WOL, 0);
 		disable_irq_wake(bp->queues[0].irq);
-	} else {
-		clk_prepare_enable(bp->pclk);
-		clk_prepare_enable(bp->hclk);
-		clk_prepare_enable(bp->tx_clk);
-		clk_prepare_enable(bp->rx_clk);
 	}
 
 	if (netif_running(netdev))
