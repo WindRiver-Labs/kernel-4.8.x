@@ -25,8 +25,6 @@ static guid_t osc_guid =
 	GUID_INIT(0xA69F886E, 0x6CEB, 0x4594,
 		  0xA4, 0x1F, 0x7B, 0x5D, 0xCE, 0x24, 0xC5, 0x53);
 
-#define DSDT_NHLT_PATH "\\_SB.PCI0.HDAS"
-
 struct nhlt_acpi_table *skl_nhlt_init(struct device *dev)
 {
 	acpi_handle handle;
@@ -34,8 +32,9 @@ struct nhlt_acpi_table *skl_nhlt_init(struct device *dev)
 	struct nhlt_resource_desc  *nhlt_ptr = NULL;
 	struct nhlt_acpi_table *nhlt_table = NULL;
 
-	if (ACPI_FAILURE(acpi_get_handle(NULL, DSDT_NHLT_PATH, &handle))) {
-		dev_err(dev, "Requested NHLT device not found\n");
+	handle = ACPI_HANDLE(dev);
+	if (!handle) {
+		dev_err(dev, "Didn't find ACPI_HANDLE\n");
 		return NULL;
 	}
 
