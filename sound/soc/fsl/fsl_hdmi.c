@@ -34,6 +34,7 @@
 #include <sound/pcm.h>
 #include <sound/soc.h>
 #include <sound/asoundef.h>
+#include <sound/hdmi-codec.h>
 
 #include <video/mxc_hdmi.h>
 
@@ -600,6 +601,28 @@ static const struct snd_soc_component_driver fsl_hdmi_component = {
 	.name		= "fsl-hdmi",
 };
 
+static int imx_hdmi_audio_hw_params(struct device *dev, void *data,
+				    struct hdmi_codec_daifmt *daifmt,
+				    struct hdmi_codec_params *params)
+{
+	return 0;
+}
+
+static void imx_hdmi_audio_shutdown(struct device *dev, void *data)
+{
+}
+
+static const struct hdmi_codec_ops imx_hdmi_audio_codec_ops = {
+	.hw_params = imx_hdmi_audio_hw_params,
+	.audio_shutdown = imx_hdmi_audio_shutdown,
+};
+
+static struct hdmi_codec_pdata codec_data = {
+	.ops = &imx_hdmi_audio_codec_ops,
+	.max_i2s_channels = 8,
+	.i2s = 1,
+};
+
 static int fsl_hdmi_dai_probe(struct platform_device *pdev)
 {
 	struct device_node *np = pdev->dev.of_node;
@@ -654,8 +677,8 @@ static int fsl_hdmi_dai_probe(struct platform_device *pdev)
 		return ret;
 	}
 
-	hdmi_data->codec_dev = platform_device_register_simple(
-			"hdmi-audio-codec", -1, NULL, 0);
+	hdmi_data->codec_dev = platform_device_register_data(NULL,
+			"hdmi-audio-codec", PLATFORM_DEVID_AUTO, &codec_data, sizeof(codec_data));
 	if (IS_ERR(hdmi_data->codec_dev)) {
 		dev_err(&pdev->dev, "failed to register HDMI audio codec\n");
 		ret = PTR_ERR(hdmi_data->codec_dev);
