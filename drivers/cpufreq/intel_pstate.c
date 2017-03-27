@@ -1601,17 +1601,6 @@ static int __init intel_pstate_msrs_not_valid(void)
 	return 0;
 }
 
-static void __init copy_pid_params(struct pstate_adjust_policy *policy)
-{
-	pid_params.sample_rate_ms = policy->sample_rate_ms;
-	pid_params.sample_rate_ns = pid_params.sample_rate_ms * NSEC_PER_MSEC;
-	pid_params.p_gain_pct = policy->p_gain_pct;
-	pid_params.i_gain_pct = policy->i_gain_pct;
-	pid_params.d_gain_pct = policy->d_gain_pct;
-	pid_params.deadband = policy->deadband;
-	pid_params.setpoint = policy->setpoint;
-}
-
 static void __init copy_cpu_funcs(struct pstate_funcs *funcs)
 {
 	pstate_funcs.get_max   = funcs->get_max;
@@ -1764,13 +1753,8 @@ static int __init intel_pstate_init(void)
 	if (!id)
 		return -ENODEV;
 
-	cpu_def = (struct cpu_defaults *)id->driver_data;
-
 	copy_cpu_funcs((struct pstate_funcs *)id->driver_data);
 	
-	if (pstate_funcs.get_target_pstate == get_target_pstate_use_performance)
-		copy_pid_params(&cpu_def->pid_policy);
-
 	if (intel_pstate_msrs_not_valid())
 		return -ENODEV;
 
