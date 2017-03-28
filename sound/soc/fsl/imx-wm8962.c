@@ -644,6 +644,7 @@ audmux_bypass:
 	data->dai[0].cpu_dai_name = dev_name(&cpu_pdev->dev);
 	data->dai[0].platform_of_node = cpu_np;
 	data->dai[0].ops = &imx_hifi_ops;
+	data->dai[0].nonatomic = 1;
 	data->dai[0].dai_fmt = SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_NF |
 			    SND_SOC_DAIFMT_CBM_CFM;
 
