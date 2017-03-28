@@ -55,6 +55,7 @@
 
 #include "gc_hal.h"
 #include "gc_hal_kernel.h"
+#include <asm/uaccess.h>
 #if VIVANTE_PROFILER_CONTEXT
 #include "gc_hal_kernel_context.h"
 #endif
@@ -2740,10 +2741,12 @@ gckHARDWARE_PipeSelect(
 {
     gctUINT32_PTR logical = (gctUINT32_PTR) Logical;
     gceSTATUS status;
+    unsigned int ua_flags;
 
     gcmkHEADER_ARG("Hardware=0x%x Logical=0x%x Pipe=%d *Bytes=%lu",
                    Hardware, Logical, Pipe, gcmOPT_VALUE(Bytes));
 
+    ua_flags = uaccess_save_and_enable();
     /* Verify the arguments. */
     gcmkVERIFY_OBJECT(Hardware, gcvOBJ_HARDWARE);
     gcmkVERIFY_ARGUMENT((Logical == gcvNULL) || (Bytes != gcvNULL));
@@ -2820,11 +2823,15 @@ gckHARDWARE_PipeSelect(
 
     /* Success. */
     gcmkFOOTER_ARG("*Bytes=%lu", gcmOPT_VALUE(Bytes));
+    uaccess_restore(ua_flags);
+
     return gcvSTATUS_OK;
 
 OnError:
     /* Return the status. */
     gcmkFOOTER();
+    uaccess_restore(ua_flags);
+
     return status;
 }
 
