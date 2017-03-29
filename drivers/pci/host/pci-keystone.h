@@ -36,6 +36,7 @@ struct keystone_pcie {
 	/* Application register space */
 	void __iomem		*va_app_base;
 	struct resource		app;
+	struct phy		*serdes_phy;
 };
 
 /* Keystone DW specific MSI controller APIs/definitions */
