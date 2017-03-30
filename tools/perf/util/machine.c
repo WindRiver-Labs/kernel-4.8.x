@@ -503,7 +503,8 @@ int machine__process_comm_event(struct machine *machine, union perf_event *event
 }
 
 int machine__process_lost_event(struct machine *machine __maybe_unused,
-				union perf_event *event, struct perf_sample *sample __maybe_unused)
+				union perf_event *event,
+				struct perf_sample *sample __maybe_unused)
 {
 	dump_printf(": id:%" PRIu64 ": lost:%" PRIu64 "\n",
 		    event->lost.id, event->lost.lost);
@@ -511,7 +512,8 @@ int machine__process_lost_event(struct machine *machine __maybe_unused,
 }
 
 int machine__process_lost_samples_event(struct machine *machine __maybe_unused,
-					union perf_event *event, struct perf_sample *sample)
+					union perf_event *event,
+					struct perf_sample *sample)
 {
 	dump_printf(": id:%" PRIu64 ": lost samples :%" PRIu64 "\n",
 		    sample->id, event->lost_samples.lost);
@@ -1941,7 +1943,7 @@ check_calls:
 		ip = chain->ips[j];
 
 		if (ip < PERF_CONTEXT_MAX)
-                       ++nr_entries;
+		       ++nr_entries;
 
 		err = add_callchain_ip(thread, cursor, parent, root_al, &cpumode, ip);
 
