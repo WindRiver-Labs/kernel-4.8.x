@@ -659,6 +659,7 @@ audmux_bypass:
 		data->dai[1].cpu_of_node = asrc_np;
 		data->dai[1].platform_of_node = asrc_np;
 		data->dai[1].dynamic = 1;
+		data->dai[1].nonatomic = 1;
 		data->dai[1].ignore_pmdown_time = 1;
 		data->dai[1].dpcm_playback = 1;
 		data->dai[1].dpcm_capture = 1;
