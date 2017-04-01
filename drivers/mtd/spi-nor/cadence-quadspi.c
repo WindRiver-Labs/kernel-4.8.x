@@ -77,6 +77,9 @@ struct cqspi_st {
 	u32			fifo_depth;
 	u32			fifo_width;
 	u32			trigger_address;
+#ifdef CONFIG_ARCH_KEYSTONE
+	u32			wr_delay;
+#endif
 	struct cqspi_flash_pdata f_pdata[CQSPI_MAX_CHIPSELECT];
 };
 
@@ -608,6 +611,16 @@ static int cqspi_indirect_write_execute(struct spi_nor *nor,
 	reinit_completion(&cqspi->transfer_complete);
 	writel(CQSPI_REG_INDIRECTWR_START_MASK,
 	       reg_base + CQSPI_REG_INDIRECTWR);
+
+#ifdef CONFIG_ARCH_KEYSTONE
+	/*
+	 * As per 66AK2G02 TRM SPRUHY8 section 11.14.5.3 Indirect Access
+	 * Controller programming sequence, couple of cycles of
+	 * QSPI_REF_CLK delay is required for the above bit to
+	 * be internally synchronized by the QSPI module.
+	 */
+	ndelay(cqspi->wr_delay);
+#endif
 
 	while (remaining > 0) {
 		write_bytes = remaining > page_size ? page_size : remaining;
@@ -1174,6 +1187,12 @@ static int cqspi_probe(struct platform_device *pdev)
 		return PTR_ERR(cqspi->clk);
 	}
 
+#ifdef CONFIG_ARCH_KEYSTONE
+	if (of_device_is_compatible(dev->of_node, "ti,k2g-qspi"))
+		cqspi->wr_delay = 3 * DIV_ROUND_UP(1000000000U,
+						   cqspi->master_ref_clk_hz);
+#endif
+
 	/* Obtain and remap controller address. */
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	cqspi->iobase = devm_ioremap_resource(dev, res);
@@ -1286,6 +1305,7 @@ static const struct dev_pm_ops cqspi__dev_pm_ops = {
 
 static struct of_device_id const cqspi_dt_ids[] = {
 	{.compatible = "cdns,qspi-nor",},
+	{.compatible = "ti,k2g-qspi",},
 	{ /* end of table */ }
 };
 
