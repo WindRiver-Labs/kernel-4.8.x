@@ -29,7 +29,7 @@
 #include <media/v4l2-chip-ident.h>
 #include <media/videobuf2-v4l2.h>
 #include <media/v4l2-mc.h>
-
+#include <linux/ipu.h>
 #include <trace/events/v4l2.h>
 
 /* Zero out the end of the struct pointed to by p.  Everything after, but
@@ -1258,6 +1258,9 @@ static void v4l_fill_fmtdesc(struct v4l2_fmtdesc *fmt)
 	case V4L2_SDR_FMT_CS8:		descr = "Complex S8"; break;
 	case V4L2_SDR_FMT_CS14LE:	descr = "Complex S14LE"; break;
 	case V4L2_SDR_FMT_RU12LE:	descr = "Real U12LE"; break;
+	case IPU_PIX_FMT_TILED_NV12:	descr = "TILED NV12P"; break;
+	case IPU_PIX_FMT_TILED_NV12F:	descr = "TILED NV12F"; break;
+	case IPU_PIX_FMT_YUV444P:	descr = "YUV444 planar"; break;
 
 	default:
 		/* Compressed formats */
