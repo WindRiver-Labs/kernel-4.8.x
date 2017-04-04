@@ -596,6 +596,13 @@ static int xilinx_drm_platform_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static void xilinx_drm_platform_shutdown(struct platform_device *pdev)
+{
+	struct xilinx_drm_private *private = platform_get_drvdata(pdev);
+
+	drm_put_dev(private->drm);
+}
+
 static const struct of_device_id xilinx_drm_of_match[] = {
 	{ .compatible = "xlnx,drm", },
 	{ /* end of table */ },
@@ -605,8 +612,8 @@ MODULE_DEVICE_TABLE(of, xilinx_drm_of_match);
 static struct platform_driver xilinx_drm_private_driver = {
 	.probe			= xilinx_drm_platform_probe,
 	.remove			= xilinx_drm_platform_remove,
+	.shutdown		= xilinx_drm_platform_shutdown,
 	.driver			= {
-		.owner		= THIS_MODULE,
 		.name		= "xilinx-drm",
 		.pm		= &xilinx_drm_pm_ops,
 		.of_match_table	= xilinx_drm_of_match,
