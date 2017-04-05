@@ -285,7 +285,7 @@ struct ipu_task_entry {
 	u8	ipu_id;
 	u8	task_in_list;
 	u8	split_done;
-	struct mutex split_lock;
+	spinlock_t split_lock;
 	struct mutex vdic_lock;
 	wait_queue_head_t split_waitq;
 
@@ -1508,10 +1508,10 @@ static inline int sp_task_check_done(struct ipu_split_task *sp_task,
 	int i;
 	int ret = 0;
 	struct ipu_task_entry *tsk;
-	struct mutex *lock = &parent->split_lock;
+	spinlock_t *lock = &parent->split_lock;
 
 	*idx = -EINVAL;
-	mutex_lock(lock);
+	spin_lock(lock);
 	for (i = 0; i < num; i++) {
 		tsk = sp_task[i].child_task;
 		if (tsk && tsk->split_done) {
@@ -1522,7 +1522,7 @@ static inline int sp_task_check_done(struct ipu_split_task *sp_task,
 	}
 
 out:
-	mutex_unlock(lock);
+	spin_unlock(lock);
 	return ret;
 }
 
@@ -1718,12 +1718,12 @@ static int queue_split_task(struct ipu_task_entry *t,
 	int ret = 0;
 	int i, j;
 	struct ipu_task_entry *tsk = NULL;
-	struct mutex *lock = &t->split_lock;
+	spinlock_t *lock = &t->split_lock;
 	struct mutex *vdic_lock = &t->vdic_lock;
 
 	dev_dbg(t->dev, "Split task 0x%p, no-0x%x, size:%d\n",
 			 t, t->task_no, size);
-	mutex_init(lock);
+	spin_lock_init(lock);
 	mutex_init(vdic_lock);
 	init_waitqueue_head(&t->split_waitq);
 	INIT_LIST_HEAD(&t->split_list);
@@ -3036,7 +3036,7 @@ static void get_res_do_task(struct ipu_task_entry *t)
 {
 	uint32_t	found;
 	uint32_t	split_child;
-	struct mutex	*lock;
+	spinlock_t	*lock;
 
 	found = get_vdoa_ipu_res(t);
 	if (!found) {
@@ -3063,9 +3063,9 @@ static void get_res_do_task(struct ipu_task_entry *t)
 	split_child = need_split(t) && t->parent;
 	if (split_child) {
 		lock = &t->parent->split_lock;
-		mutex_lock(lock);
+		spin_lock(lock);
 		t->split_done = 1;
-		mutex_unlock(lock);
+		spin_unlock(lock);
 		wake_up(&t->parent->split_waitq);
 	}
 
@@ -3079,7 +3079,7 @@ static void wait_split_task_complete(struct ipu_task_entry *parent,
 	int ret = 0, rc;
 	int j, idx = -1;
 	unsigned long flags;
-	struct mutex *lock = &parent->split_lock;
+	spinlock_t *lock = &parent->split_lock;
 	int k, busy_vf, busy_pp;
 	struct ipu_soc *ipu;
 	DECLARE_PERF_VAR;
@@ -3104,13 +3104,13 @@ static void wait_split_task_complete(struct ipu_task_entry *parent,
 				continue;
 			}
 			tsk = sp_task[idx].child_task;
-			mutex_lock(lock);
+			spin_lock(lock);
 			if (!tsk->split_done || !tsk->ipu)
 				dev_err(tsk->dev,
 				"ERR:no-0x%x,split not done:%d/null ipu:0x%p\n",
 				 tsk->task_no, tsk->split_done, tsk->ipu);
 			tsk->split_done = 0;
-			mutex_unlock(lock);
+			spin_unlock(lock);
 
 			dev_dbg(tsk->dev,
 				"[0x%p] no-0x%x sp_tsk[%d] done,state:%d.\n",
