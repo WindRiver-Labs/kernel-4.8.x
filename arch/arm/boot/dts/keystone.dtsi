@@ -21,9 +21,6 @@
 
 	aliases {
 		serial0	= &uart0;
-		spi0 = &spi0;
-		spi1 = &spi1;
-		spi2 = &spi2;
 	};
 
 	memory {
@@ -61,14 +58,6 @@
 			     <GIC_SPI 21 IRQ_TYPE_EDGE_RISING>,
 			     <GIC_SPI 22 IRQ_TYPE_EDGE_RISING>,
 			     <GIC_SPI 23 IRQ_TYPE_EDGE_RISING>;
-	};
-
-	psci {
-		compatible	= "arm,psci";
-		method		= "smc";
-		cpu_suspend	= <0x84000001>;
-		cpu_off		= <0x84000002>;
-		cpu_on		= <0x84000003>;
 	};
 
 	soc {
@@ -300,15 +289,6 @@
 			ti,syscon-dev = <&devctrl 0x2a0>;
 		};
 
-		pcie0_phy: phy@2320000 {
-			#phy-cells = <0>;
-			compatible = "ti,keystone-serdes-pcie";
-			reg = <0x02320000 0x4000>;
-			link-rate-kbps = <5000000>;
-			num-lanes = <2>;
-			status = "disabled";
-		};
-
 		pcie0: pcie@21800000 {
 			compatible = "ti,keystone-pcie", "snps,dw-pcie";
 			clocks = <&clkpcie>;
@@ -316,17 +296,13 @@
 			#address-cells = <3>;
 			#size-cells = <2>;
 			reg =  <0x21801000 0x2000>, <0x21800000 0x1000>, <0x02620128 4>;
-			ranges = <0x82000000 0 0x50000000 0x50000000
-				  0 0x10000000>;
+			ranges = <0x81000000 0 0 0x23250000 0 0x4000
+				0x82000000 0 0x50000000 0x50000000 0 0x10000000>;
 
 			status = "disabled";
 			device_type = "pci";
 			num-lanes = <2>;
-			phys = <&pcie0_phy>;
-			bus-range = <0x00 0xff>;
 
-			/* error interrupt */
-			interrupts = <GIC_SPI 38 IRQ_TYPE_EDGE_RISING>;
 			#interrupt-cells = <1>;
 			interrupt-map-mask = <0 0 0 7>;
 			interrupt-map = <0 0 0 1 &pcie_intc0 0>, /* INT A */
