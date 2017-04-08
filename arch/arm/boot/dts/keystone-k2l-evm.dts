@@ -25,6 +25,11 @@
 				clock-output-names = "refclk-sys";
 			};
 		};
+
+		mpm_mem: dspmem {
+			compatible = "ti,keystone-dsp-mem";
+			reg = <0x0c000000 0x00200000>;
+		};
 	};
 };
 
@@ -128,8 +133,4 @@
 		compatible = "marvell,88E1514", "marvell,88E1510", "ethernet-phy-ieee802.3-c22";
 		reg = <1>;
 	};
-};
-
-&gbe_serdes0 {
-	status = "okay";
 };

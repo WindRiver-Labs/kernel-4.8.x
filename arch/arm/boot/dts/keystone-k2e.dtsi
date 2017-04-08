@@ -43,6 +43,10 @@
 		};
 	};
 
+	aliases {
+		rproc0 = &dsp0;
+	};
+
 	soc {
 		/include/ "keystone-k2e-clocks.dtsi"
 
@@ -99,13 +103,19 @@
 			gpio,syscon-dev = <&devctrl 0x240>;
 		};
 
-		pcie1_phy: phy@2326000 {
-			#phy-cells = <0>;
-			compatible = "ti,keystone-serdes-pcie";
-			reg = <0x02326000 0x4000>;
-			link-rate-kbps = <5000000>;
-			num-lanes = <2>;
-			status = "disabled";
+		dsp0: dsp0 {
+			compatible = "ti,k2e-dsp";
+			reg = <0x10800000 0x00080000>,
+			      <0x10e00000 0x00008000>,
+			      <0x10f00000 0x00008000>;
+			reg-names = "l2sram", "l1pram", "l1dram";
+			clocks = <&clkgem0>;
+			ti,syscon-dev = <&devctrl 0x844>;
+			resets = <&pscrst 0>;
+			interrupt-parent = <&kirq0>;
+			interrupts = <0 8>;
+			interrupt-names = "vring", "exception";
+			kick-gpio = <&dspgpio0 27 0>;
 		};
 
 		pcie1: pcie@21020000 {
@@ -115,17 +125,13 @@
 			#address-cells = <3>;
 			#size-cells = <2>;
 			reg =  <0x21021000 0x2000>, <0x21020000 0x1000>, <0x02620128 4>;
-			ranges = <0x82000000 0 0x60000000 0x60000000
-				  0 0x10000000>;
+			ranges = <0x81000000 0 0 0x23260000 0x4000 0x4000
+				0x82000000 0 0x60000000 0x60000000 0 0x10000000>;
 
 			status = "disabled";
 			device_type = "pci";
 			num-lanes = <2>;
-			phys = <&pcie1_phy>;
-			bus-range = <0x00 0xff>;
 
-			/* error interrupt */
-			interrupts = <GIC_SPI 385 IRQ_TYPE_EDGE_RISING>;
 			#interrupt-cells = <1>;
 			interrupt-map-mask = <0 0 0 7>;
 			interrupt-map = <0 0 0 1 &pcie_intc1 0>, /* INT A */

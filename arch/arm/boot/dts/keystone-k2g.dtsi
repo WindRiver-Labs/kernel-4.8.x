@@ -30,6 +30,7 @@
 
 	aliases {
 		serial0 = &uart0;
+		rproc0 = &dsp0;
 	};
 
 	cpus {
@@ -40,31 +41,6 @@
 			compatible = "arm,cortex-a15";
 			device_type = "cpu";
 			reg = <0>;
-		};
-
-	       qspi: qspi@2940000 {
-			compatible = "ti,k2g-qspi", "cdns,qspi-nor";
-			#address-cells = <1>;
-			#size-cells = <0>;
-			reg = <0x02940000 0x1000>,
-			      <0x24000000 0x4000000>;
-			interrupts = <GIC_SPI 198 IRQ_TYPE_EDGE_RISING>;
-			cdns,fifo-depth = <256>;
-			cdns,fifo-width = <4>;
-			cdns,trigger-address = <0x24000000>;
-			power-domains = <&k2g_pds K2G_DEV_QSPI0>;
-			clocks = <&k2g_clks K2G_DEV_QSPI0
-					K2G_DEV_QSPI_QSPI_CLK>,
-				 <&k2g_clks K2G_DEV_QSPI0
-					K2G_DEV_QSPI_DATA_BUS_CLK>,
-				 <&k2g_clks K2G_DEV_QSPI0
-					K2G_DEV_QSPI_CFG_BUS_CLK>,
-				 <&k2g_clks K2G_DEV_QSPI0
-					K2G_DEV_QSPI_QSPI_CLK_O>,
-				 <&k2g_clks K2G_DEV_QSPI0
-					K2G_DEV_QSPI_QSPI_CLK_I>;
-			clock-names = "fck", "datack", "cfgck", "ock", "ick";
-			status = "disabled";
 		};
 	};
 
@@ -229,18 +205,20 @@
 			gpio,syscon-dev = <&devctrl 0x240>;
 		};
 
-		mdio: mdio@4200f00 {
-			compatible	= "ti,keystone_mdio", "ti,davinci_mdio";
-			#address-cells = <1>;
-			#size-cells = <0>;
-			power-domains = <&k2g_pds K2G_DEV_NSS0>;
-			clocks = <&k2g_clks K2G_DEV_NSS0 K2G_DEV_NSS_ESW_CLK>;
-			clock-names = "fck";
-			reg = <0x04200f00 0x100>;
-			status = "disabled";
-			bus_freq = <2500000>;
+		dsp0: dsp0 {
+			compatible = "ti,k2g-dsp";
+			reg = <0x10800000 0x00100000>,
+			      <0x10e00000 0x00008000>,
+			      <0x10f00000 0x00008000>;
+			reg-names = "l2sram", "l1pram", "l1dram";
+			power-domains = <&k2g_pds K2G_DEV_CGEM0>;
+			clocks = <&k2g_clks K2G_DEV_CGEM0 0>;
+			ti,syscon-dev = <&devctrl 0x844>;
+			resets = <&k2g_reset K2G_DEV_CGEM0 K2G_DEV_CGEM0_DSP0_RESET>;
+			interrupt-parent = <&kirq0>;
+			interrupts = <0 8>;
+			interrupt-names = "vring", "exception";
+			kick-gpio = <&dspgpio0 27 0>;
 		};
-
-		#include "keystone-k2g-netcp.dtsi"
 	};
 };
