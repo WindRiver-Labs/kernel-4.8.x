@@ -26,6 +26,13 @@
 			reg = <0x00000008 0x1f800000 0x00000000 0x800000>;
 			reusable;
 		};
+
+		dsp_common_mpm_area: dsp_reserved_mpm_area {
+			compatible = "shared-dma-pool";
+			reg = <0x00000008 0x20000000 0x00000000 0x20000000>;
+			no-map;
+			status = "okay";
+		};
 	};
 
 	soc {
@@ -53,9 +60,14 @@
 			};
 		};
 
+		ddr3edac: edac@21010000 {
+			status = "ok";
+		};
+
 		mpm_mem: dspmem {
 			compatible = "ti,keystone-dsp-mem";
-			reg = <0x0c000000 0x00200000>;
+			reg = <0x0c000000 0x00200000>,
+			      <0xa0000000 0x20000000>;
 		};
 	};
 };
@@ -68,12 +80,20 @@
 	status = "okay";
 };
 
+&dwc0 {
+	dr_mode = "host";
+};
+
 &usb1_phy {
 	status = "okay";
 };
 
 &usb1 {
 	status = "okay";
+};
+
+&dwc1 {
+	dr_mode = "peripheral";
 };
 
 &i2c0 {
@@ -146,13 +166,13 @@
 
 		partition@0 {
 			label = "u-boot-spl";
-			reg = <0x0 0x80000>;
+			reg = <0x0 0x100000>;
 			read-only;
 		};
 
 		partition@1 {
 			label = "misc";
-			reg = <0x80000 0xf80000>;
+			reg = <0x100000 0xf00000>;
 		};
 	};
 };
@@ -168,6 +188,18 @@
 		compatible = "marvell,88E1514", "marvell,88E1510", "ethernet-phy-ieee802.3-c22";
 		reg = <1>;
 	};
+};
+
+&gbe_serdes0 {
+	status = "okay";
+};
+
+&pcie1_phy {
+	status = "okay";
+};
+
+&pcie1 {
+	status = "okay";
 };
 
 &dsp0 {
