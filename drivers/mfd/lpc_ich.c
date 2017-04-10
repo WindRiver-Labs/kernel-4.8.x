@@ -215,6 +215,7 @@ enum lpc_chipsets {
 	LPC_WPT_LP,	/* Wildcat Point-LP */
 	LPC_BRASWELL,	/* Braswell SoC */
 	LPC_LEWISBURG,	/* Lewisburg */
+	LPC_GLK,        /* Gemini Lake SoC */
 	LPC_9S,		/* 9 Series */
 };
 
@@ -531,6 +532,10 @@ static struct lpc_ich_info lpc_chipset_info[] = {
 		.name = "9 Series",
 		.iTCO_version = 2,
 	},
+	[LPC_GLK] = {
+		.name = "Gemini Lake SoC",
+		.spi_type = INTEL_SPI_BXT,
+	},
 };
 
 /*
@@ -659,6 +664,7 @@ static const struct pci_device_id lpc_ich_ids[] = {
 	{ PCI_VDEVICE(INTEL, 0x2917), LPC_ICH9ME},
 	{ PCI_VDEVICE(INTEL, 0x2918), LPC_ICH9},
 	{ PCI_VDEVICE(INTEL, 0x2919), LPC_ICH9M},
+	{ PCI_VDEVICE(INTEL, 0x3197), LPC_GLK},
 	{ PCI_VDEVICE(INTEL, 0x3a14), LPC_ICH10DO},
 	{ PCI_VDEVICE(INTEL, 0x3a16), LPC_ICH10R},
 	{ PCI_VDEVICE(INTEL, 0x3a18), LPC_ICH10},
