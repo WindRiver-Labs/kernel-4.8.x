@@ -317,7 +317,7 @@ static struct clk *_sci_clk_get(struct sci_clk_provider *provider,
 
 	if (init.num_parents < 2) {
 		init.num_parents = 0;
-		init.flags = CLK_IS_ROOT;
+		init.flags = 0;
 	}
 
 	if (init.num_parents) {
