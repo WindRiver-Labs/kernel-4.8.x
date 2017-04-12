@@ -97,6 +97,23 @@
 			reg = <0x02620000 0x1000>;
 		};
 
+		msm_ram: msmram@0c000000 {
+			compatible = "mmio-sram";
+			reg = <0x0c000000 0x100000>;
+			ranges = <0x0 0x0c000000 0x100000>;
+			#address-cells = <1>;
+			#size-cells = <1>;
+
+			sram-mpm@0 {
+				compatible = "ti,keystone-dsp-msm-ram";
+				reg = <0x0 0x80000>;
+			};
+
+			sram-bm@f7000 {
+				reg = <0x000f7000 0x8000>;
+			};
+		};
+
 		k2g_pinctrl: pinmux@02621000 {
 			compatible = "pinctrl-single";
 			reg = <0x02621000 0x410>;
@@ -288,7 +305,7 @@
 			clocks = <&k2g_clks K2G_DEV_USB1 K2G_DEV_USB_BUS_CLK>;
 			clock-names = "usb";
 
-			usb1: usb@2690000 {
+			usb1: usb@2590000 {
 				compatible = "synopsys,dwc3";
 				reg = <0x2590000 0x10000>;
 				interrupts = <GIC_SPI 144 IRQ_TYPE_EDGE_RISING>;
@@ -336,6 +353,8 @@
 			gpmc,num-cs = <4>;
 			gpmc,num-waitpins = <2>;
 			status = "disabled";
+			dmas = <&edma1 31 0>;
+			dma-names = "rxtx";
 			power-domains = <&k2g_pds K2G_DEV_GPMC0>;
 			clocks = <&k2g_clks K2G_DEV_GPMC0 K2G_DEV_GPMC_GPMC_FCLK>;
 			clock-names = "fck";
@@ -559,6 +578,17 @@
 				interrupts = <18>, <19>;
 				interrupt-names = "vring", "kick";
 			};
+
+			pruss0_mdio: mdio@20ab2400 {
+				compatible = "ti,davinci_mdio";
+				reg = <0x20ab2400 0x90>;
+				clocks = <&k2g_clks K2G_DEV_ICSS0 K2G_DEV_ICSS_CORE_CLK>;
+				clock-names = "fck";
+				#address-cells = <1>;
+				#size-cells = <0>;
+				bus_freq = <2500000>;
+				status = "disabled";
+			};
 		};
 
 		pruss1: pruss@20ac0000 {
@@ -616,6 +646,17 @@
 				interrupt-parent = <&pruss1_intc>;
 				interrupts = <18>, <19>;
 				interrupt-names = "vring", "kick";
+			};
+
+			pruss1_mdio: mdio@20af2400 {
+				compatible = "ti,davinci_mdio";
+				reg = <0x20af2400 0x90>;
+				clocks = <&k2g_clks K2G_DEV_ICSS1 K2G_DEV_ICSS_CORE_CLK>;
+				clock-names = "fck";
+				#address-cells = <1>;
+				#size-cells = <0>;
+				bus_freq = <2500000>;
+				status = "disabled";
 			};
 		};
 
@@ -845,13 +886,18 @@
 			status = "disabled";
 		};
 
-		pcie0_phy: phy@2320000 {
+		pcie0_serdes: phy@2320000 {
 			#phy-cells = <0>;
 			compatible = "ti,keystone-serdes-pcie";
 			reg = <0x02320000 0x4000>;
 			link-rate-kbps = <5000000>;
 			num-lanes = <1>;
 			status = "disabled";
+
+			power-domains = <&k2g_pds K2G_DEV_PCIE0>;
+			clocks = <&k2g_clks
+					K2G_DEV_PCIE0 K2G_DEV_PCIE_VBUS_CLK>;
+			clock-names = "fck";
 		};
 
 		pcie0: pcie@21800000 {
@@ -871,7 +917,6 @@
 			status = "disabled";
 			device_type = "pci";
 			num-lanes = <1>;
-			phys = <&pcie0_phy>;
 			dma-coherent;
 
 			/* error interrupt */
@@ -906,6 +951,33 @@
 					<GIC_SPI 50 IRQ_TYPE_EDGE_RISING>,
 					<GIC_SPI 51 IRQ_TYPE_EDGE_RISING>;
 			};
+		};
+
+		ddr3edac: edac@21010000 {
+			compatible = "ti,keystone-ddr3-mc-edac";
+			reg = <0x21010000 0x200>;
+			interrupts = <GIC_SPI 123 IRQ_TYPE_EDGE_RISING>;
+			status = "disabled";
+		};
+
+		ecap0: ecap@21d1800 {
+			compatible = "ti,k2g-ecap", "ti,am3352-ecap";
+			#pwm-cells = <3>;
+			reg = <0x021d1800 0x60>;
+			power-domains = <&k2g_pds K2G_DEV_ECAP0>;
+			clocks = <&k2g_clks K2G_DEV_ECAP0 K2G_DEV_ECAP_VBUS_CLK>;
+			clock-names = "fck";
+			status = "disabled";
+		};
+
+		ecap1: ecap@21d1c00 {
+			compatible = "ti,k2g-ecap", "ti,am3352-ecap";
+			#pwm-cells = <3>;
+			reg = <0x021d1c00 0x60>;
+			power-domains = <&k2g_pds K2G_DEV_ECAP1>;
+			clocks = <&k2g_clks K2G_DEV_ECAP1 K2G_DEV_ECAP_VBUS_CLK>;
+			clock-names = "fck";
+			status = "disabled";
 		};
 	};
 };
