@@ -4015,10 +4015,6 @@ static int i40e_vsi_control_tx(struct i40e_vsi *vsi, bool enable)
 	for (i = 0; i < vsi->num_queue_pairs; i++, pf_q++) {
 		i40e_control_tx_q(pf, pf_q, enable);
 
-		/* Don't wait to disable when port Tx is suspended */
-		if (!enable && test_bit(__I40E_PORT_TX_SUSPENDED, &pf->state))
-			continue;
-
 		/* wait for the change to finish */
 		ret = i40e_pf_txq_wait(pf, pf_q, enable);
 		if (ret) {
@@ -4112,10 +4108,6 @@ static int i40e_vsi_control_rx(struct i40e_vsi *vsi, bool enable)
 	for (i = 0; i < vsi->num_queue_pairs; i++, pf_q++) {
 		i40e_control_rx_q(pf, pf_q, enable);
 
-		/* Don't wait to disable when port Tx is suspended */
-		if (!enable && test_bit(__I40E_PORT_TX_SUSPENDED, &pf->state))
-			continue;
-
 		/* wait for the change to finish */
 		ret = i40e_pf_rxq_wait(pf, pf_q, enable);
 		if (ret) {
@@ -4158,6 +4150,10 @@ int i40e_vsi_start_rings(struct i40e_vsi *vsi)
  **/
 void i40e_vsi_stop_rings(struct i40e_vsi *vsi)
 {
+	/* When port TX is suspended, don't wait */
+	if (test_bit(__I40E_PORT_SUSPENDED, &vsi->back->state))
+		return i40e_vsi_stop_rings_no_wait(vsi);
+
 	/* do rx first for enable and last for disable
 	 * Ignore return value, we need to shutdown whatever we can
 	 */
@@ -5952,7 +5948,7 @@ static int i40e_handle_lldp_event(struct i40e_pf *pf,
 	else
 		pf->flags &= ~I40E_FLAG_DCB_ENABLED;
 
-	set_bit(__I40E_PORT_TX_SUSPENDED, &pf->state);
+	set_bit(__I40E_PORT_SUSPENDED, &pf->state);
 	/* Reconfiguration needed quiesce all VSIs */
 	i40e_pf_quiesce_all_vsi(pf);
 
@@ -5961,7 +5957,7 @@ static int i40e_handle_lldp_event(struct i40e_pf *pf,
 
 	ret = i40e_resume_port_tx(pf);
 
-	clear_bit(__I40E_PORT_TX_SUSPENDED, &pf->state);
+	clear_bit(__I40E_PORT_SUSPENDED, &pf->state);
 	/* In case of error no point in resuming VSIs */
 	if (ret)
 		goto exit;
