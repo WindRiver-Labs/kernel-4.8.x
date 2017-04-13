@@ -106,6 +106,8 @@ source "drivers/staging/ks7010/Kconfig"
 
 source "drivers/staging/lttng/Kconfig"
 
+source "drivers/staging/netatop/Kconfig"
+
 source "drivers/staging/apf/Kconfig"
 
 endif # STAGING
