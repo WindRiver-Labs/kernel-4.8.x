@@ -1,0 +1,13 @@
+config NETATOP
+	tristate "Net statistics collector for atop"
+	default n
+	---help---
+	  netatop is used to gather statistics about the TCP and UDP packets
+	  that have been transmitted/received per process and per thread. As
+	  soon as atop discovers that this module is active, it shows the
+	  columns SNET and RNET in the generic screen for the number of
+	  transmitted and received packets per process. When the 'n' key is
+	  pressed, it shows detailed counters about the number packets
+	  transmitted/received via TCP and UDP, the average sizes of these
+	  packets, and the total bandwidth consumed for input and output per
+	  process/thread.
