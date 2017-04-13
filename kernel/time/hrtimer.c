@@ -1014,8 +1014,6 @@ void hrtimer_start_range_ns(struct hrtimer *timer, ktime_t tim,
 	/* Switch the timer base, if necessary: */
 	new_base = switch_hrtimer_base(timer, base, mode & HRTIMER_MODE_PINNED);
 
-<<<<<<< HEAD
-	timer_stats_hrtimer_set_start_info(timer);
 #ifdef CONFIG_MISSED_TIMER_OFFSETS_HIST
 	{
 		ktime_t now = new_base->get_time();
@@ -1026,8 +1024,6 @@ void hrtimer_start_range_ns(struct hrtimer *timer, ktime_t tim,
 			timer->praecox = ktime_set(0, 0);
 	}
 #endif
-=======
->>>>>>> standard/base
 	leftmost = enqueue_hrtimer(timer, new_base);
 	if (!leftmost)
 		goto unlock;
@@ -1359,7 +1355,6 @@ static void hrtimer_rt_run_pending(void)
 			raw_write_seqcount_barrier(&cpu_base->seq);
 
 			__remove_hrtimer(timer, base, HRTIMER_STATE_INACTIVE, 0);
-			timer_stats_account_hrtimer(timer);
 			fn = timer->function;
 
 			raw_spin_unlock_irq(&cpu_base->lock);
