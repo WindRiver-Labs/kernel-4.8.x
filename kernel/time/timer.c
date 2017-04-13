@@ -1195,13 +1195,8 @@ int try_to_del_timer_sync(struct timer_list *timer)
 
 	if (base->running_timer != timer)
 		ret = detach_if_pending(timer, base, true);
-<<<<<<< HEAD
 	}
 	raw_spin_unlock_irqrestore(&base->lock, flags);
-=======
-
-	spin_unlock_irqrestore(&base->lock, flags);
->>>>>>> standard/base
 
 	return ret;
 }
