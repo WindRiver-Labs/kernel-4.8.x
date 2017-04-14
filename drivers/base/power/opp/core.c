@@ -13,15 +13,21 @@
 
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 
-#include <linux/clk.h>
 #include <linux/errno.h>
 #include <linux/err.h>
 #include <linux/slab.h>
 #include <linux/device.h>
 #include <linux/export.h>
+#ifndef CONFIG_ARCH_KEYSTONE
+#include <linux/clk.h>
 #include <linux/regulator/consumer.h>
+#endif
 
 #include "opp.h"
+#ifdef CONFIG_ARCH_KEYSTONE
+#include "domain.h"
+#endif
+
 
 /*
  * The root of the list of all opp-tables. All opp_table structures branch off
@@ -222,7 +228,11 @@ unsigned long dev_pm_opp_get_max_volt_latency(struct device *dev)
 {
 	struct opp_table *opp_table;
 	struct dev_pm_opp *opp, *min_opp = NULL, *max_opp = NULL;
+#ifndef CONFIG_ARCH_KEYSTONE
 	struct regulator *reg;
+#else
+	struct pm_opp_domain *pod;
+#endif
 	unsigned long latency_ns = 0;
 	unsigned long old_min_uV, old_uV, old_max_uV;
 	unsigned long new_min_uV, new_uV, new_max_uV;
@@ -236,12 +246,14 @@ unsigned long dev_pm_opp_get_max_volt_latency(struct device *dev)
 		return 0;
 	}
 
+#ifndef CONFIG_ARCH_KEYSTONE
 	reg = opp_table->regulator;
 	if (IS_ERR(reg)) {
 		/* Regulator may not be required for device */
 		rcu_read_unlock();
 		return 0;
 	}
+#endif
 
 	list_for_each_entry_rcu(opp, &opp_table->opp_list, node) {
 		if (!opp->available)
@@ -266,8 +278,20 @@ unsigned long dev_pm_opp_get_max_volt_latency(struct device *dev)
 	new_uV = max_opp->u_volt;
 	new_max_uV = max_opp->u_volt_max;
 
+#ifdef CONFIG_ARCH_KEYSTONE
+	pod = opp_table->opp_domain;
+#endif
+
 	rcu_read_unlock();
 
+#ifdef CONFIG_ARCH_KEYSTONE
+	ret = dev_pm_opp_domain_get_latency(pod, old_uV,
+					    old_min_uV,
+					    old_max_uV,
+					    new_uV,
+					    new_min_uV,
+					    new_max_uV);
+#else
 	/*
 	 * The caller needs to ensure that opp_table (and hence the regulator)
 	 * isn't freed, while we are executing this routine.
@@ -278,6 +302,7 @@ unsigned long dev_pm_opp_get_max_volt_latency(struct device *dev)
 						 new_uV,
 						 new_min_uV,
 						 new_max_uV);
+#endif
 
 	if (ret > 0)
 		latency_ns = ret * 1000;
@@ -533,6 +558,7 @@ struct dev_pm_opp *dev_pm_opp_find_freq_floor(struct device *dev,
 }
 EXPORT_SYMBOL_GPL(dev_pm_opp_find_freq_floor);
 
+#ifndef CONFIG_ARCH_KEYSTONE
 /*
  * The caller needs to ensure that opp_table (and hence the clk) isn't freed,
  * while clk returned here is used.
@@ -585,6 +611,7 @@ static int _set_opp_voltage(struct device *dev, struct regulator *reg,
 
 	return ret;
 }
+#endif
 
 /**
  * dev_pm_opp_set_rate() - Configure new OPP based on frequency
@@ -599,6 +626,7 @@ static int _set_opp_voltage(struct device *dev, struct regulator *reg,
 int dev_pm_opp_set_rate(struct device *dev, unsigned long target_freq)
 {
 	struct opp_table *opp_table;
+#ifndef CONFIG_ARCH_KEYSTONE
 	struct dev_pm_opp *old_opp, *opp;
 	struct regulator *reg;
 	struct clk *clk;
@@ -629,6 +657,9 @@ int dev_pm_opp_set_rate(struct device *dev, unsigned long target_freq)
 			__func__, freq);
 		return 0;
 	}
+#else
+	struct pm_opp_domain *pod;
+#endif
 
 	rcu_read_lock();
 
@@ -639,6 +670,7 @@ int dev_pm_opp_set_rate(struct device *dev, unsigned long target_freq)
 		return PTR_ERR(opp_table);
 	}
 
+#ifndef CONFIG_ARCH_KEYSTONE
 	old_opp = _find_freq_ceil(opp_table, &old_freq);
 	if (!IS_ERR(old_opp)) {
 		ou_volt = old_opp->u_volt;
@@ -663,9 +695,13 @@ int dev_pm_opp_set_rate(struct device *dev, unsigned long target_freq)
 	u_volt_max = opp->u_volt_max;
 
 	reg = opp_table->regulator;
+#else
+	pod = opp_table->opp_domain;
+#endif
 
 	rcu_read_unlock();
 
+#ifndef CONFIG_ARCH_KEYSTONE
 	/* Scaling up? Scale voltage before frequency */
 	if (freq > old_freq) {
 		ret = _set_opp_voltage(dev, reg, u_volt, u_volt_min,
@@ -706,6 +742,9 @@ restore_voltage:
 		_set_opp_voltage(dev, reg, ou_volt, ou_volt_min, ou_volt_max);
 
 	return ret;
+#else
+	return dev_pm_opp_domain_set_rate(pod, target_freq);
+#endif
 }
 EXPORT_SYMBOL_GPL(dev_pm_opp_set_rate);
 
@@ -788,6 +827,7 @@ static struct opp_table *_add_opp_table(struct device *dev)
 
 	_of_init_opp_table(opp_table, dev);
 
+#ifndef CONFIG_ARCH_KEYSTONE
 	/* Set regulator to a non-NULL error value */
 	opp_table->regulator = ERR_PTR(-ENXIO);
 
@@ -795,6 +835,11 @@ static struct opp_table *_add_opp_table(struct device *dev)
 	opp_table->clk = clk_get(dev, NULL);
 	if (IS_ERR(opp_table->clk)) {
 		ret = PTR_ERR(opp_table->clk);
+#else
+	opp_table->opp_domain = dev_pm_opp_domain_get(dev);
+	if (IS_ERR(opp_table->opp_domain)) {
+		ret = PTR_ERR(opp_table->opp_domain);
+#endif
 		if (ret != -EPROBE_DEFER)
 			dev_dbg(dev, "%s: Couldn't find clock: %d\n", __func__,
 				ret);
@@ -839,12 +884,18 @@ static void _remove_opp_table(struct opp_table *opp_table)
 	if (opp_table->prop_name)
 		return;
 
+#ifndef CONFIG_ARCH_KEYSTONE
 	if (!IS_ERR(opp_table->regulator))
+#else
+	if (dev_pm_opp_domain_put(opp_table->opp_domain))
+#endif
 		return;
 
+#ifndef CONFIG_ARCH_KEYSTONE
 	/* Release clk */
 	if (!IS_ERR(opp_table->clk))
 		clk_put(opp_table->clk);
+#endif
 
 	opp_dev = list_first_entry(&opp_table->dev_list, struct opp_device,
 				   node);
@@ -968,8 +1019,22 @@ struct dev_pm_opp *_allocate_opp(struct device *dev,
 static bool _opp_supported_by_regulators(struct dev_pm_opp *opp,
 					 struct opp_table *opp_table)
 {
+#ifdef CONFIG_ARCH_KEYSTONE
+	bool sup;
+#else
 	struct regulator *reg = opp_table->regulator;
+#endif
 
+#ifdef CONFIG_ARCH_KEYSTONE
+	sup = dev_pm_opp_domain_opp_supported_by_supply(opp_table->opp_domain,
+							opp->u_volt_min,
+							opp->u_volt_max);
+	if (!sup)
+		pr_warn("%s: OPP minuV: %lu maxuV: %lu, \
+			not supported by regulator\n", __func__, \
+			opp->u_volt_min, opp->u_volt_max);
+	return sup;
+#else
 	if (!IS_ERR(reg) &&
 	    !regulator_is_supported_voltage(reg, opp->u_volt_min,
 					    opp->u_volt_max)) {
@@ -979,6 +1044,7 @@ static bool _opp_supported_by_regulators(struct dev_pm_opp *opp,
 	}
 
 	return true;
+#endif
 }
 
 int _opp_add(struct device *dev, struct dev_pm_opp *new_opp,
@@ -1343,7 +1409,9 @@ EXPORT_SYMBOL_GPL(dev_pm_opp_put_prop_name);
 struct opp_table *dev_pm_opp_set_regulator(struct device *dev, const char *name)
 {
 	struct opp_table *opp_table;
+#ifndef CONFIG_ARCH_KEYSTONE
 	struct regulator *reg;
+#endif
 	int ret;
 
 	mutex_lock(&opp_table_lock);
@@ -1360,6 +1428,7 @@ struct opp_table *dev_pm_opp_set_regulator(struct device *dev, const char *name)
 		goto err;
 	}
 
+#ifndef CONFIG_ARCH_KEYSTONE
 	/* Already have a regulator set */
 	if (WARN_ON(!IS_ERR(opp_table->regulator))) {
 		ret = -EBUSY;
@@ -1376,6 +1445,11 @@ struct opp_table *dev_pm_opp_set_regulator(struct device *dev, const char *name)
 	}
 
 	opp_table->regulator = reg;
+#else
+	ret = dev_pm_opp_domain_get_supply(opp_table->opp_domain, name);
+	if (ret)
+		goto err;
+#endif
 
 	mutex_unlock(&opp_table_lock);
 	return opp_table;
@@ -1403,21 +1477,29 @@ void dev_pm_opp_put_regulator(struct opp_table *opp_table)
 {
 	mutex_lock(&opp_table_lock);
 
+#ifndef CONFIG_ARCH_KEYSTONE
 	if (IS_ERR(opp_table->regulator)) {
 		pr_err("%s: Doesn't have regulator set\n", __func__);
 		goto unlock;
 	}
+#endif
 
 	/* Make sure there are no concurrent readers while updating opp_table */
 	WARN_ON(!list_empty(&opp_table->opp_list));
 
+#ifndef CONFIG_ARCH_KEYSTONE
 	regulator_put(opp_table->regulator);
 	opp_table->regulator = ERR_PTR(-ENXIO);
+#else
+	dev_pm_opp_domain_put_supply(opp_table->opp_domain);
+#endif
 
 	/* Try freeing opp_table if this was the last blocking resource */
 	_remove_opp_table(opp_table);
 
+#ifndef CONFIG_ARCH_KEYSTONE
 unlock:
+#endif
 	mutex_unlock(&opp_table_lock);
 }
 EXPORT_SYMBOL_GPL(dev_pm_opp_put_regulator);
