@@ -1485,7 +1485,7 @@ static int keystone_rio_port_error_recovery(u32 port,
 	krio_phy_write(krio_priv, phy_sp[port].status,
 		       plm_status & KEYSTONE_RIO_PORT_PLM_STATUS_ERRORS);
 
-	if (err_stat & RIO_PORT_N_ERR_STS_PW_OUT_ES) {
+	if (err_stat & RIO_PORT_N_ERR_STS_OUT_ES) {
 		u32 ackid_stat, l_ackid, r_ackid;
 
 		/* Sync ackID */
@@ -1544,7 +1544,7 @@ static int keystone_rio_port_error_recovery(u32 port,
 
 oes_rd_err:
 
-	if (err_stat & RIO_PORT_N_ERR_STS_PW_INP_ES) {
+	if (err_stat & RIO_PORT_N_ERR_STS_INP_ES) {
 		if (r_port < 0) {
 			dev_dbg(krio_priv->dev,
 				"ER port %d: remote port not yet detected!\n",
@@ -1561,7 +1561,7 @@ oes_rd_err:
 			0xffff,
 			krio_priv->board_rio_cfg.size,
 			0,
-			0x100 + RIO_PORT_N_MNT_REQ_CSR(r_port),
+			RIO_DEV_PORT_N_MNT_REQ_CSR(krio_priv->mport[port], r_port),
 			sizeof(u32),
 			RIO_MNT_REQ_CMD_IS);
 
@@ -2136,12 +2136,12 @@ static int keystone_rio_pw_enable(struct rio_mport *mport, int enable)
  * from rstart to lstart.
  */
 static int keystone_rio_map_inb_mem(struct rio_mport *mport, dma_addr_t lstart,
-				    u64 rstart, u32 size, u32 flags)
+				    u64 rstart, u64 size, u32 flags)
 {
 	struct keystone_rio_data *krio_priv = mport->priv;
 
 	dev_dbg(krio_priv->dev,
-		"mapping inbound window 0x%x to RIO space 0x%llx with size 0x%x\n",
+		"mapping inbound window 0x%x to RIO space 0x%llx with size 0x%llx\n",
 		lstart, rstart, size);
 
 	/*
@@ -2286,7 +2286,7 @@ struct rio_mport *keystone_rio_register_mport(
 
 	mport->ops      = ops;
 	mport->sys_size = size;
-	mport->phy_type = RIO_PHY_SERIAL;
+	mport->phys_rmap = 1;
 
 	/*
 	 * Hard coded here because in rio_disc_mport(), it is used in
