@@ -586,7 +586,7 @@ static irqreturn_t keystone_rproc_exception_interrupt(int irq, void *dev_id)
 {
 	struct keystone_rproc *ksproc = dev_id;
 
-	rproc_report_crash(ksproc->rproc, RPROC_EXCEPTION);
+	rproc_report_crash(ksproc->rproc, RPROC_FATAL_ERROR);
 
 	return IRQ_HANDLED;
 }
