@@ -22,8 +22,12 @@
 #include <linux/rculist.h>
 #include <linux/rcupdate.h>
 
+#ifdef CONFIG_ARCH_KEYSTONE
+struct pm_opp_domain;
+#else
 struct clk;
 struct regulator;
+#endif
 
 /* Lock to allow exclusive modification to the device and opp lists */
 extern struct mutex opp_table_lock;
@@ -145,6 +149,7 @@ enum opp_table_access {
  * @prop_name: A name to postfix to many DT properties, while parsing them.
  * @clk: Device's clock handle
  * @regulator: Supply regulator
+ * @opp_domain: Pointer to opp_domain for regulator and clock control
  * @dentry:	debugfs dentry pointer of the real device directory (not links).
  * @dentry_name: Name of the real dentry.
  *
@@ -178,8 +183,13 @@ struct opp_table {
 	unsigned int *supported_hw;
 	unsigned int supported_hw_count;
 	const char *prop_name;
+
+#ifdef CONFIG_ARCH_KEYSTONE
+	struct pm_opp_domain *opp_domain;
+#else
 	struct clk *clk;
 	struct regulator *regulator;
+#endif
 
 #ifdef CONFIG_DEBUG_FS
 	struct dentry *dentry;
