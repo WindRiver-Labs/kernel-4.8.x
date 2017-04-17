@@ -2952,6 +2952,7 @@ err_irq:
 err_pinctrl:
 	if (host->dbclk)
 		clk_disable_unprepare(host->dbclk);
+	pm_runtime_dont_use_autosuspend(host->dev);
 	pm_runtime_put_sync(host->dev);
 	pm_runtime_disable(host->dev);
 	device_init_wakeup(&pdev->dev, false);
@@ -2976,6 +2977,7 @@ static int omap_hsmmc_remove(struct platform_device *pdev)
 
 	del_timer_sync(&host->timer);
 
+	pm_runtime_dont_use_autosuspend(host->dev);
 	pm_runtime_put_sync(host->dev);
 	pm_runtime_disable(host->dev);
 	device_init_wakeup(&pdev->dev, false);
