@@ -114,6 +114,9 @@ static int _dpa_bp_add_8_bufs(const struct dpa_bp *dpa_bp)
 			put_page(virt_to_head_page(new_buf));
 			goto build_skb_failed;
 		}
+
+		kmemleak_not_leak(skb);
+
 		DPA_WRITE_SKB_PTR(skb, skbh, new_buf, -1);
 
 		addr = dma_map_single(dev, new_buf,
