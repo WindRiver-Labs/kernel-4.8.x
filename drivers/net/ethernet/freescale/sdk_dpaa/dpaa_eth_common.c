@@ -805,6 +805,8 @@ dpa_bp_alloc(struct dpa_bp *dpa_bp)
 	return 0;
 
 pool_seed_failed:
+	if (dpa_bp->free_buf_cb)
+		dpa_bp_drain(dpa_bp);
 pdev_mask_failed:
 	platform_device_unregister(pdev);
 pdev_register_failed:
