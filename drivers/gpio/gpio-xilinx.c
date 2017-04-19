@@ -425,7 +425,6 @@ static int xgpio_to_irq(struct gpio_chip *gc, unsigned offset)
 
 /**
  * xgpio_irqhandler - Gpio interrupt service routine
- * @irq: gpio irq number
  * @desc: Pointer to interrupt description
  */
 static void xgpio_irqhandler(struct irq_desc *desc)
@@ -605,7 +604,7 @@ static const struct dev_pm_ops xgpio_dev_pm_ops = {
 
 /**
  * xgpio_of_probe - Probe method for the GPIO device.
- * @pdev: pointer to the platform device
+ * @pdev:       platform device instance
  *
  * Return:
  * It returns 0, if the driver is bound to the GPIO device, or
