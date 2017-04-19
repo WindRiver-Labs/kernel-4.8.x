@@ -414,7 +414,7 @@ static struct irq_chip xgpio_irqchip = {
  * Return:
  * irq number otherwise -EINVAL
  */
-static int xgpio_to_irq(struct gpio_chip *gc, unsigned offset)
+static int xgpio_to_irq(struct gpio_chip *gc, unsigned int offset)
 {
 	struct of_mm_gpio_chip *mm_gc = to_of_mm_gpio_chip(gc);
 	struct xgpio_instance *chip = container_of(mm_gc, struct xgpio_instance,
@@ -472,6 +472,7 @@ static int xgpio_irq_setup(struct device_node *np, struct xgpio_instance *chip)
 	struct resource res;
 
 	int ret = of_irq_to_resource(np, 0, &res);
+
 	if (!ret) {
 		pr_info("GPIO IRQ not connected\n");
 		return 0;
@@ -494,6 +495,7 @@ static int xgpio_irq_setup(struct device_node *np, struct xgpio_instance *chip)
 	 */
 	for (pin_num = 0; pin_num < chip->mmchip.gc.ngpio; pin_num++) {
 		u32 gpio_irq = irq_find_mapping(chip->irq_domain, pin_num);
+
 		irq_set_lockdep_class(gpio_irq, &gpio_lock_class);
 		pr_debug("IRQ Base: %d, Pin %d = IRQ %d\n",
 			chip->irq_base,	pin_num, gpio_irq);
