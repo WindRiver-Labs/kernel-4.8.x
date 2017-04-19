@@ -54,6 +54,7 @@
 #include <net/pkt_cls.h>
 #include <net/tc_act/tc_gact.h>
 #include <net/tc_act/tc_mirred.h>
+#include <net/vxlan.h>
 
 #include "ixgbe.h"
 #include "ixgbe_common.h"
@@ -71,7 +72,7 @@ char ixgbe_default_device_descr[] =
 static char ixgbe_default_device_descr[] =
 			      "Intel(R) 10 Gigabit Network Connection";
 #endif
-#define DRV_VERSION "4.4.0-k"
+#define DRV_VERSION "5.0.0-k"
 const char ixgbe_driver_version[] = DRV_VERSION;
 static const char ixgbe_copyright[] =
 				"Copyright (c) 1999-2016 Intel Corporation.";
@@ -85,6 +86,7 @@ static const struct ixgbe_info *ixgbe_info_tbl[] = {
 	[board_X550]		= &ixgbe_X550_info,
 	[board_X550EM_x]	= &ixgbe_X550EM_x_info,
 	[board_x550em_a]	= &ixgbe_x550em_a_info,
+	[board_x550em_a_fw]	= &ixgbe_x550em_a_fw_info,
 };
 
 /* ixgbe_pci_tbl - PCI Device ID Table
@@ -139,6 +141,8 @@ static const struct pci_device_id ixgbe_pci_tbl[] = {
 	{PCI_VDEVICE(INTEL, IXGBE_DEV_ID_X550EM_A_SGMII_L), board_x550em_a },
 	{PCI_VDEVICE(INTEL, IXGBE_DEV_ID_X550EM_A_10G_T), board_x550em_a},
 	{PCI_VDEVICE(INTEL, IXGBE_DEV_ID_X550EM_A_SFP), board_x550em_a },
+	{PCI_VDEVICE(INTEL, IXGBE_DEV_ID_X550EM_A_1G_T), board_x550em_a_fw },
+	{PCI_VDEVICE(INTEL, IXGBE_DEV_ID_X550EM_A_1G_T_L), board_x550em_a_fw },
 	/* required last entry */
 	{0, }
 };
@@ -179,6 +183,7 @@ MODULE_VERSION(DRV_VERSION);
 static struct workqueue_struct *ixgbe_wq;
 
 static bool ixgbe_check_cfg_remove(struct ixgbe_hw *hw, struct pci_dev *pdev);
+static void ixgbe_watchdog_link_is_down(struct ixgbe_adapter *);
 
 static int ixgbe_read_pci_cfg_word_parent(struct ixgbe_adapter *adapter,
 					  u32 reg, u16 *value)
@@ -1716,11 +1721,7 @@ static void ixgbe_process_skb_fields(struct ixgbe_ring *rx_ring,
 static void ixgbe_rx_skb(struct ixgbe_q_vector *q_vector,
 			 struct sk_buff *skb)
 {
-	skb_mark_napi_id(skb, &q_vector->napi);
-	if (ixgbe_qv_busy_polling(q_vector))
-		netif_receive_skb(skb);
-	else
-		napi_gro_receive(&q_vector->napi, skb);
+	napi_gro_receive(&q_vector->napi, skb);
 }
 
 /**
@@ -2197,40 +2198,6 @@ static int ixgbe_clean_rx_irq(struct ixgbe_q_vector *q_vector,
 	return total_rx_packets;
 }
 
-#ifdef CONFIG_NET_RX_BUSY_POLL
-/* must be called with local_bh_disable()d */
-static int ixgbe_low_latency_recv(struct napi_struct *napi)
-{
-	struct ixgbe_q_vector *q_vector =
-			container_of(napi, struct ixgbe_q_vector, napi);
-	struct ixgbe_adapter *adapter = q_vector->adapter;
-	struct ixgbe_ring  *ring;
-	int found = 0;
-
-	if (test_bit(__IXGBE_DOWN, &adapter->state))
-		return LL_FLUSH_FAILED;
-
-	if (!ixgbe_qv_lock_poll(q_vector))
-		return LL_FLUSH_BUSY;
-
-	ixgbe_for_each_ring(ring, q_vector->rx) {
-		found = ixgbe_clean_rx_irq(q_vector, ring, 4);
-#ifdef BP_EXTENDED_STATS
-		if (found)
-			ring->stats.cleaned += found;
-		else
-			ring->stats.misses++;
-#endif
-		if (found)
-			break;
-	}
-
-	ixgbe_qv_unlock_poll(q_vector);
-
-	return found;
-}
-#endif	/* CONFIG_NET_RX_BUSY_POLL */
-
 /**
  * ixgbe_configure_msix - Configure MSI-X hardware
  * @adapter: board private structure
@@ -2446,6 +2413,7 @@ static void ixgbe_check_overtemp_subtask(struct ixgbe_adapter *adapter)
 {
 	struct ixgbe_hw *hw = &adapter->hw;
 	u32 eicr = adapter->interrupt_event;
+	s32 rc;
 
 	if (test_bit(__IXGBE_DOWN, &adapter->state))
 		return;
@@ -2483,6 +2451,12 @@ static void ixgbe_check_overtemp_subtask(struct ixgbe_adapter *adapter)
 		if (hw->phy.ops.check_overtemp(hw) != IXGBE_ERR_OVERTEMP)
 			return;
 
+		break;
+	case IXGBE_DEV_ID_X550EM_A_1G_T:
+	case IXGBE_DEV_ID_X550EM_A_1G_T_L:
+		rc = hw->phy.ops.check_overtemp(hw);
+		if (rc != IXGBE_ERR_OVERTEMP)
+			return;
 		break;
 	default:
 		if (adapter->hw.mac.type >= ixgbe_mac_X540)
@@ -2530,6 +2504,18 @@ static void ixgbe_check_overtemp_event(struct ixgbe_adapter *adapter, u32 eicr)
 			return;
 		}
 		return;
+	case ixgbe_mac_x550em_a:
+		if (eicr & IXGBE_EICR_GPI_SDP0_X550EM_a) {
+			adapter->interrupt_event = eicr;
+			adapter->flags2 |= IXGBE_FLAG2_TEMP_SENSOR_EVENT;
+			ixgbe_service_event_schedule(adapter);
+			IXGBE_WRITE_REG(&adapter->hw, IXGBE_EIMC,
+					IXGBE_EICR_GPI_SDP0_X550EM_a);
+			IXGBE_WRITE_REG(&adapter->hw, IXGBE_EICR,
+					IXGBE_EICR_GPI_SDP0_X550EM_a);
+		}
+		return;
+	case ixgbe_mac_X550:
 	case ixgbe_mac_X540:
 		if (!(eicr & IXGBE_EICR_TS))
 			return;
@@ -2855,8 +2841,8 @@ int ixgbe_poll(struct napi_struct *napi, int budget)
 			clean_complete = false;
 	}
 
-	/* Exit if we are called by netpoll or busy polling is active */
-	if ((budget <= 0) || !ixgbe_qv_lock_napi(q_vector))
+	/* Exit if we are called by netpoll */
+	if (budget <= 0)
 		return budget;
 
 	/* attempt to distribute budget to each queue fairly, but don't allow
@@ -2875,7 +2861,6 @@ int ixgbe_poll(struct napi_struct *napi, int budget)
 			clean_complete = false;
 	}
 
-	ixgbe_qv_unlock_napi(q_vector);
 	/* If all work not completed, return budget and keep polling */
 	if (!clean_complete)
 		return budget;
@@ -4558,23 +4543,16 @@ static void ixgbe_napi_enable_all(struct ixgbe_adapter *adapter)
 {
 	int q_idx;
 
-	for (q_idx = 0; q_idx < adapter->num_q_vectors; q_idx++) {
-		ixgbe_qv_init_lock(adapter->q_vector[q_idx]);
+	for (q_idx = 0; q_idx < adapter->num_q_vectors; q_idx++)
 		napi_enable(&adapter->q_vector[q_idx]->napi);
-	}
 }
 
 static void ixgbe_napi_disable_all(struct ixgbe_adapter *adapter)
 {
 	int q_idx;
 
-	for (q_idx = 0; q_idx < adapter->num_q_vectors; q_idx++) {
+	for (q_idx = 0; q_idx < adapter->num_q_vectors; q_idx++)
 		napi_disable(&adapter->q_vector[q_idx]->napi);
-		while (!ixgbe_qv_disable(adapter->q_vector[q_idx])) {
-			pr_info("QV %d locked\n", q_idx);
-			usleep_range(1000, 20000);
-		}
-	}
 }
 
 static void ixgbe_clear_udp_tunnel_port(struct ixgbe_adapter *adapter, u32 mask)
@@ -5293,6 +5271,8 @@ void ixgbe_reinit_locked(struct ixgbe_adapter *adapter)
 
 	while (test_and_set_bit(__IXGBE_RESETTING, &adapter->state))
 		usleep_range(1000, 2000);
+	if (adapter->hw.phy.type == ixgbe_phy_fw)
+		ixgbe_watchdog_link_is_down(adapter);
 	ixgbe_down(adapter);
 	/*
 	 * If SR-IOV enabled then wait a bit before bringing the adapter
@@ -5553,6 +5533,31 @@ void ixgbe_down(struct ixgbe_adapter *adapter)
 }
 
 /**
+ * ixgbe_eee_capable - helper function to determine EEE support on X550
+ * @adapter: board private structure
+ */
+static void ixgbe_set_eee_capable(struct ixgbe_adapter *adapter)
+{
+	struct ixgbe_hw *hw = &adapter->hw;
+
+	switch (hw->device_id) {
+	case IXGBE_DEV_ID_X550EM_A_1G_T:
+	case IXGBE_DEV_ID_X550EM_A_1G_T_L:
+		if (!hw->phy.eee_speeds_supported)
+			break;
+		adapter->flags2 |= IXGBE_FLAG2_EEE_CAPABLE;
+		if (!hw->phy.eee_speeds_advertised)
+			break;
+		adapter->flags2 |= IXGBE_FLAG2_EEE_ENABLED;
+		break;
+	default:
+		adapter->flags2 &= ~IXGBE_FLAG2_EEE_CAPABLE;
+		adapter->flags2 &= ~IXGBE_FLAG2_EEE_ENABLED;
+		break;
+	}
+}
+
+/**
  * ixgbe_tx_timeout - Respond to a Tx Hang
  * @netdev: network interface device structure
  **/
@@ -5716,6 +5721,14 @@ static int ixgbe_sw_init(struct ixgbe_adapter *adapter,
 		break;
 	case ixgbe_mac_x550em_a:
 		adapter->flags |= IXGBE_FLAG_GENEVE_OFFLOAD_CAPABLE;
+		switch (hw->device_id) {
+		case IXGBE_DEV_ID_X550EM_A_1G_T:
+		case IXGBE_DEV_ID_X550EM_A_1G_T_L:
+			adapter->flags2 |= IXGBE_FLAG2_TEMP_SENSOR_CAPABLE;
+			break;
+		default:
+			break;
+		}
 	/* fall through */
 	case ixgbe_mac_X550EM_x:
 #ifdef CONFIG_IXGBE_DCB
@@ -5729,6 +5742,8 @@ static int ixgbe_sw_init(struct ixgbe_adapter *adapter,
 #endif /* IXGBE_FCOE */
 	/* Fall Through */
 	case ixgbe_mac_X550:
+		if (hw->mac.type == ixgbe_mac_X550)
+			adapter->flags2 |= IXGBE_FLAG2_TEMP_SENSOR_CAPABLE;
 #ifdef CONFIG_IXGBE_DCA
 		adapter->flags &= ~IXGBE_FLAG_DCA_CAPABLE;
 #endif
@@ -6200,7 +6215,8 @@ int ixgbe_close(struct net_device *netdev)
 
 	ixgbe_ptp_stop(adapter);
 
-	ixgbe_close_suspend(adapter);
+	if (netif_device_present(netdev))
+		ixgbe_close_suspend(adapter);
 
 	ixgbe_fdir_filter_exit(adapter);
 
@@ -6245,14 +6261,12 @@ static int ixgbe_resume(struct pci_dev *pdev)
 	if (!err && netif_running(netdev))
 		err = ixgbe_open(netdev);
 
+
+	if (!err)
+		netif_device_attach(netdev);
 	rtnl_unlock();
 
-	if (err)
-		return err;
-
-	netif_device_attach(netdev);
-
-	return 0;
+	return err;
 }
 #endif /* CONFIG_PM */
 
@@ -6267,14 +6281,14 @@ static int __ixgbe_shutdown(struct pci_dev *pdev, bool *enable_wake)
 	int retval = 0;
 #endif
 
+	rtnl_lock();
 	netif_device_detach(netdev);
 
-	rtnl_lock();
 	if (netif_running(netdev))
 		ixgbe_close_suspend(adapter);
-	rtnl_unlock();
 
 	ixgbe_clear_interrupt_scheme(adapter);
+	rtnl_unlock();
 
 #ifdef CONFIG_PM
 	retval = pci_save_state(pdev);
@@ -6808,6 +6822,9 @@ static void ixgbe_watchdog_link_is_up(struct ixgbe_adapter *adapter)
 	case IXGBE_LINK_SPEED_100_FULL:
 		speed_str = "100 Mbps";
 		break;
+	case IXGBE_LINK_SPEED_10_FULL:
+		speed_str = "10 Mbps";
+		break;
 	default:
 		speed_str = "unknown speed";
 		break;
@@ -7287,11 +7304,15 @@ static int ixgbe_tso(struct ixgbe_ring *tx_ring,
 
 	/* initialize outer IP header fields */
 	if (ip.v4->version == 4) {
+		unsigned char *csum_start = skb_checksum_start(skb);
+		unsigned char *trans_start = ip.hdr + (ip.v4->ihl * 4);
+
 		/* IP header will have to cancel out any data that
 		 * is not a part of the outer IP header
 		 */
-		ip.v4->check = csum_fold(csum_add(lco_csum(skb),
-						  csum_unfold(l4.tcp->check)));
+		ip.v4->check = csum_fold(csum_partial(trans_start,
+						      csum_start - trans_start,
+						      0));
 		type_tucmd |= IXGBE_ADVTXD_TUCMD_IPV4;
 
 		ip.v4->tot_len = 0;
@@ -7661,10 +7682,16 @@ static void ixgbe_atr(struct ixgbe_ring *ring,
 	/* snag network header to get L4 type and address */
 	skb = first->skb;
 	hdr.network = skb_network_header(skb);
+	if (unlikely(hdr.network <= skb->data))
+		return;
 	if (skb->encapsulation &&
 	    first->protocol == htons(ETH_P_IP) &&
-	    hdr.ipv4->protocol != IPPROTO_UDP) {
+	    hdr.ipv4->protocol == IPPROTO_UDP) {
 		struct ixgbe_adapter *adapter = q_vector->adapter;
+
+		if (unlikely(skb_tail_pointer(skb) < hdr.network +
+			     VXLAN_HEADROOM))
+			return;
 
 		/* verify the port is recognized as VXLAN */
 		if (adapter->vxlan_port &&
@@ -7675,6 +7702,12 @@ static void ixgbe_atr(struct ixgbe_ring *ring,
 		    udp_hdr(skb)->dest == adapter->geneve_port)
 			hdr.network = skb_inner_network_header(skb);
 	}
+
+	/* Make sure we have at least [minimum IPv4 header + TCP]
+	 * or [IPv6 header] bytes
+	 */
+	if (unlikely(skb_tail_pointer(skb) < hdr.network + 40))
+		return;
 
 	/* Currently only IPv4/IPv6 with TCP is supported */
 	switch (hdr.ipv4->version) {
@@ -7693,6 +7726,10 @@ static void ixgbe_atr(struct ixgbe_ring *ring,
 	}
 
 	if (l4_proto != IPPROTO_TCP)
+		return;
+
+	if (unlikely(skb_tail_pointer(skb) < hdr.network +
+		     hlen + sizeof(struct tcphdr)))
 		return;
 
 	th = (struct tcphdr *)(hdr.network + hlen);
@@ -9270,9 +9307,6 @@ static const struct net_device_ops ixgbe_netdev_ops = {
 #ifdef CONFIG_NET_POLL_CONTROLLER
 	.ndo_poll_controller	= ixgbe_netpoll,
 #endif
-#ifdef CONFIG_NET_RX_BUSY_POLL
-	.ndo_busy_poll		= ixgbe_low_latency_recv,
-#endif
 #ifdef IXGBE_FCOE
 	.ndo_fcoe_ddp_setup = ixgbe_fcoe_ddp_get,
 	.ndo_fcoe_ddp_target = ixgbe_fcoe_ddp_target,
@@ -9576,6 +9610,7 @@ static int ixgbe_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
 	hw->phy.reset_if_overtemp = true;
 	err = hw->mac.ops.reset_hw(hw);
 	hw->phy.reset_if_overtemp = false;
+	ixgbe_set_eee_capable(adapter);
 	if (err == IXGBE_ERR_SFP_NOT_PRESENT) {
 		err = 0;
 	} else if (err == IXGBE_ERR_SFP_NOT_SUPPORTED) {
@@ -9649,7 +9684,7 @@ skip_sriov:
 
 #ifdef CONFIG_IXGBE_DCB
 	if (adapter->flags & IXGBE_FLAG_DCB_CAPABLE)
-		netdev->dcbnl_ops = &dcbnl_ops;
+		netdev->dcbnl_ops = &ixgbe_dcbnl_ops;
 #endif
 
 #ifdef IXGBE_FCOE
@@ -9815,8 +9850,9 @@ skip_sriov:
 	 * since os does not support feature
 	 */
 	if (hw->mac.ops.set_fw_drv_ver)
-		hw->mac.ops.set_fw_drv_ver(hw, 0xFF, 0xFF, 0xFF,
-					   0xFF);
+		hw->mac.ops.set_fw_drv_ver(hw, 0xFF, 0xFF, 0xFF, 0xFF,
+					   sizeof(ixgbe_driver_version) - 1,
+					   ixgbe_driver_version);
 
 	/* add san mac addr to netdev */
 	ixgbe_add_sanmac_netdev(netdev);
@@ -10064,7 +10100,7 @@ skip_bad_vf_detection:
 	}
 
 	if (netif_running(netdev))
-		ixgbe_down(adapter);
+		ixgbe_close_suspend(adapter);
 
 	if (!test_and_set_bit(__IXGBE_DISABLED, &adapter->state))
 		pci_disable_device(pdev);
@@ -10134,10 +10170,12 @@ static void ixgbe_io_resume(struct pci_dev *pdev)
 	}
 
 #endif
+	rtnl_lock();
 	if (netif_running(netdev))
-		ixgbe_up(adapter);
+		ixgbe_open(netdev);
 
 	netif_device_attach(netdev);
+	rtnl_unlock();
 }
 
 static const struct pci_error_handlers ixgbe_err_handler = {
