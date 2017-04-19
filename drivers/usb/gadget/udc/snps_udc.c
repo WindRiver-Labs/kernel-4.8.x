@@ -1444,7 +1444,6 @@ static int snps_gadget_stop(struct usb_gadget *gadget)
 	udc = container_of(gadget, struct snps_udc, gadget);
 
 	spin_lock_irqsave(&udc->lock, flags);
-	stop_udc(udc);
 	udc->gadget.dev.driver = NULL;
 	udc->gadget_driver = NULL;
 
