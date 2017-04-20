@@ -2162,7 +2162,7 @@ nomem:
 static void iommu_resume(void)
 {
 	struct arm_smmu_device *smmu = NULL;
-	int i, err;
+	int i;
 	void __iomem *cb_base, *gr0_base, *gr1_base;
 
 	spin_lock(&arm_smmu_devices_lock);
