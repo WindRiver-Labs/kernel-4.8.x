@@ -147,7 +147,7 @@ static int keystone_set_periodic(struct clock_event_device *evt)
 	return 0;
 }
 
-static void keystone_timer_init(struct device_node *np)
+static int keystone_timer_init(struct device_node *np)
 {
 	struct clock_event_device *event_dev = &timer.event_dev;
 	unsigned long rate;
