@@ -394,6 +394,7 @@ static void  pa_allocate_rx_descs(struct pa_core_device *core_dev, int fdq)
 	/* Allocate a primary receive queue entry */
 	buf_len = core_dev->rx_cmd_rsp_buffer_sizes[fdq];
 	bufptr = kmalloc(buf_len, GFP_ATOMIC | GFP_DMA | __GFP_COLD);
+	kmemleak_ignore(bufptr);
 	pad[0] = (u32)bufptr;
 	pad[1] = buf_len;
 
