@@ -94,6 +94,7 @@ static int sa_allocate_rx_buf(struct keystone_crypto_data *dev_data,
 			dev_warn_ratelimited(dev, "Primary RX buffer alloc failed\n");
 			goto fail;
 		}
+		kmemleak_ignore(bufptr);
 		dma = dma_map_single(dev, bufptr, buf_len, DMA_TO_DEVICE);
 		pad[0] = (u32)bufptr;
 		pad[1] = 0;
