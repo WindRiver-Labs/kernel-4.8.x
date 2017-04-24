@@ -21,7 +21,7 @@
 #include <linux/of_address.h>
 #include <linux/reboot.h>
 
-#include <mach/ncr.h>
+#include <linux/lsi-ncr.h>
 
 #define APB2_SER3_PHY_ADDR        0x002010030000ULL
 #define APB2_SER3_PHY_SIZE   0x1000
