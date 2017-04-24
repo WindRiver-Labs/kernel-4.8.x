@@ -657,7 +657,7 @@ static u32 get_cluster_id(void)
  * this function, no interrupts will be delivered by the GIC, and another
  * platform-specific wakeup source must be enabled.
  */
-static void gic_dist_save(void)
+static void axxia_gic_dist_save(void)
 {
 	unsigned int gic_irqs;
 	void __iomem *dist_base;
@@ -692,7 +692,7 @@ static void gic_dist_save(void)
  * handled normally, but any edge interrupts that occured will not be seen by
  * the GIC and need to be handled by the platform-specific wakeup source.
  */
-static void gic_dist_restore(void)
+static void axxia_gic_dist_restore(void)
 {
 	unsigned int gic_irqs;
 	unsigned int i;
@@ -728,7 +728,7 @@ static void gic_dist_restore(void)
 	writel_relaxed(1, dist_base + GIC_DIST_CTRL);
 }
 
-static void gic_cpu_save(void)
+static void axxia_gic_cpu_save(void)
 {
 	int i;
 	u32 *ptr;
@@ -754,7 +754,7 @@ static void gic_cpu_save(void)
 
 }
 
-static void gic_cpu_restore(void)
+static void axxia_gic_cpu_restore(void)
 {
 	int i;
 	u32 *ptr;
@@ -790,18 +790,18 @@ static int _gic_notifier(struct notifier_block *self,
 {
 	switch (cmd) {
 	case CPU_PM_ENTER:
-		gic_cpu_save();
+		axxia_gic_cpu_save();
 		break;
 	case CPU_PM_ENTER_FAILED:
 	case CPU_PM_EXIT:
-		gic_cpu_restore();
+		axxia_gic_cpu_restore();
 		break;
 	case CPU_CLUSTER_PM_ENTER:
-		gic_dist_save();
+		axxia_gic_dist_save();
 		break;
 	case CPU_CLUSTER_PM_ENTER_FAILED:
 	case CPU_CLUSTER_PM_EXIT:
-		gic_dist_restore();
+		axxia_gic_dist_restore();
 		break;
 	}
 
