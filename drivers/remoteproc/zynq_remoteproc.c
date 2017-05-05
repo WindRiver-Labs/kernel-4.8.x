@@ -334,7 +334,6 @@ static int __devinit zynq_remoteproc_probe(struct platform_device *pdev)
 
 		tmp = kzalloc(sizeof(struct irq_list), GFP_KERNEL);
 		if (!tmp) {
-			dev_err(&pdev->dev, "Unable to alloc irq list\n");
 			ret = -ENOMEM;
 			goto irq_fault;
 		}
