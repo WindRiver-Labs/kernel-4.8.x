@@ -45,3 +45,4 @@ obj-$(CONFIG_KS7010)		+= ks7010/
 obj-$(CONFIG_LTTNG)			+= lttng/
 obj-$(CONFIG_NETATOP)		+= netatop/
 obj-$(CONFIG_XILINX_APF)	+= apf/
+obj-y						+= xilinx/
