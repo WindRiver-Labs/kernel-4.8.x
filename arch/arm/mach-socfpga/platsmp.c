@@ -117,6 +117,16 @@ static int socfpga_cpu_kill(unsigned int cpu)
 {
 	return 1;
 }
+
+static int socfpga_a10_cpu_kill(unsigned int cpu)
+{
+	/* This will put CPU #1 into reset. */
+	if (socfpga_cpu1start_addr)
+		writel(RSTMGR_MPUMODRST_CPU1, rst_manager_base_addr +
+			SOCFPGA_A10_RSTMGR_MODMPURST);
+
+	return 1;
+}
 #endif
 
 static const struct smp_operations socfpga_smp_ops __initconst = {
@@ -133,7 +143,7 @@ static const struct smp_operations socfpga_a10_smp_ops __initconst = {
 	.smp_boot_secondary	= socfpga_a10_boot_secondary,
 #ifdef CONFIG_HOTPLUG_CPU
 	.cpu_die		= socfpga_cpu_die,
-	.cpu_kill		= socfpga_cpu_kill,
+	.cpu_kill		= socfpga_a10_cpu_kill,
 #endif
 };
 
