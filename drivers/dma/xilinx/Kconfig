@@ -38,4 +38,10 @@ config XILINX_DPDMA
 	help
 	  Enable support for Xilinx DisplayPort DMA.
 
+config XILINX_FRMBUF
+	tristate "Xilinx Framebuffer"
+	select DMA_ENGINE
+	help
+	 Enable support for Xilinx Framebuffer DMA.
+
 endif # XILINX_DMA_ENGINES
