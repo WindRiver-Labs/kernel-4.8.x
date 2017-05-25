@@ -79,6 +79,7 @@
 #include "gc_hal_kernel_linux.h"
 #include "gc_hal_kernel.h"
 #include "gc_hal_kernel_debug.h"
+#include <asm/uaccess.h>
 
 /*
    Prequsite:
@@ -870,7 +871,12 @@ vidmem_write(
     loff_t *pos
     )
 {
+    unsigned int ua_flags;
+
+    ua_flags = uaccess_save_and_enable();
     dumpProcess = simple_strtol(buf, NULL, 0);
+    uaccess_restore(ua_flags);
+
     return count;
 }
 
