@@ -20,6 +20,7 @@
 #include <linux/irqchip.h>
 #include <linux/irqdomain.h>
 #include <asm/exception.h>
+#include <asm/proc-fns.h>
 
 #define LOCAL_CONTROL			0x000
 #define LOCAL_PRESCALER			0x008
@@ -230,8 +231,37 @@ static int __init bcm2836_smp_boot_secondary(unsigned int cpu,
 	return 0;
 }
 
+#ifdef CONFIG_HOTPLUG_CPU
+/*
+ ** platform-specific code to shutdown a CPU
+ **
+ ** Called with IRQs disabled
+ **/
+static void bcm2836_cpu_die(unsigned int cpu)
+{
+	/* Do WFI. If we wake up early, go back into WFI */
+	while (1)
+			cpu_do_idle();
+}
+
+/*
+ ** We need a dummy function so that platform_can_cpu_hotplug() knows
+ ** we support CPU hotplug. However, the function does not need to do
+ ** anything, because CPUs going offline just do WFI. We could reset
+ ** the CPUs but it would increase power consumption.
+ **/
+static int bcm2836_cpu_kill(unsigned int cpu)
+{
+	return 1;
+}
+#endif
+
 static const struct smp_operations bcm2836_smp_ops __initconst = {
 	.smp_boot_secondary	= bcm2836_smp_boot_secondary,
+#ifdef CONFIG_HOTPLUG_CPU
+	.cpu_die	 = bcm2836_cpu_die,
+	.cpu_kill	= bcm2836_cpu_kill,
+#endif
 };
 #endif
 #endif
