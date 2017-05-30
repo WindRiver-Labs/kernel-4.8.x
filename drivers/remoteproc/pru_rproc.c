@@ -714,6 +714,15 @@ static int pru_rproc_probe(struct platform_device *pdev)
 	/* error recovery is not supported for PRUs */
 	rproc->recovery_disabled = true;
 
+	/*
+	 * rproc_add will auto-boot the processor normally, but this is
+	 * not desired with PRU client driven boot-flow methodoly. A PRU
+	 * application/client driver will boot the corresponding PRU
+	 * remote-processor as part of its state machine either through
+	 * the remoteproc sysfs interface or through the equivalent kernel API
+	 */
+	rproc->auto_boot = false;
+
 	pru = rproc->priv;
 	pru->id = pdata->id;
 	pru->pruss = platform_get_drvdata(ppdev);
@@ -788,7 +797,7 @@ static int pru_rproc_probe(struct platform_device *pdev)
 	}
 
 	if ((of_machine_is_compatible("ti,am5718-idk") ||
-	     of_machine_is_compatible("ti,k2g-ice")) && pru->use_eth &&
+	     of_machine_is_compatible("ti,k2g-ice")) &&
 	    !of_property_read_u32(np, "ti,pruss-gp-mux-sel", &mux_sel)) {
 		if (mux_sel < PRUSS_GP_MUX_SEL_GP ||
 		    mux_sel >= PRUSS_GP_MUX_MAX) {
@@ -828,7 +837,7 @@ static int pru_rproc_remove(struct platform_device *pdev)
 	mbox_free_channel(pru->mbox);
 
 	if ((of_machine_is_compatible("ti,am5718-idk") ||
-	     of_machine_is_compatible("ti,k2g-ice")) && pru->use_eth)
+	     of_machine_is_compatible("ti,k2g-ice")))
 		pruss_cfg_set_gpmux(pru->pruss, pru->id, PRUSS_GP_MUX_SEL_GP);
 
 	rproc_del(rproc);
@@ -1010,6 +1019,7 @@ static struct platform_driver pru_rproc_driver = {
 	.driver = {
 		.name   = "pru-rproc",
 		.of_match_table = pru_rproc_match,
+		.suppress_bind_attrs = true,
 	},
 	.probe  = pru_rproc_probe,
 	.remove = pru_rproc_remove,
