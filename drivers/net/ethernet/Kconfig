@@ -53,7 +53,6 @@ config CX_ECAT
 	  will be called ec_bhf.
 
 source "drivers/net/ethernet/davicom/Kconfig"
-source "drivers/net/ethernet/lsi/Kconfig"
 
 config DNET
 	tristate "Dave ethernet support (DNET)"
@@ -80,7 +79,6 @@ source "drivers/net/ethernet/ibm/Kconfig"
 source "drivers/net/ethernet/intel/Kconfig"
 source "drivers/net/ethernet/i825xx/Kconfig"
 source "drivers/net/ethernet/xscale/Kconfig"
-source "drivers/net/ethernet/lsi/Kconfig"
 
 config JME
 	tristate "JMicron(R) PCI-Express Gigabit Ethernet support"
