@@ -1756,8 +1756,7 @@ static int xilinx_drm_dp_sub_parse_of(struct xilinx_drm_dp_sub *dp_sub)
 					  full_range_offsets[i]);
 	}
 
-	ret = of_property_read_bool(node, "xlnx,vid-primary");
-	if (ret)
+	if (of_property_read_bool(node, "xlnx,vid-primary"))
 		dp_sub->layers[XILINX_DRM_DP_SUB_LAYER_VID].primary = true;
 	else
 		dp_sub->layers[XILINX_DRM_DP_SUB_LAYER_GFX].primary = true;
