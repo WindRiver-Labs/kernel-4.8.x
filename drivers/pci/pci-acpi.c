@@ -21,13 +21,12 @@
 #include "pci.h"
 
 /*
- * The UUID is defined in the PCI Firmware Specification available here:
+ * The GUID is defined in the PCI Firmware Specification available here:
  * https://www.pcisig.com/members/downloads/pcifw_r3_1_13Dec10.pdf
  */
-const u8 pci_acpi_dsm_uuid[] = {
-	0xd0, 0x37, 0xc9, 0xe5, 0x53, 0x35, 0x7a, 0x4d,
-	0x91, 0x17, 0xea, 0x4d, 0x19, 0xc3, 0x43, 0x4d
-};
+const guid_t pci_acpi_dsm_guid =
+	GUID_INIT(0xe5c937d0, 0x3553, 0x4d7a,
+		  0x91, 0x17, 0xea, 0x4d, 0x19, 0xc3, 0x43, 0x4d);
 
 phys_addr_t acpi_pci_root_get_mcfg_addr(acpi_handle handle)
 {
@@ -558,7 +557,7 @@ void acpi_pci_add_bus(struct pci_bus *bus)
 	if (!pci_is_root_bus(bus))
 		return;
 
-	obj = acpi_evaluate_dsm(ACPI_HANDLE(bus->bridge), pci_acpi_dsm_uuid, 3,
+	obj = acpi_evaluate_dsm(ACPI_HANDLE(bus->bridge), &pci_acpi_dsm_guid, 3,
 				RESET_DELAY_DSM, NULL);
 	if (!obj)
 		return;
@@ -623,7 +622,7 @@ static void pci_acpi_optimize_delay(struct pci_dev *pdev,
 	if (bridge->ignore_reset_delay)
 		pdev->d3cold_delay = 0;
 
-	obj = acpi_evaluate_dsm(handle, pci_acpi_dsm_uuid, 3,
+	obj = acpi_evaluate_dsm(handle, &pci_acpi_dsm_guid, 3,
 				FUNCTION_DELAY_DSM, NULL);
 	if (!obj)
 		return;
