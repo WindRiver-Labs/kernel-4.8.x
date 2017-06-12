@@ -227,7 +227,7 @@ void *intel_ipu4_cpd_create_pkg_dir(struct intel_ipu4_bus_device *adev,
 
 	*pkg_dir_size = PKG_DIR_SIZE + man_sz + met_sz;
 	pkg_dir = dma_alloc_attrs(&adev->dev, *pkg_dir_size, dma_addr,
-				  GFP_KERNEL, NULL);
+				  GFP_KERNEL, 0);
 	if (!pkg_dir)
 		return pkg_dir;
 
@@ -253,7 +253,7 @@ void *intel_ipu4_cpd_create_pkg_dir(struct intel_ipu4_bus_device *adev,
 		dev_err(&isp->pdev->dev,
 			"Unable to parse module data section!\n");
 		dma_free_attrs(&isp->psys->dev, *pkg_dir_size, pkg_dir,
-			       *dma_addr, NULL);
+			       *dma_addr, 0);
 		return NULL;
 	}
 
@@ -277,7 +277,7 @@ void intel_ipu4_cpd_free_pkg_dir(struct intel_ipu4_bus_device *adev,
 				 dma_addr_t dma_addr,
 				 unsigned pkg_dir_size)
 {
-	dma_free_attrs(&adev->dev, pkg_dir_size, pkg_dir, dma_addr, NULL);
+	dma_free_attrs(&adev->dev, pkg_dir_size, pkg_dir, dma_addr, 0);
 }
 EXPORT_SYMBOL_GPL(intel_ipu4_cpd_free_pkg_dir);
 
