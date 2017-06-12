@@ -230,7 +230,7 @@ void *intel_ipu4_fw_com_prepare(struct intel_ipu4_fw_com_cfg *cfg,
 
 	ctx->dma_buffer = dma_alloc_attrs(&ctx->adev->dev, sizeall,
 					  &ctx->dma_addr,
-					  GFP_KERNEL, NULL);
+					  GFP_KERNEL, 0);
 	ctx->dma_size = sizeall;
 
 	/* This is the address where FW starts to parse allocations */
@@ -347,7 +347,7 @@ int intel_ipu4_fw_com_release(struct intel_ipu4_fw_com_context *ctx,
 		return -EBUSY;
 
 	dma_free_attrs(&ctx->adev->dev, ctx->dma_size,
-		       ctx->dma_buffer, ctx->dma_addr, NULL);
+		       ctx->dma_buffer, ctx->dma_addr, 0);
 	kfree(ctx);
 	return 0;
 }

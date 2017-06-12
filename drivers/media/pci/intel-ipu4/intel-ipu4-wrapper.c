@@ -44,7 +44,7 @@ struct my_css_memory_buffer_item {
 	dma_addr_t iova;
 	unsigned long *addr;
 	size_t bytes;
-	struct dma_attrs attrs;
+	unsigned long attrs;
 };
 
 /*
@@ -327,14 +327,14 @@ u64 shared_memory_alloc(int mmid, size_t bytes)
 	/*alloc using intel_ipu4 dma driver*/
 	size = PAGE_ALIGN(bytes);
 
-	addr = dma_alloc_attrs(mine->dev, size, &dma_addr, GFP_KERNEL, NULL);
+	addr = dma_alloc_attrs(mine->dev, size, &dma_addr, GFP_KERNEL, 0);
 	if (!addr)
 		return 0;
 
 	rval = intel_ipu4_wrapper_add_shared_memory_buffer(mmid, addr,
 							   dma_addr, size);
 	if (rval) {
-		dma_free_attrs(mine->dev, size, addr, dma_addr, NULL);
+		dma_free_attrs(mine->dev, size, addr, dma_addr, 0);
 		return 0;
 	}
 
@@ -368,7 +368,7 @@ void shared_memory_free(int mmid, u64 addr)
 		list_del(&buf->list);
 		spin_unlock_irqrestore(&mine->lock, flags);
 		dma_free_attrs(mine->dev, buf->bytes, buf->addr,
-			       buf->iova, &buf->attrs);
+			       buf->iova, buf->attrs);
 		kfree(buf);
 		return;
 	}
