@@ -29,7 +29,7 @@
 
 /* Begin of things adapted from arch/arm/mm/dma-mapping.c */
 static void __dma_clear_buffer(struct page *page, size_t size,
-			       struct dma_attrs *attrs)
+			       unsigned long attrs)
 {
 	/*
 	 * Ensure that the allocated pages are zeroed, and that any data
@@ -40,7 +40,7 @@ static void __dma_clear_buffer(struct page *page, size_t size,
 			void *ptr = kmap_atomic(page);
 
 			memset(ptr, 0, PAGE_SIZE);
-			if (!dma_get_attr(DMA_ATTR_SKIP_CPU_SYNC, attrs))
+			if((attrs & DMA_ATTR_SKIP_CPU_SYNC)==0)
 				clflush_cache_range(ptr, PAGE_SIZE);
 			kunmap_atomic(ptr);
 			page++;
@@ -50,13 +50,13 @@ static void __dma_clear_buffer(struct page *page, size_t size,
 		void *ptr = page_address(page);
 
 		memset(ptr, 0, size);
-		if (!dma_get_attr(DMA_ATTR_SKIP_CPU_SYNC, attrs))
+	    if((attrs & DMA_ATTR_SKIP_CPU_SYNC)==0)
 			clflush_cache_range(ptr, size);
 	}
 }
 
 static struct page **__iommu_alloc_buffer(struct device *dev, size_t size,
-					  gfp_t gfp, struct dma_attrs *attrs)
+					  gfp_t gfp, unsigned long attrs)
 {
 	struct page **pages;
 	int count = size >> PAGE_SHIFT;
@@ -106,7 +106,7 @@ error:
 }
 
 static int __iommu_free_buffer(struct device *dev, struct page **pages,
-			       size_t size, struct dma_attrs *attrs)
+			       size_t size, unsigned long attrs)
 {
 	int count = size >> PAGE_SHIFT;
 	int array_size = count * sizeof(struct page *);
@@ -160,7 +160,7 @@ static void intel_ipu4_dma_sync_sg_for_cpu(
 
 static void *intel_ipu4_dma_alloc(struct device *dev, size_t size,
 			       dma_addr_t *dma_handle, gfp_t gfp,
-			       struct dma_attrs *attrs)
+			       unsigned long attrs)
 {
 	struct device *aiommu = to_intel_ipu4_bus_device(dev)->iommu;
 	struct intel_ipu4_mmu *mmu = dev_get_drvdata(aiommu);
@@ -220,7 +220,7 @@ out_free_iova:
 }
 
 static void intel_ipu4_dma_free(struct device *dev, size_t size, void *vaddr,
-				dma_addr_t dma_handle, struct dma_attrs *attrs)
+				dma_addr_t dma_handle, unsigned long attrs)
 {
 	struct device *aiommu = to_intel_ipu4_bus_device(dev)->iommu;
 	struct intel_ipu4_mmu *mmu = dev_get_drvdata(aiommu);
@@ -252,7 +252,7 @@ static void intel_ipu4_dma_free(struct device *dev, size_t size, void *vaddr,
 
 static int intel_ipu4_dma_mmap(struct device *dev, struct vm_area_struct *vma,
 			void *addr, dma_addr_t iova, size_t size,
-			struct dma_attrs *attrs)
+			unsigned long attrs)
 {
 	struct vm_struct *area = find_vm_area(addr);
 	size_t count = PAGE_ALIGN(size) >> PAGE_SHIFT;
@@ -277,7 +277,7 @@ static int intel_ipu4_dma_mmap(struct device *dev, struct vm_area_struct *vma,
 static void intel_ipu4_dma_unmap_sg(struct device *dev,
 				struct scatterlist *sglist,
 				int nents, enum dma_data_direction dir,
-				struct dma_attrs *attrs)
+				unsigned long attrs)
 {
 	struct device *aiommu = to_intel_ipu4_bus_device(dev)->iommu;
 	struct intel_ipu4_mmu *mmu = dev_get_drvdata(aiommu);
@@ -289,7 +289,7 @@ static void intel_ipu4_dma_unmap_sg(struct device *dev,
 
 	BUG_ON(!iova);
 
-	if (!dma_get_attr(DMA_ATTR_SKIP_CPU_SYNC, attrs))
+	if ((attrs & DMA_ATTR_SKIP_CPU_SYNC)==0)
 		intel_ipu4_dma_sync_sg_for_cpu(dev, sglist, nents,
 					       DMA_BIDIRECTIONAL);
 
@@ -303,7 +303,7 @@ static void intel_ipu4_dma_unmap_sg(struct device *dev,
 
 static int intel_ipu4_dma_map_sg(struct device *dev, struct scatterlist *sglist,
 			      int nents, enum dma_data_direction dir,
-			      struct dma_attrs *attrs)
+			      unsigned long attrs)
 {
 	struct device *aiommu = to_intel_ipu4_bus_device(dev)->iommu;
 	struct intel_ipu4_mmu *mmu = dev_get_drvdata(aiommu);
@@ -348,7 +348,7 @@ static int intel_ipu4_dma_map_sg(struct device *dev, struct scatterlist *sglist,
 		iova_addr += PAGE_ALIGN(sg->length) >> PAGE_SHIFT;
 	}
 
-	if (!dma_get_attr(DMA_ATTR_SKIP_CPU_SYNC, attrs))
+	if((attrs & DMA_ATTR_SKIP_CPU_SYNC)==0)
 		intel_ipu4_dma_sync_sg_for_cpu(dev, sglist, nents,
 					       DMA_BIDIRECTIONAL);
 
@@ -367,7 +367,7 @@ out_fail:
 */
 static int intel_ipu4_dma_get_sgtable(struct device *dev, struct sg_table *sgt,
 				void *cpu_addr, dma_addr_t handle, size_t size,
-				struct dma_attrs *attrs)
+				unsigned long attrs)
 {
 	struct vm_struct *area = find_vm_area(cpu_addr);
 	int n_pages;
