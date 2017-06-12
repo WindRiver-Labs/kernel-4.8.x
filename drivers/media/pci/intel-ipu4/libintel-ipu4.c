@@ -371,7 +371,8 @@ static int intel_ipu4_isys_api_complex_cmd(struct intel_ipu4_isys *isys,
 	default:
 		BUG();
 	}
-	intel_ipu4_put_fw_mgs_buffer(isys, (u64)cpu_mapped_buf);
+	printk(KERN_ERR "intel_ipu4_isys_api_complex_cmd called... intel_ipu4_put_fw_mgs_buffer commented out.");
+	//intel_ipu4_put_fw_mgs_buffer(isys, (u64)cpu_mapped_buf);
 
 	return rval;
 }
@@ -389,13 +390,15 @@ static const struct intel_ipu4_isys_fw_ctrl api_ops = {
 static int __init library_init(void)
 {
 	intel_ipu4_isys_abi_checker();
-	intel_ipu4_isys_register_ext_library(&api_ops);
+	printk(KERN_ERR "library_init called... intel_ipu4_isys_register_ext_library commented out.");
+	//intel_ipu4_isys_register_ext_library(&api_ops);
 	return 0;
 }
 
 static void __exit library_exit(void)
 {
-	intel_ipu4_isys_unregister_ext_library();
+	printk(KERN_ERR "library_exit called... intel_ipu4_isys_unregister_ext_library commented out.");
+	//intel_ipu4_isys_unregister_ext_library();
 }
 
 module_init(library_init);
