@@ -876,7 +876,7 @@ static int intel_ipu4_pci_probe(struct pci_dev *pdev,
 	 * suspend. Registration order is as follows:
 	 * isys_iommu->isys->psys_iommu->psys
 	 */
-	if (!IS_BUILTIN(CONFIG_VIDEO_INTEL_IPU4_PSYS_FPGA)) {
+	if (1) {
 		struct intel_ipu4_buttress_ctrl *ctrl =
 			devm_kzalloc(&pdev->dev, sizeof(*ctrl), GFP_KERNEL);
 		if (!ctrl) {
@@ -1083,18 +1083,8 @@ static const struct dev_pm_ops intel_ipu4_pm_ops = {
 #endif
 
 static const struct pci_device_id intel_ipu4_pci_tbl[] = {
-#if defined CONFIG_VIDEO_INTEL_IPU4_FPGA		\
-	|| defined CONFIG_VIDEO_INTEL_IPU4_ISYS_FPGA	\
-	|| defined CONFIG_VIDEO_INTEL_IPU4_PSYS_FPGA
-	{PCI_DEVICE(PCI_VENDOR_ID_INTEL, INTEL_IPU4_HW_BXT_B0)},
-#else
-#if defined IPU_STEP_IPU5A0
-	{PCI_DEVICE(PCI_VENDOR_ID_INTEL, INTEL_IPU5_HW_FPGA_A0)},
-#else
 	{PCI_DEVICE(PCI_VENDOR_ID_INTEL, INTEL_IPU4_HW_BXT_B0)},
 	{PCI_DEVICE(PCI_VENDOR_ID_INTEL, INTEL_IPU4_HW_BXT_P)},
-#endif
-#endif
 	{0,}
 };
 
