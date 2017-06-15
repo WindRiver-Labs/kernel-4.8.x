@@ -119,6 +119,8 @@ void machine_crash_shutdown(struct pt_regs *regs)
 	unsigned long msecs;
 
 	local_irq_disable();
+	/* Kill nonboot cpus, or the whole system would enter into selfspin */
+	disable_nonboot_cpus();
 
 	atomic_set(&waiting_for_crash_ipi, num_online_cpus() - 1);
 	smp_call_function(machine_crash_nonpanic_core, NULL, false);
