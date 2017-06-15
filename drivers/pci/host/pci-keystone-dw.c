@@ -157,6 +157,10 @@ static void ks_dw_pcie_msi_irq_mask(struct irq_data *d)
 	u32 offset;
 
 	msi = irq_data_get_msi_desc(d);
+	/* Return directly if there is no actual interrupt attached. */
+	if (!msi)
+		return;
+
 	pp = (struct pcie_port *) msi_desc_to_pci_sysdata(msi);
 	ks_pcie = to_keystone_pcie(pp);
 	offset = d->irq - irq_linear_revmap(pp->irq_domain, 0);
@@ -178,6 +182,10 @@ static void ks_dw_pcie_msi_irq_unmask(struct irq_data *d)
 	u32 offset;
 
 	msi = irq_data_get_msi_desc(d);
+	/* Return directly if there is no actual interrupt attached. */
+	if (!msi)
+		return;
+
 	pp = (struct pcie_port *) msi_desc_to_pci_sysdata(msi);
 	ks_pcie = to_keystone_pcie(pp);
 	offset = d->irq - irq_linear_revmap(pp->irq_domain, 0);
