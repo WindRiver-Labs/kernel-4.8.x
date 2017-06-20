@@ -16,6 +16,7 @@
  */
 
 #include <linux/platform_device.h>
+#include <linux/of_device.h>
 
 #include "core.h"
 
@@ -76,12 +77,18 @@ int dwc3_host_init(struct dwc3 *dwc)
 	if (dwc->dev->archdata.dma_ops)
 		arch_setup_dma_ops(&xhci->dev, 0, 0, NULL, DEV_DMA_COHERENT);
 
-	dma_set_coherent_mask(&xhci->dev, dwc->dev->coherent_dma_mask);
-
 	xhci->dev.parent	= dwc->dev;
-	xhci->dev.dma_mask	= dwc->dev->dma_mask;
-	xhci->dev.dma_parms	= dwc->dev->dma_parms;
-	xhci->dev.archdata	= dwc->dev->archdata;
+
+	if (IS_ENABLED(CONFIG_OF)) {
+		/* Let OF configure xhci dev's DMA configuration */
+		of_dma_configure(&xhci->dev, dwc->dev->of_node);
+	} else {
+		dma_set_coherent_mask(&xhci->dev, dwc->dev->coherent_dma_mask);
+
+		xhci->dev.dma_mask	= dwc->dev->dma_mask;
+		xhci->dev.dma_parms	= dwc->dev->dma_parms;
+		xhci->dev.archdata	= dwc->dev->archdata;
+	}
 
 	dwc->xhci = xhci;
 
