@@ -294,8 +294,6 @@
 
 #define CLEAR_ALL_INTERRUPTS  0x3
 
-#define SPI_POLLING_TIMEOUT 1000
-
 /*
  * The type of reading going on on this chip
  */
@@ -1492,6 +1490,7 @@ static void do_polling_transfer(struct pl022 *pl022)
 	struct spi_transfer *previous = NULL;
 	struct chip_data *chip;
 	unsigned long time, timeout;
+	unsigned long long ms;
 
 	chip = pl022->cur_chip;
 	message = pl022->cur_msg;
@@ -1531,7 +1530,14 @@ static void do_polling_transfer(struct pl022 *pl022)
 
 		dev_dbg(&pl022->adev->dev, "polling transfer ongoing ...\n");
 
-		timeout = jiffies + msecs_to_jiffies(SPI_POLLING_TIMEOUT);
+		ms = 8LL * 1000LL * transfer->len;
+		do_div(ms, transfer->speed_hz);
+		ms += ms + 200; /* some tolerance */
+
+		if (ms > UINT_MAX)
+			ms = UINT_MAX;
+
+		timeout = jiffies + msecs_to_jiffies(ms);
 		while (pl022->tx < pl022->tx_end || pl022->rx < pl022->rx_end) {
 			time = jiffies;
 			readwriter(pl022);
