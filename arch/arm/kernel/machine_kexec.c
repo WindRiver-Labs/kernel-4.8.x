@@ -72,7 +72,7 @@ int machine_kexec_prepare(struct kimage *image)
 			 * entry + kernel_size + zImage_size > dtb_mem, so add 4M to dtb_mem
 			 * to avoid this.
 			 */
-			current_segment->mem += 0x400000;
+			current_segment->mem += 0xF00000;
 			dt_mem = current_segment->mem;
 		}
 #else
