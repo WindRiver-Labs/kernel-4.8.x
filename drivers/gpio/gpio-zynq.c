@@ -102,6 +102,8 @@
 /* For GPIO quirks */
 #define ZYNQ_GPIO	BIT(0)
 #define ZYNQMP_GPIO	BIT(1)
+/* set to differentiate zynq from zynqmp, 0=zynqmp, 1=zynq */
+#define ZYNQ_GPIO_QUIRK_IS_ZYNQ	BIT(0)
 
 struct gpio_regs {
 	u32 datamsw[ZYNQMP_GPIO_MAX_BANK];
@@ -152,6 +154,17 @@ struct zynq_platform_data {
 
 static struct irq_chip zynq_gpio_level_irqchip;
 static struct irq_chip zynq_gpio_edge_irqchip;
+
+/**
+ * zynq_gpio_is_zynq - test if HW is zynq or zynqmp
+ * @gpio:	Pointer to driver data struct
+ *
+ * Return: 0 if zynqmp, 1 if zynq.
+ */
+static int zynq_gpio_is_zynq(struct zynq_gpio *gpio)
+{
+	return !!(gpio->p_data->quirks & ZYNQ_GPIO_QUIRK_IS_ZYNQ);
+}
 
 /**
  * zynq_gpio_get_bank_pin - Get the bank number and pin number within that bank
@@ -261,18 +274,16 @@ static void zynq_gpio_set_value(struct gpio_chip *chip, unsigned int pin,
 static int zynq_gpio_dir_in(struct gpio_chip *chip, unsigned int pin)
 {
 	u32 reg;
-	bool is_zynq_gpio;
 	unsigned int bank_num, bank_pin_num;
 	struct zynq_gpio *gpio = gpiochip_get_data(chip);
 
-	is_zynq_gpio = gpio->p_data->quirks & ZYNQ_GPIO;
 	zynq_gpio_get_bank_pin(pin, &bank_num, &bank_pin_num, gpio);
 
 	/*
 	 * On zynq bank 0 pins 7 and 8 are special and cannot be used
 	 * as inputs.
 	 */
-	if (is_zynq_gpio && bank_num == 0 &&
+	if (zynq_gpio_is_zynq(gpio) && bank_num == 0 &&
 		(bank_pin_num == 7 || bank_pin_num == 8))
 			return -EINVAL;
 
@@ -755,7 +766,7 @@ static const struct zynq_platform_data zynqmp_gpio_def = {
 
 static const struct zynq_platform_data zynq_gpio_def = {
 	.label = "zynq_gpio",
-	.quirks = ZYNQ_GPIO,
+	.quirks = ZYNQ_GPIO_QUIRK_IS_ZYNQ,
 	.ngpio = ZYNQ_GPIO_NR_GPIOS,
 	.max_bank = ZYNQ_GPIO_MAX_BANK,
 	.bank_min[0] = ZYNQ_GPIO_BANK0_PIN_MIN(),
