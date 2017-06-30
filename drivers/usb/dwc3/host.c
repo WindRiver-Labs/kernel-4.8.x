@@ -104,6 +104,10 @@ int dwc3_host_init(struct dwc3 *dwc)
 	if (dwc->usb3_lpm_capable)
 		props[prop_idx++].name = "usb3-lpm-capable";
 
+	if (device_property_read_bool(&dwc3_pdev->dev,
+					"snps,xhci-stream-quirk"))
+		props[index++].name = "xhci-stream-quirk";
+
 	/**
 	 * WORKAROUND: dwc3 revisions <=3.00a have a limitation
 	 * where Port Disable command doesn't work.
