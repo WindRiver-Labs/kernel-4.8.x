@@ -126,7 +126,8 @@ xylon_drm_connector_create(struct drm_device *dev,
 	if (!connector)
 		return ERR_PTR(-ENOMEM);
 
-	connector->base.polled = DRM_CONNECTOR_POLL_CONNECT |
+	connector->base.polled = DRM_CONNECTOR_POLL_HPD |
+				 DRM_CONNECTOR_POLL_CONNECT |
 				 DRM_CONNECTOR_POLL_DISCONNECT;
 
 	ret = drm_connector_init(dev, &connector->base,
@@ -152,8 +153,8 @@ xylon_drm_connector_create(struct drm_device *dev,
 		goto err_attach;
 	}
 
-	connector->base.encoder = base_encoder;
 	connector->encoder = base_encoder;
+	connector->base.dpms = DRM_MODE_DPMS_OFF;
 
 	return &connector->base;
 
