@@ -205,6 +205,13 @@ static void ptrace_hbptriggered(struct perf_event *bp,
 
 send_sig:
 #endif
+
+	if (WARN_ON(!user_mode(regs)))
+		return;
+
+	if (interrupts_enabled(regs))
+		local_irq_enable();
+
 	force_sig_info(SIGTRAP, &info, current);
 }
 
