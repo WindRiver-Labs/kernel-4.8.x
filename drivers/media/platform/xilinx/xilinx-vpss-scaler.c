@@ -1671,13 +1671,12 @@ static int xscaler_parse_of(struct xscaler_device *xscaler)
 		return ret;
 
 	/* Driver only supports 1 PPC and 2 PPC */
-	if (dt_ppc == 1 || dt_ppc == 2) {
-		xscaler->pix_per_clk = dt_ppc;
-	} else {
+	if (dt_ppc != XSCALER_PPC_1 && dt_ppc != XSCALER_PPC_2) {
 		dev_err(xscaler->xvip.dev,
 			"Unsupported xlnx,pix-per-clk(%d) value in DT", dt_ppc);
 		return -EINVAL;
 	}
+	xscaler->pix_per_clk = dt_ppc;
 
 	/* Reset GPIO */
 	xscaler->rst_gpio = devm_gpiod_get(dev, "reset", GPIOD_OUT_HIGH);
