@@ -13,12 +13,12 @@
  */
 
 #include <linux/dma/xilinx_dma.h>
+#include <linux/dma/xilinx_frmbuf.h>
 #include <linux/lcm.h>
 #include <linux/list.h>
 #include <linux/module.h>
 #include <linux/of.h>
 #include <linux/slab.h>
-#include <linux/dma/xilinx_dma.h>
 
 #include <media/v4l2-dev.h>
 #include <media/v4l2-fh.h>
@@ -86,6 +86,35 @@ static int xvip_dma_verify_format(struct xvip_dma *dma)
  * Pipeline Stream Management
  */
 
+/* Get the sink pad internally connected to a source pad in the given entity. */
+static struct media_pad *xvip_get_entity_sink(struct media_entity *entity,
+					      struct media_pad *source)
+{
+	unsigned int i;
+
+	/* The source pad can be NULL when the entity has no source pad. Return
+	 * the first pad in that case, guaranteed to be a sink pad.
+	 */
+	if (source == NULL)
+		return &entity->pads[0];
+
+	/* Iterates through the pads to find a connected sink pad. */
+	for (i = 0; i < entity->num_pads; ++i) {
+		struct media_pad *sink = &entity->pads[i];
+
+		if (!(sink->flags & MEDIA_PAD_FL_SINK))
+			continue;
+
+		if (sink == source)
+			continue;
+
+		if (media_entity_has_route(entity, sink->index, source->index))
+			return sink;
+	}
+
+	return NULL;
+}
+
 /**
  * xvip_pipeline_start_stop - Start ot stop streaming on a pipeline
  * @pipe: The pipeline
@@ -106,8 +135,13 @@ static int xvip_pipeline_start_stop(struct xvip_pipeline *pipe, bool start)
 	int ret;
 
 	entity = &dma->video.entity;
+	pad = NULL;
+
 	while (1) {
-		pad = &entity->pads[0];
+		pad = xvip_get_entity_sink(entity, pad);
+		if (pad == NULL)
+			break;
+
 		if (!(pad->flags & MEDIA_PAD_FL_SINK))
 			break;
 
@@ -351,9 +385,8 @@ static void xvip_dma_buffer_queue(struct vb2_buffer *vb)
 	struct dma_async_tx_descriptor *desc;
 	dma_addr_t addr = vb2_dma_contig_plane_dma_addr(vb, 0);
 	u32 flags;
-#ifdef CONFIG_XILINX_FRMBUF
-	struct xilinx_xdma_config dma_config;
-#endif
+
+	xilinx_xdma_v4l2_config(dma->dma, dma->format.pixelformat);
 
 	if (dma->queue.type == V4L2_BUF_TYPE_VIDEO_CAPTURE) {
 		flags = DMA_PREP_INTERRUPT | DMA_CTRL_ACK;
@@ -368,13 +401,6 @@ static void xvip_dma_buffer_queue(struct vb2_buffer *vb)
 		dma->xt.dst_sgl = false;
 		dma->xt.src_start = addr;
 	}
-
-#ifdef CONFIG_XILINX_FRMBUF
-	/*Consumed by frmbuf dma driver, if present*/
-	dma_config.fourcc = dma->format.pixelformat;
-	dma_config.type = XDMA_V4L2;
-	dma->dma->private = &dma_config;
-#endif
 
 	dma->xt.frame_size = 1;
 	dma->sgl[0].size = dma->format.width * dma->fmtinfo->bpp;
@@ -485,7 +511,7 @@ static void xvip_dma_stop_streaming(struct vb2_queue *vq)
 	spin_unlock_irq(&dma->queued_lock);
 }
 
-static struct vb2_ops xvip_dma_queue_qops = {
+static const struct vb2_ops xvip_dma_queue_qops = {
 	.queue_setup = xvip_dma_queue_setup,
 	.buf_prepare = xvip_dma_buffer_prepare,
 	.buf_queue = xvip_dma_buffer_queue,
