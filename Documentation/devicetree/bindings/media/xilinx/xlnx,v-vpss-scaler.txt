@@ -10,7 +10,10 @@ Required properties:
 - clocks: Reference to the video core clock.
 
 - xlnx,num-hori-taps, xlnx,num-vert-taps: The number of horizontal and vertical
-  taps for scaling filter(range: 6,8,10,12).
+  taps for scaling filter(range: 2,4,6,8,10,12).
+
+  A value of 2 represents bilinear filters. A value of 4 represents bicubic.
+  Values 6,8,10,12 represent polyphase filters.
 
 - xlnx,max-num-phases: The maximum number of phases for scaling filter
   (Only allowed is 64).
