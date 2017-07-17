@@ -20,6 +20,7 @@ Required properties:
               ipi, rpu_base and apb_base must be provided
  - interrupts : Interrupt mapping for remoteproc IPI
  - interrupt-parent : Phandle for the interrupt controller
+ - srams : firmware memories
  - pd-handle : power domain handle, as remoteproc is not hooked into
                Linux runtime power management, we will not use
                "power-domains" for the power domain handler. We use
