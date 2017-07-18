@@ -42,6 +42,7 @@
 #include <linux/efi.h>
 #include <linux/dma-mapping.h>
 #include <linux/psci.h>
+#include <linux/platform_device.h>
 
 #include <asm/acpi.h>
 #include <asm/fixmap.h>
