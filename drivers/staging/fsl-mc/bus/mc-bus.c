@@ -666,6 +666,8 @@ void fsl_mc_device_remove(struct fsl_mc_device *mc_dev)
 		if (&mc_dev->dev == fsl_mc_bus_type.dev_root)
 			fsl_mc_bus_type.dev_root = NULL;
 	}
+	else
+		WARN_ON(mc_dev->mc_io != NULL);
 
 	kfree(mc_dev->driver_override);
 	mc_dev->driver_override = NULL;
