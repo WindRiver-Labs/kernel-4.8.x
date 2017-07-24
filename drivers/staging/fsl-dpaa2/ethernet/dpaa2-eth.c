@@ -37,6 +37,7 @@
 #include <linux/debugfs.h>
 #include <linux/kthread.h>
 #include <linux/net_tstamp.h>
+#include <linux/msi.h>
 
 #include "../../fsl-mc/include/mc.h"
 #include "../../fsl-mc/include/mc-sys.h"
@@ -2405,7 +2406,7 @@ static int setup_irqs(struct fsl_mc_device *ls_dev)
 	}
 
 	irq = ls_dev->irqs[0];
-	err = devm_request_threaded_irq(&ls_dev->dev, irq->irq_number,
+	err = devm_request_threaded_irq(&ls_dev->dev, irq->msi_desc->irq,
 					dpni_irq0_handler,
 					dpni_irq0_handler_thread,
 					IRQF_NO_SUSPEND | IRQF_ONESHOT,
@@ -2432,7 +2433,7 @@ static int setup_irqs(struct fsl_mc_device *ls_dev)
 	return 0;
 
 free_irq:
-	devm_free_irq(&ls_dev->dev, irq->irq_number, &ls_dev->dev);
+	devm_free_irq(&ls_dev->dev, irq->msi_desc->irq, &ls_dev->dev);
 free_mc_irq:
 	fsl_mc_free_irqs(ls_dev);
 

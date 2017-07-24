@@ -44,6 +44,7 @@
 #include <linux/of_net.h>
 #include <linux/phy.h>
 #include <linux/phy_fixed.h>
+#include <linux/msi.h>
 
 #include "../../fsl-mc/include/mc.h"
 #include "../../fsl-mc/include/mc-sys.h"
@@ -407,7 +408,7 @@ static int setup_irqs(struct fsl_mc_device *mc_dev)
 	}
 
 	err = devm_request_threaded_irq(&mc_dev->dev,
-					mc_dev->irqs[0]->irq_number,
+					mc_dev->irqs[0]->msi_desc->irq,
 					NULL, &dpaa2_mac_irq_handler,
 					IRQF_NO_SUSPEND | IRQF_ONESHOT,
 					dev_name(&mc_dev->dev), &mc_dev->dev);
