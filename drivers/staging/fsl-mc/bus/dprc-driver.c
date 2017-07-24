@@ -646,7 +646,10 @@ static int dprc_create_dpmcp(struct fsl_mc_device *dprc_dev)
 	struct fsl_mc_bus *mc_bus = to_fsl_mc_bus(dprc_dev);
 
 	dpmcp_cfg.portal_id = mc_bus->dprc_attr.portal_id;
-	error = dpmcp_create(dprc_dev->mc_io, &dpmcp_cfg, &dpmcp_handle);
+	error = dpmcp_create(dprc_dev->mc_io,
+				 MC_CMD_FLAG_INTR_DIS,
+				 &dpmcp_cfg,
+				 &dpmcp_handle);
 	if (error < 0) {
 		dev_err(&dprc_dev->dev, "dpmcp_create() failed: %d\n",
 			error);
@@ -657,7 +660,9 @@ static int dprc_create_dpmcp(struct fsl_mc_device *dprc_dev)
 	 * Set the state of the newly created DPMCP object to be "plugged":
 	 */
 
-	error = dpmcp_get_attributes(dprc_dev->mc_io, dpmcp_handle,
+	error = dpmcp_get_attributes(dprc_dev->mc_io,
+					 MC_CMD_FLAG_INTR_DIS,
+					 dpmcp_handle,
 				     &dpmcp_attr);
 	if (error < 0) {
 		dev_err(&dprc_dev->dev, "dpmcp_get_attributes() failed: %d\n",
@@ -677,6 +682,7 @@ static int dprc_create_dpmcp(struct fsl_mc_device *dprc_dev)
 	res_req.id_base_align = dpmcp_attr.id;
 
 	error = dprc_assign(dprc_dev->mc_io,
+				MC_CMD_FLAG_INTR_DIS,
 			    dprc_dev->mc_handle,
 			    dprc_dev->obj_desc.id,
 			    &res_req);
@@ -686,11 +692,15 @@ static int dprc_create_dpmcp(struct fsl_mc_device *dprc_dev)
 		goto error_destroy_dpmcp;
 	}
 
-	(void)dpmcp_close(dprc_dev->mc_io, dpmcp_handle);
+	(void)dpmcp_close(dprc_dev->mc_io,
+			  MC_CMD_FLAG_INTR_DIS,
+			  dpmcp_handle);
 	return 0;
 
 error_destroy_dpmcp:
-	(void)dpmcp_destroy(dprc_dev->mc_io, dpmcp_handle);
+	(void)dpmcp_destroy(dprc_dev->mc_io,
+				MC_CMD_FLAG_INTR_DIS,
+				dpmcp_handle);
 	return error;
 }
 
@@ -706,7 +716,9 @@ static void dprc_destroy_dpmcp(struct fsl_mc_device *dprc_dev)
 	if (WARN_ON(!dprc_dev->mc_io || dprc_dev->mc_io->dpmcp_dev))
 		return;
 
-	error = dpmcp_open(dprc_dev->mc_io, mc_bus->dprc_attr.portal_id,
+	error = dpmcp_open(dprc_dev->mc_io,
+			   MC_CMD_FLAG_INTR_DIS,
+			   mc_bus->dprc_attr.portal_id,
 			   &dpmcp_handle);
 	if (error < 0) {
 		dev_err(&dprc_dev->dev, "dpmcp_open() failed: %d\n",
@@ -714,7 +726,9 @@ static void dprc_destroy_dpmcp(struct fsl_mc_device *dprc_dev)
 		return;
 	}
 
-	error = dpmcp_destroy(dprc_dev->mc_io, dpmcp_handle);
+	error = dpmcp_destroy(dprc_dev->mc_io,
+			      MC_CMD_FLAG_INTR_DIS,
+			      dpmcp_handle);
 	if (error < 0) {
 		dev_err(&dprc_dev->dev, "dpmcp_destroy() failed: %d\n",
 			error);
