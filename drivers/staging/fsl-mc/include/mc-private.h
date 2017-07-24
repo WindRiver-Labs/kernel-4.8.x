@@ -124,10 +124,6 @@ int dprc_scan_objects(struct fsl_mc_device *mc_bus_dev,
                      const char *driver_override,
 		      unsigned int *total_irq_count);
 
-int dprc_lookup_object(struct fsl_mc_device *mc_bus_dev,
-		       struct fsl_mc_device *child_dev,
-		       uint32_t *child_obj_index);
-
 int __init dprc_driver_init(void);
 
 void dprc_driver_exit(void);
