@@ -44,8 +44,10 @@
 
 /**
  * Timeout in milliseconds to wait for the completion of an MC command
+ * 5000 ms is barely enough for dpsw/dpdmux creation
+ * TODO: if MC firmware could response faster, we should decrease this value
  */
-#define MC_CMD_COMPLETION_TIMEOUT_MS	500
+#define MC_CMD_COMPLETION_TIMEOUT_MS	5000
 
 /*
  * usleep_range() min and max values used to throttle down polling
@@ -815,8 +817,18 @@ int mc_send_command(struct fsl_mc_io *mc_io, struct mc_command *cmd)
 	else
 		error = mc_polling_wait_atomic(mc_io, cmd, &status);
 
-	if (error < 0)
+	if (error < 0) {
+		if (error == -ETIMEDOUT) {
+			pr_debug("MC command timed out (portal: %#llx, obj handle: %#x, command: %#x)\n",
+				 mc_io->portal_phys_addr,
+				 (unsigned int)
+					mc_cmd_hdr_read_token(cmd),
+				 (unsigned int)
+					mc_cmd_hdr_read_cmdid(cmd));
+		}
 		goto common_exit;
+
+	}
 
 	if (status != MC_CMD_STATUS_OK) {
 		dev_dbg(mc_io->dev,
