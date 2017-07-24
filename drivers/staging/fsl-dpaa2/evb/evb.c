@@ -33,6 +33,7 @@
 #include <linux/etherdevice.h>
 #include <linux/rtnetlink.h>
 #include <linux/if_vlan.h>
+#include <linux/msi.h>
 
 #include <uapi/linux/if_bridge.h>
 #include <net/netlink.h>
@@ -161,7 +162,7 @@ static irqreturn_t _evb_irq0_handler_thread(int irq_num, void *arg)
 	/* Sanity check */
 	if (WARN_ON(!evb_dev || !evb_dev->irqs || !evb_dev->irqs[irq_index]))
 		goto out;
-	if (WARN_ON(evb_dev->irqs[irq_index]->irq_number != irq_num))
+	if (WARN_ON(evb_dev->irqs[irq_index]->msi_desc->irq != irq_num))
 		goto out;
 
 	err = dpdmux_get_irq_status(io, 0, token, irq_index, &status);
@@ -215,7 +216,7 @@ static int evb_setup_irqs(struct fsl_mc_device *evb_dev)
 
 	irq = evb_dev->irqs[irq_index];
 
-	err = devm_request_threaded_irq(dev, irq->irq_number,
+	err = devm_request_threaded_irq(dev, irq->msi_desc->irq,
 					evb_irq0_handler,
 					_evb_irq0_handler_thread,
 					IRQF_NO_SUSPEND | IRQF_ONESHOT,
@@ -242,7 +243,7 @@ static int evb_setup_irqs(struct fsl_mc_device *evb_dev)
 	return 0;
 
 free_devm_irq:
-	devm_free_irq(dev, irq->irq_number, dev);
+	devm_free_irq(dev, irq->msi_desc->irq, dev);
 free_irq:
 	fsl_mc_free_irqs(evb_dev);
 	return err;
@@ -258,7 +259,7 @@ static void evb_teardown_irqs(struct fsl_mc_device *evb_dev)
 			      DPDMUX_IRQ_INDEX_IF, 0);
 
 	devm_free_irq(dev,
-		      evb_dev->irqs[DPDMUX_IRQ_INDEX_IF]->irq_number,
+		      evb_dev->irqs[DPDMUX_IRQ_INDEX_IF]->msi_desc->irq,
 		      dev);
 	fsl_mc_free_irqs(evb_dev);
 }
