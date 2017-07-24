@@ -42,11 +42,14 @@ struct msi_domain_info;
 /**
  * struct fsl_mc - Private data of a "fsl,qoriq-mc" platform device
  * @root_mc_bus_dev: MC object device representing the root DPRC
+ * @gic_supported: boolean flag that indicates if the GIC interrupt controller
+ * is supported.
  * @num_translation_ranges: number of entries in addr_translation_ranges
  * @translation_ranges: array of bus to system address translation ranges
  */
 struct fsl_mc {
 	struct fsl_mc_device *root_mc_bus_dev;
+	bool gic_supported;
 	u8 num_translation_ranges;
 	struct fsl_mc_addr_translation_range *translation_ranges;
 };
