@@ -39,6 +39,7 @@
 #include <linux/errno.h>
 #include <linux/io.h>
 #include <linux/dma-mapping.h>
+#include <linux/completion.h>
 #include <linux/mutex.h>
 #include <linux/spinlock.h>
 
@@ -58,6 +59,10 @@ struct mc_command;
  * @portal_phys_addr: MC command portal physical address
  * @portal_virt_addr: MC command portal virtual address
  * @dpmcp_dev: pointer to the DPMCP device associated with the MC portal.
+ * @mc_command_done_irq_armed: Flag indicating that the MC command done IRQ
+ * is currently armed.
+ * @mc_command_done_completion: Completion variable to be signaled when an MC
+ * command sent to the MC fw is completed.
  *
  * Fields are only meaningful if the FSL_MC_IO_ATOMIC_CONTEXT_PORTAL flag is not
  * set:
@@ -80,6 +85,8 @@ struct fsl_mc_io {
 	phys_addr_t portal_phys_addr;
 	void __iomem *portal_virt_addr;
 	struct fsl_mc_device *dpmcp_dev;
+	bool mc_command_done_irq_armed;
+	struct completion mc_command_done_completion;
 	union {
 		/*
 		 * This field is only meaningful if the
@@ -107,6 +114,8 @@ int fsl_mc_io_set_dpmcp(struct fsl_mc_io *mc_io,
 			struct fsl_mc_device *dpmcp_dev);
 
 void fsl_mc_io_unset_dpmcp(struct fsl_mc_io *mc_io);
+
+int fsl_mc_io_setup_dpmcp_irq(struct fsl_mc_io *mc_io);
 
 int mc_send_command(struct fsl_mc_io *mc_io, struct mc_command *cmd);
 
