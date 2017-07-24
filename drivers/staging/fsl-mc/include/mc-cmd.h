@@ -34,6 +34,19 @@
 
 #define MC_CMD_NUM_OF_PARAMS	7
 
+#define MAKE_UMASK64(_width) \
+       ((u64)((_width) < 64 ? ((u64)1 << (_width)) - 1 : -1))
+
+static inline u64 mc_enc(int lsoffset, int width, u64 val)
+{
+       return (u64)(((u64)val & MAKE_UMASK64(width)) << lsoffset);
+}
+
+static inline u64 mc_dec(u64 val, int lsoffset, int width)
+{
+       return (u64)((val >> lsoffset) & MAKE_UMASK64(width));
+}
+
 struct mc_cmd_header {
 	u8 src_id;
 	u8 flags_hw;
@@ -71,6 +84,45 @@ enum mc_cmd_status {
 #define MC_CMD_FLAG_PRI		0x80
 /* Command completion flag */
 #define MC_CMD_FLAG_INTR_DIS	0x01
+
+/*
+ * TODO Remove following two defines after completion of flib 8.0.0
+ * integration
+ */
+#define MC_CMD_PRI_LOW         0 	/*!< Low Priority command indication */
+#define MC_CMD_PRI_HIGH        1	/*!< High Priority command indication */
+
+#define MC_CMD_HDR_CMDID_O     52      /* Command ID field offset */
+#define MC_CMD_HDR_CMDID_S     12      /* Command ID field size */
+#define MC_CMD_HDR_TOKEN_O     38      /* Token field offset */
+#define MC_CMD_HDR_TOKEN_S     10      /* Token field size */
+#define MC_CMD_HDR_STATUS_O    16      /* Status field offset */
+#define MC_CMD_HDR_STATUS_S    8       /* Status field size*/
+#define MC_CMD_HDR_FLAGS_O     0       /* Flags field offset */
+#define MC_CMD_HDR_FLAGS_S     32      /* Flags field size*/
+#define MC_CMD_HDR_FLAGS_MASK  0xFF00FF00 /* Command flags mask */
+
+#define MC_CMD_HDR_READ_STATUS(_hdr) \
+		((enum mc_cmd_status)mc_dec((_hdr), \
+			MC_CMD_HDR_STATUS_O, MC_CMD_HDR_STATUS_S))
+
+#define MC_CMD_HDR_READ_TOKEN(_hdr) \
+		((u16)mc_dec((_hdr), MC_CMD_HDR_TOKEN_O, MC_CMD_HDR_TOKEN_S))
+
+#define MC_CMD_HDR_READ_FLAGS(_hdr) \
+		((u32)mc_dec((_hdr), MC_CMD_HDR_FLAGS_O, MC_CMD_HDR_FLAGS_S))
+
+#define MC_PREP_OP(_ext, _param, _offset, _width, _type, _arg) \
+		((_ext)[_param] |= cpu_to_le64(mc_enc((_offset), (_width), _arg)))
+
+#define MC_EXT_OP(_ext, _param, _offset, _width, _type, _arg) \
+		(_arg = (_type)mc_dec(cpu_to_le64(_ext[_param]), (_offset), (_width)))
+
+#define MC_CMD_OP(_cmd, _param, _offset, _width, _type, _arg) \
+		((_cmd).params[_param] |= mc_enc((_offset), (_width), _arg))
+
+#define MC_RSP_OP(_cmd, _param, _offset, _width, _type, _arg) \
+		(_arg = (_type)mc_dec(_cmd.params[_param], (_offset), (_width)))
 
 #define MC_CMD_HDR_CMDID_MASK		0xFFF0
 #define MC_CMD_HDR_CMDID_SHIFT		4
