@@ -1025,7 +1025,6 @@ static struct pstate_funcs core_funcs = {
 	.get_turbo = core_get_turbo_pstate,
 	.get_scaling = core_get_scaling,
 	.get_val = core_get_val,
-	.update_util = intel_pstate_update_util_pid,
 };
 
 static const struct pstate_funcs silvermont_funcs = {
@@ -1036,7 +1035,6 @@ static const struct pstate_funcs silvermont_funcs = {
 	.get_val = atom_get_val,
 	.get_scaling = silvermont_get_scaling,
 	.get_vid = atom_get_vid,
-	.update_util = intel_pstate_update_util,
 };
 
 static const struct pstate_funcs airmont_funcs = {
@@ -1047,7 +1045,6 @@ static const struct pstate_funcs airmont_funcs = {
 	.get_val = atom_get_val,
 	.get_scaling = airmont_get_scaling,
 	.get_vid = atom_get_vid,
-	.update_util = intel_pstate_update_util,
 };
 
 static const struct pstate_funcs knl_funcs = {
@@ -1057,7 +1054,6 @@ static const struct pstate_funcs knl_funcs = {
 	.get_turbo = knl_get_turbo_pstate,
 	.get_scaling = core_get_scaling,
 	.get_val = core_get_val,
-	.update_util = intel_pstate_update_util_pid,
 };
  
 static const struct pstate_funcs bxt_funcs = {
@@ -1067,7 +1063,6 @@ static const struct pstate_funcs bxt_funcs = {
 	.get_turbo = core_get_turbo_pstate,
 	.get_scaling = core_get_scaling,
 	.get_val = core_get_val,
-	.update_util = intel_pstate_update_util,
 };
  
 static void intel_pstate_get_min_max(struct cpudata *cpu, int *min, int *max)
