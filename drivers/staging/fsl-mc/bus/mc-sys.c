@@ -562,41 +562,6 @@ static int mc_completion_wait(struct fsl_mc_io *mc_io, struct mc_command *cmd,
 	return 0;
 }
 
-static int mc_polling_wait(struct fsl_mc_io *mc_io, struct mc_command *cmd,
-			   enum mc_cmd_status *mc_status)
-{
-	enum mc_cmd_status status;
-	unsigned long jiffies_until_timeout =
-	    jiffies + MC_CMD_COMPLETION_TIMEOUT_JIFFIES;
-
-	for (;;) {
-		status = mc_read_response(mc_io->portal_virt_addr, cmd);
-		if (status != MC_CMD_STATUS_READY)
-			break;
-
-		if (preemptible()) {
-			usleep_range(MC_CMD_COMPLETION_POLLING_MIN_SLEEP_USECS,
-				     MC_CMD_COMPLETION_POLLING_MAX_SLEEP_USECS);
-		} else {
-			udelay(MC_CMD_COMPLETION_POLLING_MAX_SLEEP_USECS);
-		}
-
-		if (time_after_eq(jiffies, jiffies_until_timeout)) {
-			pr_debug("MC command timed out (portal: %#llx, obj handle: %#x, command: %#x)\n",
-				 mc_io->portal_phys_addr,
-				 (unsigned int)
-					MC_CMD_HDR_READ_TOKEN(cmd->header),
-				 (unsigned int)
-					MC_CMD_HDR_READ_CMDID(cmd->header));
-
-			return -ETIMEDOUT;
-		}
-	}
-
-	*mc_status = status;
-	return 0;
-}
-
 /**
  * Waits for the completion of an MC command doing preemptible polling.
  * uslepp_range() is called between polling iterations.
