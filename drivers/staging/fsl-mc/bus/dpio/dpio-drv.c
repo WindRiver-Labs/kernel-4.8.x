@@ -37,6 +37,7 @@
 #include <linux/dma-mapping.h>
 #include <linux/kthread.h>
 #include <linux/delay.h>
+#include <linux/msi.h>
 
 #include "../../include/mc.h"
 #include "../../include/fsl_dpaa2_io.h"
@@ -93,7 +94,7 @@ static void unregister_dpio_irq_handlers(struct fsl_mc_device *ls_dev)
 
 	for (i = 0; i < irq_count; i++) {
 		irq = ls_dev->irqs[i];
-		devm_free_irq(&ls_dev->dev, irq->irq_number, &ls_dev->dev);
+		devm_free_irq(&ls_dev->dev, irq->msi_desc->irq, &ls_dev->dev);
 	}
 }
 
@@ -115,7 +116,7 @@ static int register_dpio_irq_handlers(struct fsl_mc_device *ls_dev, int cpu)
 	for (i = 0; i < irq_count; i++) {
 		irq = ls_dev->irqs[i];
 		error = devm_request_irq(&ls_dev->dev,
-					 irq->irq_number,
+					 irq->msi_desc->irq,
 					 dpio_irq_handler,
 					 0,
 					 priv->irq_name,
@@ -130,9 +131,9 @@ static int register_dpio_irq_handlers(struct fsl_mc_device *ls_dev, int cpu)
 		/* Set the IRQ affinity */
 		cpumask_clear(&mask);
 		cpumask_set_cpu(cpu, &mask);
-		if (irq_set_affinity(irq->irq_number, &mask))
+		if (irq_set_affinity(irq->msi_desc->irq, &mask))
 			pr_err("irq_set_affinity failed irq %d cpu %d\n",
-			       irq->irq_number, cpu);
+			       irq->msi_desc->irq, cpu);
 
 		num_irq_handlers_registered++;
 	}
@@ -142,7 +143,7 @@ static int register_dpio_irq_handlers(struct fsl_mc_device *ls_dev, int cpu)
 error_unregister_irq_handlers:
 	for (i = 0; i < num_irq_handlers_registered; i++) {
 		irq = ls_dev->irqs[i];
-		devm_free_irq(&ls_dev->dev, irq->irq_number,
+		devm_free_irq(&ls_dev->dev, irq->msi_desc->irq,
 			      &ls_dev->dev);
 	}
 

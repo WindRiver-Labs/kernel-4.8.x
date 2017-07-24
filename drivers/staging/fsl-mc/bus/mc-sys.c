@@ -40,6 +40,7 @@
 #include <linux/ioport.h>
 #include <linux/device.h>
 #include <linux/interrupt.h>
+#include <linux/msi.h>
 #include "dpmcp.h"
 
 /**
@@ -86,7 +87,7 @@ static irqreturn_t dpmcp_irq0_handler(int irq_num, void *arg)
 	dev_dbg(dev, "DPMCP IRQ %d triggered on CPU %u\n", irq_num,
 		smp_processor_id());
 
-	if (WARN_ON(dpmcp_dev->irqs[0]->irq_number != (uint32_t)irq_num))
+	if (WARN_ON(dpmcp_dev->irqs[0]->msi_desc->irq != (uint32_t)irq_num))
 		goto out;
 
 	if (WARN_ON(!mc_io))
@@ -139,7 +140,7 @@ static void unregister_dpmcp_irq_handler(struct fsl_mc_device *dpmcp_dev)
 {
 	struct fsl_mc_device_irq *irq = dpmcp_dev->irqs[DPMCP_IRQ_INDEX];
 
-	devm_free_irq(&dpmcp_dev->dev, irq->irq_number, &dpmcp_dev->dev);
+	devm_free_irq(&dpmcp_dev->dev, irq->msi_desc->irq, &dpmcp_dev->dev);
 }
 
 static int register_dpmcp_irq_handler(struct fsl_mc_device *dpmcp_dev)
@@ -148,7 +149,7 @@ static int register_dpmcp_irq_handler(struct fsl_mc_device *dpmcp_dev)
 	struct fsl_mc_device_irq *irq = dpmcp_dev->irqs[DPMCP_IRQ_INDEX];
 
 	error = devm_request_irq(&dpmcp_dev->dev,
-				 irq->irq_number,
+				 irq->msi_desc->irq,
 				 dpmcp_irq0_handler,
 				 IRQF_NO_SUSPEND | IRQF_ONESHOT,
 				 "FSL MC DPMCP irq0",
