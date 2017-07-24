@@ -23,6 +23,7 @@
 #include "dprc-cmd.h"
 
 static struct kmem_cache *mc_dev_cache;
+static bool gic_support = false;
 
 /**
  * fsl_mc_bus_match - device to driver matching callback
@@ -269,6 +270,14 @@ void fsl_mc_driver_unregister(struct fsl_mc_driver *mc_driver)
 	driver_unregister(&mc_driver->driver);
 }
 EXPORT_SYMBOL_GPL(fsl_mc_driver_unregister);
+
+bool fsl_mc_interrupts_supported(void)
+{
+	struct fsl_mc *mc = dev_get_drvdata(fsl_mc_bus_type.dev_root->parent);
+
+	return mc->gic_supported;
+}
+EXPORT_SYMBOL_GPL(fsl_mc_interrupts_supported);
 
 /**
  * fsl_mc_bus_exists - check if a root dprc exists
@@ -794,6 +803,8 @@ static int fsl_mc_bus_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, mc);
 
+	mc->gic_supported = gic_support;
+
 	/*
 	 * Get physical address of MC portal for the root DPRC:
 	 */
@@ -935,12 +946,11 @@ static int __init fsl_mc_bus_driver_init(void)
 
 	error = its_fsl_mc_msi_init();
 	if (error < 0)
-		goto error_cleanup_mc_allocator;
+		pr_info("WARNING: MC bus driver will run without interrupt support\n");
+	else
+		gic_support = true;
 
 	return 0;
-
-error_cleanup_mc_allocator:
-	fsl_mc_allocator_driver_exit();
 
 error_cleanup_dprc_driver:
 	dprc_driver_exit();
