@@ -35,6 +35,7 @@
 #include <linux/etherdevice.h>
 #include <linux/rtnetlink.h>
 #include <linux/if_vlan.h>
+#include <linux/msi.h>
 
 #include <uapi/linux/if_bridge.h>
 #include <net/netlink.h>
@@ -1271,7 +1272,7 @@ static irqreturn_t _ethsw_irq0_handler_thread(int irq_num, void *arg)
 	/* Sanity check */
 	if (WARN_ON(!sw_dev || !sw_dev->irqs || !sw_dev->irqs[irq_index]))
 		goto out;
-	if (WARN_ON(sw_dev->irqs[irq_index]->irq_number != irq_num))
+	if (WARN_ON(sw_dev->irqs[irq_index]->msi_desc->irq != irq_num))
 		goto out;
 
 	err = dpsw_get_irq_status(io, 0, token, irq_index, &status);
@@ -1326,7 +1327,7 @@ static int ethsw_setup_irqs(struct fsl_mc_device *sw_dev)
 
 	irq = sw_dev->irqs[irq_index];
 
-	err = devm_request_threaded_irq(dev, irq->irq_number,
+	err = devm_request_threaded_irq(dev, irq->msi_desc->irq,
 					ethsw_irq0_handler,
 					_ethsw_irq0_handler_thread,
 					IRQF_NO_SUSPEND | IRQF_ONESHOT,
@@ -1353,7 +1354,7 @@ static int ethsw_setup_irqs(struct fsl_mc_device *sw_dev)
 	return 0;
 
 free_devm_irq:
-	devm_free_irq(dev, irq->irq_number, dev);
+	devm_free_irq(dev, irq->msi_desc->irq, dev);
 free_irq:
 	fsl_mc_free_irqs(sw_dev);
 	return err;
@@ -1368,7 +1369,7 @@ static void ethsw_teardown_irqs(struct fsl_mc_device *sw_dev)
 	dpsw_set_irq_enable(priv->mc_io, 0, priv->dpsw_handle,
 			      DPSW_IRQ_INDEX_IF, 0);
 	devm_free_irq(dev,
-		      sw_dev->irqs[DPSW_IRQ_INDEX_IF]->irq_number,
+		      sw_dev->irqs[DPSW_IRQ_INDEX_IF]->msi_desc->irq,
 		      dev);
 	fsl_mc_free_irqs(sw_dev);
 }
