@@ -249,6 +249,8 @@ static void psci_sys_reset(enum reboot_mode reboot_mode, const char *cmd)
 static void psci_sys_poweroff(void)
 {
 	invoke_psci_fn(PSCI_0_2_FN_SYSTEM_OFF, 0, 0, 0);
+	local_irq_disable();
+	while (1);
 }
 
 static int __init psci_features(u32 psci_func_id)
