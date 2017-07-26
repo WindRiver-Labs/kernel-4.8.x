@@ -60,7 +60,6 @@ struct ipi_info {
 struct mem_pool_st {
 	struct list_head node;
 	struct gen_pool *pool;
-	u32 pd_id;
 };
 
 /* Private data */
@@ -292,7 +291,6 @@ static int __devinit zynq_remoteproc_probe(struct platform_device *pdev)
 	struct irq_list *tmp;
 	int count = 0;
 	struct zynq_rproc_pdata *local;
-	struct device_node *tmp_node;
 	struct gen_pool *mem_pool = NULL;
 	struct mem_pool_st *mem_node = NULL;
 	char mem_name[16];
@@ -398,20 +396,6 @@ static int __devinit zynq_remoteproc_probe(struct platform_device *pdev)
 			if (!mem_node)
 				goto ipi_fault;
 			mem_node->pool = mem_pool;
-			/* Get the memory node power domain id */
-			tmp_node = of_parse_phandle(pdev->dev.of_node,
-						mem_name, 0);
-			if (tmp_node) {
-				struct device_node *pd_node;
-
-				pd_node = of_parse_phandle(tmp_node,
-						"pd-handle", 0);
-				if (pd_node)
-					of_property_read_u32(pd_node,
-						"pd-id", &mem_node->pd_id);
-			}
-			dev_dbg(&pdev->dev, "mem[%d] pd_id = %d.\n",
-				i, mem_node->pd_id);
 			list_add_tail(&mem_node->node, &local->mem_pools);
 		} else {
 			break;
