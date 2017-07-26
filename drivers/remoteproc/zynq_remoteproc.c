@@ -386,10 +386,11 @@ static int __devinit zynq_remoteproc_probe(struct platform_device *pdev)
 	/* Find on-chip memory */
 	INIT_LIST_HEAD(&local->mem_pools);
 	INIT_LIST_HEAD(&local->mems);
-	for (i = 0; i < MAX_ON_CHIP_MEMS; i++) {
-		sprintf(mem_name, "sram_%d", i);
+	for (i = 0; ; i++) {
+		char *srams_name = "srams";
+
 		mem_pool = of_gen_pool_get(pdev->dev.of_node,
-					mem_name, 0);
+					   srams_name, i);
 		if (mem_pool) {
 			mem_node = devm_kzalloc(&pdev->dev,
 					sizeof(struct mem_pool_st),
@@ -412,6 +413,8 @@ static int __devinit zynq_remoteproc_probe(struct platform_device *pdev)
 			dev_dbg(&pdev->dev, "mem[%d] pd_id = %d.\n",
 				i, mem_node->pd_id);
 			list_add_tail(&mem_node->node, &local->mem_pools);
+		} else {
+			break;
 		}
 	}
 	ret = zynq_rproc_add_mems(local);
