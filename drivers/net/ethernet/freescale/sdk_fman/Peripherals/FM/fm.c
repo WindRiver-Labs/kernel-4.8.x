@@ -3590,11 +3590,13 @@ t_Error FM_Init(t_Handle h_Fm)
 			iowrite32be(0, &ccsr_guts_regs->devdisr2);
 		}
 	}
+#endif	/* CONFIG_FMAN_ARM */
 
 	WRITE_UINT32(p_Fm->p_FmFpmRegs->fm_rstc, FPM_RSTC_FM_RESET);
 	CORE_MemoryBarrier();
 	XX_UDelay(100);
 
+#ifndef CONFIG_FMAN_ARM
 #ifdef FM_SOFT_REST_IS_NOT_FINISHED_PROPERLY_A007273
 	if (disr2 && ccsr_guts_regs) {
 		/* Restore the value of devdisr2. */
