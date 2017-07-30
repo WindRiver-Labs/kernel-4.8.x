@@ -1354,7 +1354,9 @@ void sdhci_set_clock(struct sdhci_host *host, unsigned int clock)
 			return;
 		}
 		timeout--;
-		mdelay(1);
+		spin_unlock_irq(&host->lock);
+		usleep_range(900, 1100);
+		spin_lock_irq(&host->lock);
 	}
 
 	clk |= SDHCI_CLOCK_CARD_EN;
@@ -1377,8 +1379,8 @@ static void sdhci_set_power_reg(struct sdhci_host *host, unsigned char mode,
 		sdhci_writeb(host, 0, SDHCI_POWER_CONTROL);
 }
 
-void sdhci_set_power(struct sdhci_host *host, unsigned char mode,
-		     unsigned short vdd)
+void sdhci_set_power_noreg(struct sdhci_host *host, unsigned char mode,
+			   unsigned short vdd)
 {
 	u8 pwr = 0;
 
@@ -1442,20 +1444,17 @@ void sdhci_set_power(struct sdhci_host *host, unsigned char mode,
 			mdelay(10);
 	}
 }
-EXPORT_SYMBOL_GPL(sdhci_set_power);
+EXPORT_SYMBOL_GPL(sdhci_set_power_noreg);
 
-static void __sdhci_set_power(struct sdhci_host *host, unsigned char mode,
-			      unsigned short vdd)
+void sdhci_set_power(struct sdhci_host *host, unsigned char mode,
+		     unsigned short vdd)
 {
-	struct mmc_host *mmc = host->mmc;
-
-	if (host->ops->set_power)
-		host->ops->set_power(host, mode, vdd);
-	else if (!IS_ERR(mmc->supply.vmmc))
-		sdhci_set_power_reg(host, mode, vdd);
+	if (IS_ERR(host->mmc->supply.vmmc))
+		sdhci_set_power_noreg(host, mode, vdd);
 	else
-		sdhci_set_power(host, mode, vdd);
+		sdhci_set_power_reg(host, mode, vdd);
 }
+EXPORT_SYMBOL_GPL(sdhci_set_power);
 
 /*****************************************************************************\
  *                                                                           *
@@ -1596,7 +1595,10 @@ static void sdhci_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 		}
 	}
 
-	__sdhci_set_power(host, ios->power_mode, ios->vdd);
+	if (host->ops->set_power)
+		host->ops->set_power(host, ios->power_mode, ios->vdd);
+	else
+		sdhci_set_power(host, ios->power_mode, ios->vdd);
 
 	if (host->ops->platform_send_init_74_clocks)
 		host->ops->platform_send_init_74_clocks(host, ios->power_mode);
@@ -1804,6 +1806,9 @@ static void sdhci_enable_sdio_irq(struct mmc_host *mmc, int enable)
 	struct sdhci_host *host = mmc_priv(mmc);
 	unsigned long flags;
 
+	if (enable)
+		pm_runtime_get_noresume(host->mmc->parent);
+
 	spin_lock_irqsave(&host->lock, flags);
 	if (enable)
 		host->flags |= SDHCI_SDIO_IRQ_ENABLED;
@@ -1812,6 +1817,9 @@ static void sdhci_enable_sdio_irq(struct mmc_host *mmc, int enable)
 
 	sdhci_enable_sdio_irq_nolock(host, enable);
 	spin_unlock_irqrestore(&host->lock, flags);
+
+	if (!enable)
+		pm_runtime_put_noidle(host->mmc->parent);
 }
 
 static int sdhci_start_signal_voltage_switch(struct mmc_host *mmc,
