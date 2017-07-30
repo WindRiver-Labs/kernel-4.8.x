@@ -83,6 +83,10 @@ static unsigned long ccu_mp_recalc_rate(struct clk_hw *hw,
 	unsigned int m, p;
 	u32 reg;
 
+	/* Adjust parent_rate according to pre-dividers */
+	ccu_mux_helper_adjust_parent_for_prediv(&cmp->common, &cmp->mux,
+						-1, &parent_rate);
+
 	reg = readl(cmp->common.base + cmp->common.reg);
 
 	m = reg >> cmp->m.shift;
@@ -110,6 +114,10 @@ static int ccu_mp_set_rate(struct clk_hw *hw, unsigned long rate,
 	unsigned long flags;
 	unsigned int m, p;
 	u32 reg;
+
+	/* Adjust parent_rate according to pre-dividers */
+	ccu_mux_helper_adjust_parent_for_prediv(&cmp->common, &cmp->mux,
+						-1, &parent_rate);
 
 	ccu_mp_find_best(parent_rate, rate,
 			 1 << cmp->m.width, (1 << cmp->p.width) - 1,
