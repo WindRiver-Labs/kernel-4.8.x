@@ -766,9 +766,7 @@ xfs_bmap_extents_to_btree(
 	 */
 	ASSERT(args.fsbno != NULLFSBLOCK);
 	ASSERT(*firstblock == NULLFSBLOCK ||
-	       args.agno == XFS_FSB_TO_AGNO(mp, *firstblock) ||
-	       (dfops->dop_low &&
-		args.agno > XFS_FSB_TO_AGNO(mp, *firstblock)));
+	       args.agno >= XFS_FSB_TO_AGNO(mp, *firstblock));
 	*firstblock = cur->bc_private.b.firstblock = args.fsbno;
 	cur->bc_private.b.allocated++;
 	ip->i_d.di_nblocks++;
@@ -1225,7 +1223,6 @@ xfs_bmap_read_extents(
 	/* REFERENCED */
 	xfs_extnum_t		room;	/* number of entries there's room for */
 
-	bno = NULLFSBLOCK;
 	mp = ip->i_mount;
 	ifp = XFS_IFORK_PTR(ip, whichfork);
 	exntf = (whichfork != XFS_DATA_FORK) ? XFS_EXTFMT_NOSTATE :
@@ -1238,9 +1235,7 @@ xfs_bmap_read_extents(
 	ASSERT(level > 0);
 	pp = XFS_BMAP_BROOT_PTR_ADDR(mp, block, 1, ifp->if_broot_bytes);
 	bno = be64_to_cpu(*pp);
-	ASSERT(bno != NULLFSBLOCK);
-	ASSERT(XFS_FSB_TO_AGNO(mp, bno) < mp->m_sb.sb_agcount);
-	ASSERT(XFS_FSB_TO_AGBNO(mp, bno) < mp->m_sb.sb_agblocks);
+
 	/*
 	 * Go down the tree until leaf level is reached, following the first
 	 * pointer (leftmost) at each level.
@@ -2836,7 +2831,8 @@ xfs_bmap_add_extent_hole_delay(
 		oldlen = startblockval(left.br_startblock) +
 			startblockval(new->br_startblock) +
 			startblockval(right.br_startblock);
-		newlen = xfs_bmap_worst_indlen(ip, temp);
+		newlen = XFS_FILBLKS_MIN(xfs_bmap_worst_indlen(ip, temp),
+					 oldlen);
 		xfs_bmbt_set_startblock(xfs_iext_get_ext(ifp, *idx),
 			nullstartblock((int)newlen));
 		trace_xfs_bmap_post_update(ip, *idx, state, _THIS_IP_);
@@ -2857,7 +2853,8 @@ xfs_bmap_add_extent_hole_delay(
 		xfs_bmbt_set_blockcount(xfs_iext_get_ext(ifp, *idx), temp);
 		oldlen = startblockval(left.br_startblock) +
 			startblockval(new->br_startblock);
-		newlen = xfs_bmap_worst_indlen(ip, temp);
+		newlen = XFS_FILBLKS_MIN(xfs_bmap_worst_indlen(ip, temp),
+					 oldlen);
 		xfs_bmbt_set_startblock(xfs_iext_get_ext(ifp, *idx),
 			nullstartblock((int)newlen));
 		trace_xfs_bmap_post_update(ip, *idx, state, _THIS_IP_);
@@ -2873,7 +2870,8 @@ xfs_bmap_add_extent_hole_delay(
 		temp = new->br_blockcount + right.br_blockcount;
 		oldlen = startblockval(new->br_startblock) +
 			startblockval(right.br_startblock);
-		newlen = xfs_bmap_worst_indlen(ip, temp);
+		newlen = XFS_FILBLKS_MIN(xfs_bmap_worst_indlen(ip, temp),
+					 oldlen);
 		xfs_bmbt_set_allf(xfs_iext_get_ext(ifp, *idx),
 			new->br_startoff,
 			nullstartblock((int)newlen), temp, right.br_state);
@@ -3841,17 +3839,13 @@ xfs_bmap_btalloc(
 		 * the first block that was allocated.
 		 */
 		ASSERT(*ap->firstblock == NULLFSBLOCK ||
-		       XFS_FSB_TO_AGNO(mp, *ap->firstblock) ==
-		       XFS_FSB_TO_AGNO(mp, args.fsbno) ||
-		       (ap->dfops->dop_low &&
-			XFS_FSB_TO_AGNO(mp, *ap->firstblock) <
-			XFS_FSB_TO_AGNO(mp, args.fsbno)));
+		       XFS_FSB_TO_AGNO(mp, *ap->firstblock) <=
+		       XFS_FSB_TO_AGNO(mp, args.fsbno));
 
 		ap->blkno = args.fsbno;
 		if (*ap->firstblock == NULLFSBLOCK)
 			*ap->firstblock = args.fsbno;
-		ASSERT(nullfb || fb_agno == args.agno ||
-		       (ap->dfops->dop_low && fb_agno < args.agno));
+		ASSERT(nullfb || fb_agno <= args.agno);
 		ap->length = args.len;
 		ap->ip->i_d.di_nblocks += args.len;
 		xfs_trans_log_inode(ap->tp, ap->ip, XFS_ILOG_CORE);
@@ -4678,13 +4672,9 @@ error0:
 	if (bma.cur) {
 		if (!error) {
 			ASSERT(*firstblock == NULLFSBLOCK ||
-			       XFS_FSB_TO_AGNO(mp, *firstblock) ==
+			       XFS_FSB_TO_AGNO(mp, *firstblock) <=
 			       XFS_FSB_TO_AGNO(mp,
-				       bma.cur->bc_private.b.firstblock) ||
-			       (dfops->dop_low &&
-				XFS_FSB_TO_AGNO(mp, *firstblock) <
-				XFS_FSB_TO_AGNO(mp,
-					bma.cur->bc_private.b.firstblock)));
+				       bma.cur->bc_private.b.firstblock));
 			*firstblock = bma.cur->bc_private.b.firstblock;
 		}
 		xfs_btree_del_cursor(bma.cur,
@@ -4719,34 +4709,59 @@ xfs_bmap_split_indlen(
 	xfs_filblks_t			len2 = *indlen2;
 	xfs_filblks_t			nres = len1 + len2; /* new total res. */
 	xfs_filblks_t			stolen = 0;
+	xfs_filblks_t			resfactor;
 
 	/*
 	 * Steal as many blocks as we can to try and satisfy the worst case
 	 * indlen for both new extents.
 	 */
-	while (nres > ores && avail) {
-		nres--;
-		avail--;
-		stolen++;
-	}
+	if (ores < nres && avail)
+		stolen = XFS_FILBLKS_MIN(nres - ores, avail);
+	ores += stolen;
+
+	 /* nothing else to do if we've satisfied the new reservation */
+	if (ores >= nres)
+		return stolen;
 
 	/*
-	 * The only blocks available are those reserved for the original
-	 * extent and what we can steal from the extent being removed.
-	 * If this still isn't enough to satisfy the combined
-	 * requirements for the two new extents, skim blocks off of each
-	 * of the new reservations until they match what is available.
+	 * We can't meet the total required reservation for the two extents.
+	 * Calculate the percent of the overall shortage between both extents
+	 * and apply this percentage to each of the requested indlen values.
+	 * This distributes the shortage fairly and reduces the chances that one
+	 * of the two extents is left with nothing when extents are repeatedly
+	 * split.
 	 */
-	while (nres > ores) {
-		if (len1) {
-			len1--;
-			nres--;
+	resfactor = (ores * 100);
+	do_div(resfactor, nres);
+	len1 *= resfactor;
+	do_div(len1, 100);
+	len2 *= resfactor;
+	do_div(len2, 100);
+	ASSERT(len1 + len2 <= ores);
+	ASSERT(len1 < *indlen1 && len2 < *indlen2);
+
+	/*
+	 * Hand out the remainder to each extent. If one of the two reservations
+	 * is zero, we want to make sure that one gets a block first. The loop
+	 * below starts with len1, so hand len2 a block right off the bat if it
+	 * is zero.
+	 */
+	ores -= (len1 + len2);
+	ASSERT((*indlen1 - len1) + (*indlen2 - len2) >= ores);
+	if (ores && !len2 && *indlen2) {
+		len2++;
+		ores--;
+	}
+	while (ores) {
+		if (len1 < *indlen1) {
+			len1++;
+			ores--;
 		}
-		if (nres == ores)
+		if (!ores)
 			break;
-		if (len2) {
-			len2--;
-			nres--;
+		if (len2 < *indlen2) {
+			len2++;
+			ores--;
 		}
 	}
 
