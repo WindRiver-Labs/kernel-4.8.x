@@ -103,6 +103,15 @@ static void sdhci_acpi_int_hw_reset(struct sdhci_host *host)
 	usleep_range(300, 1000);
 }
 
+static void sdhci_acpi_amd_hs400_dll(struct sdhci_host *host)
+{
+	//host->caps1 = sdhci_readl(host, SDHCI_CAPABILITIES_1);
+	if (host->mmc->caps2 & MMC_CAP2_HS400_1_8V) {
+		sdhci_writel(host, 0x40003210, 0x908);
+		udelay(10);
+		sdhci_writel(host, 0x40033210, 0x908);
+	}
+}
 static const struct sdhci_ops sdhci_acpi_ops_dflt = {
 	.set_clock = sdhci_set_clock,
 	.set_bus_width = sdhci_set_bus_width,
@@ -120,6 +129,18 @@ static const struct sdhci_ops sdhci_acpi_ops_int = {
 
 static const struct sdhci_acpi_chip sdhci_acpi_chip_int = {
 	.ops = &sdhci_acpi_ops_int,
+};
+
+static const struct sdhci_ops sdhci_acpi_ops_amd = {
+	.set_clock = sdhci_set_clock,
+	.set_bus_width = sdhci_set_bus_width,
+	.reset = sdhci_reset,
+	.set_uhs_signaling = sdhci_set_uhs_signaling,
+	 .set_hs400_dll = sdhci_acpi_amd_hs400_dll,
+};
+
+static const struct sdhci_acpi_chip sdhci_acpi_chip_amd = {
+	.ops = &sdhci_acpi_ops_amd,
 };
 
 #ifdef CONFIG_X86
@@ -285,6 +306,14 @@ static const struct sdhci_acpi_slot sdhci_acpi_slot_int_emmc = {
 	.probe_slot	= sdhci_acpi_emmc_probe_slot,
 };
 
+static const struct sdhci_acpi_slot sdhci_acpi_slot_amd_emmc = {
+    .chip    = &sdhci_acpi_chip_amd,
+    .caps    = MMC_CAP_8_BIT_DATA | MMC_CAP_NONREMOVABLE |  MMC_CAP_HW_RESET,
+    .quirks  =  SDHCI_QUIRK_BROKEN_DMA | SDHCI_QUIRK_BROKEN_ADMA,
+    .quirks2 =  SDHCI_QUIRK2_BROKEN_TUNING_WA,
+    .probe_slot     = sdhci_acpi_emmc_probe_slot,
+};
+
 static const struct sdhci_acpi_slot sdhci_acpi_slot_int_sdio = {
 	.quirks  = SDHCI_QUIRK_BROKEN_CARD_DETECTION |
 		   SDHCI_QUIRK_NO_ENDATTR_IN_NOPDESC,
@@ -337,6 +366,7 @@ static const struct sdhci_acpi_uid_slot sdhci_acpi_uids[] = {
 	{ "INT344D"  , NULL, &sdhci_acpi_slot_int_sdio },
 	{ "PNP0FFF"  , "3" , &sdhci_acpi_slot_int_sd   },
 	{ "PNP0D40"  },
+	{ "AMDI0040", NULL, &sdhci_acpi_slot_amd_emmc  },
 	{ "QCOM8051", NULL, &sdhci_acpi_slot_qcom_sd_3v },
 	{ "QCOM8052", NULL, &sdhci_acpi_slot_qcom_sd },
 	{ },
@@ -355,6 +385,7 @@ static const struct acpi_device_id sdhci_acpi_ids[] = {
 	{ "PNP0D40"  },
 	{ "QCOM8051" },
 	{ "QCOM8052" },
+	{ "AMDI0040" },
 	{ },
 };
 MODULE_DEVICE_TABLE(acpi, sdhci_acpi_ids);
