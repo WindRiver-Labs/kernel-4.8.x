@@ -1497,6 +1497,7 @@ static void do_polling_transfer(struct pl022 *pl022)
 	struct chip_data *chip;
 	unsigned long time, timeout;
 	unsigned long long ms;
+	unsigned long dev_dbg_count;
 
 	chip = pl022->cur_chip;
 	message = pl022->cur_msg;
@@ -1536,9 +1537,11 @@ static void do_polling_transfer(struct pl022 *pl022)
 
 		dev_dbg(&pl022->adev->dev, "polling transfer ongoing ...\n");
 
+		/* calculate how many dev_dbg will print on scrren */
+		dev_dbg_count = pl022->cur_transfer->len / pl022->vendor->fifodepth;
 		ms = 8LL * 1000LL * transfer->len;
 		do_div(ms, transfer->speed_hz);
-		ms += ms + 200; /* some tolerance */
+		ms += ms + (dev_dbg_count + 1) * 200; /* every dev_dbg output need almost 200ms */
 
 		if (ms > UINT_MAX)
 			ms = UINT_MAX;
