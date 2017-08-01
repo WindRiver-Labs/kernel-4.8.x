@@ -252,7 +252,7 @@ static int xg_s_ctrl(struct v4l2_ctrl *ctrl)
 	switch (ctrl->id) {
 	case V4L2_CID_XILINX_GAMMA_CORR_RED_GAMMA:
 		rval = select_gamma(ctrl->val, &xg->red_lut);
-		if (rval != 0) {
+		if (rval < 0) {
 			dev_err(xg->xvip.dev, "Invalid Red Gamma");
 			return rval;
 		}
@@ -274,7 +274,7 @@ static int xg_s_ctrl(struct v4l2_ctrl *ctrl)
 		break;
 	case V4L2_CID_XILINX_GAMMA_CORR_GREEN_GAMMA:
 		rval = select_gamma(ctrl->val, &xg->green_lut);
-		if (rval != 0) {
+		if (rval < 0) {
 			dev_err(xg->xvip.dev, "Invalid Green Gamma");
 			return -EINVAL;
 		}
