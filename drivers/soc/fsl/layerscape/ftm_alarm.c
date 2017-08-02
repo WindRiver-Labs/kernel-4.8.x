@@ -135,7 +135,7 @@ static void ftm_clean_alarm(void)
 	ftm_counter_disable(ftm1_base);
 
 	ftm_writel(0x00, ftm1_base + FTM_CNTIN);
-	ftm_writel(~0UL, ftm1_base + FTM_MOD);
+	ftm_writel((u32)(~0UL), ftm1_base + FTM_MOD);
 
 	ftm_reset_counter(ftm1_base);
 }
