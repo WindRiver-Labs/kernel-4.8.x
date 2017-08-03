@@ -1,6 +1,6 @@
 /**
 * Support for Intel Camera Imaging ISP subsystem.
-* Copyright (c) 2010 - 2016, Intel Corporation.
+* Copyright (c) 2010 - 2017, Intel Corporation.
 *
 * This program is free software; you can redistribute it and/or modify it
 * under the terms and conditions of the GNU General Public License,
@@ -29,4 +29,4 @@ typedef struct ia_css_buffer_s *ia_css_shared_buffer;
 typedef void *ia_css_shared_buffer_cpu_address;
 typedef ia_css_buffer_address	ia_css_shared_buffer_css_address;
 
-#endif /*__IA_CSS_SHARED_BUFFER_H*/
+#endif /* __IA_CSS_SHARED_BUFFER_H */

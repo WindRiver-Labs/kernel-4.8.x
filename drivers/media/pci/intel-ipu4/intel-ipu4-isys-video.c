@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013--2016 Intel Corporation.
+ * Copyright (c) 2013--2017 Intel Corporation.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License version
@@ -57,6 +57,10 @@ const struct intel_ipu4_isys_pixelformat intel_ipu4_isys_pfmts[] = {
 	/* YUV vector format */
 	{ V4L2_PIX_FMT_YUYV420_V32, 24, 24, 0, MEDIA_BUS_FMT_YUYV12_1X24, IPU_FW_ISYS_FRAME_FORMAT_YUV420_16 },
 	/* Raw bayer vector formats. */
+	{ V4L2_PIX_FMT_SBGGR14V32, 16, 14, 0, MEDIA_BUS_FMT_SBGGR14_1X14, IPU_FW_ISYS_FRAME_FORMAT_RAW16 },
+	{ V4L2_PIX_FMT_SGBRG14V32, 16, 14, 0, MEDIA_BUS_FMT_SGBRG14_1X14, IPU_FW_ISYS_FRAME_FORMAT_RAW16 },
+	{ V4L2_PIX_FMT_SGRBG14V32, 16, 14, 0, MEDIA_BUS_FMT_SGRBG14_1X14, IPU_FW_ISYS_FRAME_FORMAT_RAW16 },
+	{ V4L2_PIX_FMT_SRGGB14V32, 16, 14, 0, MEDIA_BUS_FMT_SRGGB14_1X14, IPU_FW_ISYS_FRAME_FORMAT_RAW16 },
 	{ V4L2_PIX_FMT_SBGGR12V32, 16, 12, 0, MEDIA_BUS_FMT_SBGGR12_1X12, IPU_FW_ISYS_FRAME_FORMAT_RAW16 },
 	{ V4L2_PIX_FMT_SGBRG12V32, 16, 12, 0, MEDIA_BUS_FMT_SGBRG12_1X12, IPU_FW_ISYS_FRAME_FORMAT_RAW16 },
 	{ V4L2_PIX_FMT_SGRBG12V32, 16, 12, 0, MEDIA_BUS_FMT_SGRBG12_1X12, IPU_FW_ISYS_FRAME_FORMAT_RAW16 },
@@ -74,6 +78,10 @@ const struct intel_ipu4_isys_pixelformat intel_ipu4_isys_pfmts[] = {
 };
 
 const struct intel_ipu4_isys_pixelformat intel_ipu5_isys_pfmts[] = {
+	{ V4L2_PIX_FMT_SBGGR14, 16, 14, 0, MEDIA_BUS_FMT_SBGGR14_1X14, IPU_FW_ISYS_FRAME_FORMAT_RAW16 },
+	{ V4L2_PIX_FMT_SGBRG14, 16, 14, 0, MEDIA_BUS_FMT_SGBRG14_1X14, IPU_FW_ISYS_FRAME_FORMAT_RAW16 },
+	{ V4L2_PIX_FMT_SGRBG14, 16, 14, 0, MEDIA_BUS_FMT_SGRBG14_1X14, IPU_FW_ISYS_FRAME_FORMAT_RAW16 },
+	{ V4L2_PIX_FMT_SRGGB14, 16, 14, 0, MEDIA_BUS_FMT_SRGGB14_1X14, IPU_FW_ISYS_FRAME_FORMAT_RAW16 },
 	{ V4L2_PIX_FMT_SBGGR12, 16, 12, 0, MEDIA_BUS_FMT_SBGGR12_1X12, IPU_FW_ISYS_FRAME_FORMAT_RAW16 },
 	{ V4L2_PIX_FMT_SGBRG12, 16, 12, 0, MEDIA_BUS_FMT_SGBRG12_1X12, IPU_FW_ISYS_FRAME_FORMAT_RAW16 },
 	{ V4L2_PIX_FMT_SGRBG12, 16, 12, 0, MEDIA_BUS_FMT_SGRBG12_1X12, IPU_FW_ISYS_FRAME_FORMAT_RAW16 },
@@ -97,6 +105,10 @@ const struct intel_ipu4_isys_pixelformat intel_ipu4_isys_pfmts_be_soc[] = {
 	{ V4L2_PIX_FMT_XRGB32, 32, 32, 0, MEDIA_BUS_FMT_RGB565_1X16, IPU_FW_ISYS_FRAME_FORMAT_RGBA888 },
 	{ V4L2_PIX_FMT_XBGR32, 32, 32, 0, MEDIA_BUS_FMT_RGB888_1X24, IPU_FW_ISYS_FRAME_FORMAT_RGBA888 },
 	/* Raw bayer formats. */
+	{ V4L2_PIX_FMT_SBGGR14, 16, 14, 0, MEDIA_BUS_FMT_SBGGR14_1X14, IPU_FW_ISYS_FRAME_FORMAT_RAW16 },
+	{ V4L2_PIX_FMT_SGBRG14, 16, 14, 0, MEDIA_BUS_FMT_SGBRG14_1X14, IPU_FW_ISYS_FRAME_FORMAT_RAW16 },
+	{ V4L2_PIX_FMT_SGRBG14, 16, 14, 0, MEDIA_BUS_FMT_SGRBG14_1X14, IPU_FW_ISYS_FRAME_FORMAT_RAW16 },
+	{ V4L2_PIX_FMT_SRGGB14, 16, 14, 0, MEDIA_BUS_FMT_SRGGB14_1X14, IPU_FW_ISYS_FRAME_FORMAT_RAW16 },
 	{ V4L2_PIX_FMT_SBGGR12, 16, 12, 0, MEDIA_BUS_FMT_SBGGR12_1X12, IPU_FW_ISYS_FRAME_FORMAT_RAW16 },
 	{ V4L2_PIX_FMT_SGBRG12, 16, 12, 0, MEDIA_BUS_FMT_SGBRG12_1X12, IPU_FW_ISYS_FRAME_FORMAT_RAW16 },
 	{ V4L2_PIX_FMT_SGRBG12, 16, 12, 0, MEDIA_BUS_FMT_SGRBG12_1X12, IPU_FW_ISYS_FRAME_FORMAT_RAW16 },
@@ -122,11 +134,19 @@ const struct intel_ipu4_isys_pixelformat intel_ipu4_isys_pfmts_packed[] = {
 	{ V4L2_PIX_FMT_SGBRG12, 12, 12, 0, MEDIA_BUS_FMT_SGBRG12_1X12, IPU_FW_ISYS_FRAME_FORMAT_RAW12 },
 	{ V4L2_PIX_FMT_SGRBG12, 12, 12, 0, MEDIA_BUS_FMT_SGRBG12_1X12, IPU_FW_ISYS_FRAME_FORMAT_RAW12 },
 	{ V4L2_PIX_FMT_SRGGB12, 12, 12, 0, MEDIA_BUS_FMT_SRGGB12_1X12, IPU_FW_ISYS_FRAME_FORMAT_RAW12 },
+	{ V4L2_PIX_FMT_SBGGR14, 14, 14, 0, MEDIA_BUS_FMT_SBGGR14_1X14, IPU_FW_ISYS_FRAME_FORMAT_RAW14 },
+	{ V4L2_PIX_FMT_SGBRG14, 14, 14, 0, MEDIA_BUS_FMT_SGBRG14_1X14, IPU_FW_ISYS_FRAME_FORMAT_RAW14 },
+	{ V4L2_PIX_FMT_SGRBG14, 14, 14, 0, MEDIA_BUS_FMT_SGRBG14_1X14, IPU_FW_ISYS_FRAME_FORMAT_RAW14 },
+	{ V4L2_PIX_FMT_SRGGB14, 14, 14, 0, MEDIA_BUS_FMT_SRGGB14_1X14, IPU_FW_ISYS_FRAME_FORMAT_RAW14 },
 #else /* V4L2_PIX_FMT_SBGGR12P */
 	{ V4L2_PIX_FMT_SBGGR12P, 12, 12, 0, MEDIA_BUS_FMT_SBGGR12_1X12, IPU_FW_ISYS_FRAME_FORMAT_RAW12 },
 	{ V4L2_PIX_FMT_SGBRG12P, 12, 12, 0, MEDIA_BUS_FMT_SGBRG12_1X12, IPU_FW_ISYS_FRAME_FORMAT_RAW12 },
 	{ V4L2_PIX_FMT_SGRBG12P, 12, 12, 0, MEDIA_BUS_FMT_SGRBG12_1X12, IPU_FW_ISYS_FRAME_FORMAT_RAW12 },
 	{ V4L2_PIX_FMT_SRGGB12P, 12, 12, 0, MEDIA_BUS_FMT_SRGGB12_1X12, IPU_FW_ISYS_FRAME_FORMAT_RAW12 },
+	{ V4L2_PIX_FMT_SBGGR14P, 14, 14, 0, MEDIA_BUS_FMT_SBGGR14_1X14, IPU_FW_ISYS_FRAME_FORMAT_RAW14 },
+	{ V4L2_PIX_FMT_SGBRG14P, 14, 14, 0, MEDIA_BUS_FMT_SGBRG14_1X14, IPU_FW_ISYS_FRAME_FORMAT_RAW14 },
+	{ V4L2_PIX_FMT_SGRBG14P, 14, 14, 0, MEDIA_BUS_FMT_SGRBG14_1X14, IPU_FW_ISYS_FRAME_FORMAT_RAW14 },
+	{ V4L2_PIX_FMT_SRGGB14P, 14, 14, 0, MEDIA_BUS_FMT_SRGGB14_1X14, IPU_FW_ISYS_FRAME_FORMAT_RAW14 },
 #endif /* V4L2_PIX_FMT_SBGGR12P */
 	{ V4L2_PIX_FMT_SBGGR10P, 10, 10, 0, MEDIA_BUS_FMT_SBGGR10_1X10, IPU_FW_ISYS_FRAME_FORMAT_RAW10 },
 	{ V4L2_PIX_FMT_SGBRG10P, 10, 10, 0, MEDIA_BUS_FMT_SGBRG10_1X10, IPU_FW_ISYS_FRAME_FORMAT_RAW10 },
@@ -628,7 +648,8 @@ static bool is_external(struct intel_ipu4_isys_video *av,
 
 	sd = media_entity_to_v4l2_subdev(entity);
 
-	if (sd->owner != THIS_MODULE)
+	if (strncmp(sd->name, INTEL_IPU4_ISYS_ENTITY_PREFIX,
+		strlen(INTEL_IPU4_ISYS_ENTITY_PREFIX)) != 0)
 		return true;
 
 	for (i = 0; i < av->isys->pdata->ipdata->tpg.ntpgs
@@ -756,8 +777,9 @@ static int get_external_facing_format(struct intel_ipu4_isys_pipeline *ip,
 	struct intel_ipu4_isys_video *av =
 		container_of(ip, struct intel_ipu4_isys_video, ip);
 	struct media_pad *external_facing =
-		(media_entity_to_v4l2_subdev(ip->external->entity)->owner
-		== THIS_MODULE)
+		(strncmp(media_entity_to_v4l2_subdev(ip->external->entity)->name,
+		INTEL_IPU4_ISYS_ENTITY_PREFIX,
+		strlen(INTEL_IPU4_ISYS_ENTITY_PREFIX)) == 0)
 		? ip->external : media_entity_remote_pad(ip->external);
 
 	if (WARN_ON(!external_facing)) {
@@ -1483,7 +1505,9 @@ int intel_ipu4_isys_video_set_streaming(struct intel_ipu4_isys_video *av,
 			continue;
 
 		/* Don't start truly external devices quite yet. */
-		if (media_entity_to_v4l2_subdev(entity)->owner != THIS_MODULE
+		if (strncmp(media_entity_to_v4l2_subdev(entity)->name,
+			INTEL_IPU4_ISYS_ENTITY_PREFIX,
+			strlen(INTEL_IPU4_ISYS_ENTITY_PREFIX)) != 0
 		    || ip->external->entity == entity)
 			continue;
 
@@ -1503,7 +1527,8 @@ int intel_ipu4_isys_video_set_streaming(struct intel_ipu4_isys_video *av,
 
 	/* Oh crap */
 	if (state) {
-		if (intel_ipu_skew_cal_required(ip->csi2))
+		if (intel_ipu_skew_cal_required(ip->csi2) &&
+		    ip->csi2->remote_streams == ip->csi2->stream_count)
 			perform_skew_cal(ip);
 
 		rval = start_stream_firmware(av, bl);
