@@ -1,6 +1,6 @@
 /**
 * Support for Intel Camera Imaging ISP subsystem.
-* Copyright (c) 2010 - 2016, Intel Corporation.
+* Copyright (c) 2010 - 2017, Intel Corporation.
 *
 * This program is free software; you can redistribute it and/or modify it
 * under the terms and conditions of the GNU General Public License,
@@ -17,7 +17,7 @@
 
 #include "storage_class.h"
 
-#ifndef _INLINE_CLIENT_PKG_
+#ifndef __INLINE_CLIENT_PKG__
 #define IA_CSS_CLIENT_PKG_STORAGE_CLASS_H STORAGE_CLASS_EXTERN
 #define IA_CSS_CLIENT_PKG_STORAGE_CLASS_C
 #else

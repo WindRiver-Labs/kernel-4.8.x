@@ -1,6 +1,6 @@
 /*
 * Support for Intel Camera Imaging ISP subsystem.
-* Copyright (c) 2010 - 2016, Intel Corporation.
+* Copyright (c) 2010 - 2017, Intel Corporation.
 *
 * This program is free software; you can redistribute it and/or modify it
 * under the terms and conditions of the GNU General Public License,
@@ -293,8 +293,8 @@ bool ia_css_is_process_valid(
 	const ia_css_process_t *process,
 	const ia_css_program_manifest_t *p_manifest);
 
-#ifdef _IA_CSS_PSYS_DYNAMIC_INLINE_
+#ifdef __IA_CSS_PSYS_DYNAMIC_INLINE__
 #include "ia_css_psys_process_impl.h"
-#endif /* _IA_CSS_PSYS_DYNAMIC_INLINE_ */
+#endif /* __IA_CSS_PSYS_DYNAMIC_INLINE__ */
 
 #endif /* __IA_CSS_PSYS_PROCESS_H */

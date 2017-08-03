@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013--2016 Intel Corporation.
+ * Copyright (c) 2013--2017 Intel Corporation.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License version
@@ -32,6 +32,11 @@ unsigned int intel_ipu4_isys_mbus_code_to_bpp(u32 code)
 	case MEDIA_BUS_FMT_UYVY8_1X16:
 	case MEDIA_BUS_FMT_YUYV8_1X16:
 		return 16;
+	case MEDIA_BUS_FMT_SBGGR14_1X14:
+	case MEDIA_BUS_FMT_SGBRG14_1X14:
+	case MEDIA_BUS_FMT_SGRBG14_1X14:
+	case MEDIA_BUS_FMT_SRGGB14_1X14:
+		return 14;
 	case MEDIA_BUS_FMT_SBGGR12_1X12:
 	case MEDIA_BUS_FMT_SGBRG12_1X12:
 	case MEDIA_BUS_FMT_SGRBG12_1X12:
@@ -66,6 +71,11 @@ unsigned int intel_ipu4_isys_mbus_code_to_mipi(u32 code)
 	case MEDIA_BUS_FMT_UYVY8_1X16:
 	case MEDIA_BUS_FMT_YUYV8_1X16:
 		return INTEL_IPU4_ISYS_MIPI_CSI2_TYPE_YUV422_8;
+	case MEDIA_BUS_FMT_SBGGR14_1X14:
+	case MEDIA_BUS_FMT_SGBRG14_1X14:
+	case MEDIA_BUS_FMT_SGRBG14_1X14:
+	case MEDIA_BUS_FMT_SRGGB14_1X14:
+		return INTEL_IPU4_ISYS_MIPI_CSI2_TYPE_RAW14;
 	case MEDIA_BUS_FMT_SBGGR12_1X12:
 	case MEDIA_BUS_FMT_SGBRG12_1X12:
 	case MEDIA_BUS_FMT_SGRBG12_1X12:
@@ -95,21 +105,25 @@ enum intel_ipu4_isys_subdev_pixelorder
 intel_ipu4_isys_subdev_get_pixelorder(u32 code)
 {
 	switch (code) {
+	case MEDIA_BUS_FMT_SBGGR14_1X14:
 	case MEDIA_BUS_FMT_SBGGR12_1X12:
 	case MEDIA_BUS_FMT_SBGGR10_1X10:
 	case MEDIA_BUS_FMT_SBGGR8_1X8:
 	case MEDIA_BUS_FMT_SBGGR10_DPCM8_1X8:
 		return INTEL_IPU4_ISYS_SUBDEV_PIXELORDER_BGGR;
+	case MEDIA_BUS_FMT_SGBRG14_1X14:
 	case MEDIA_BUS_FMT_SGBRG12_1X12:
 	case MEDIA_BUS_FMT_SGBRG10_1X10:
 	case MEDIA_BUS_FMT_SGBRG8_1X8:
 	case MEDIA_BUS_FMT_SGBRG10_DPCM8_1X8:
 		return INTEL_IPU4_ISYS_SUBDEV_PIXELORDER_GBRG;
+	case MEDIA_BUS_FMT_SGRBG14_1X14:
 	case MEDIA_BUS_FMT_SGRBG12_1X12:
 	case MEDIA_BUS_FMT_SGRBG10_1X10:
 	case MEDIA_BUS_FMT_SGRBG8_1X8:
 	case MEDIA_BUS_FMT_SGRBG10_DPCM8_1X8:
 		return INTEL_IPU4_ISYS_SUBDEV_PIXELORDER_GRBG;
+	case MEDIA_BUS_FMT_SRGGB14_1X14:
 	case MEDIA_BUS_FMT_SRGGB12_1X12:
 	case MEDIA_BUS_FMT_SRGGB10_1X10:
 	case MEDIA_BUS_FMT_SRGGB8_1X8:
@@ -751,7 +765,8 @@ int intel_ipu4_isys_subdev_link_validate(struct v4l2_subdev *sd,
 			struct intel_ipu4_isys_pipeline, pipe);
 	struct intel_ipu4_isys_subdev *asd = to_intel_ipu4_isys_subdev(sd);
 
-	if (source_sd->owner != THIS_MODULE) {
+	if (strncmp(source_sd->name, INTEL_IPU4_ISYS_ENTITY_PREFIX,
+		strlen(INTEL_IPU4_ISYS_ENTITY_PREFIX)) != 0) {
 		/*
 		 * source_sd isn't ours --- sd must be the external
 		 * sub-device.
