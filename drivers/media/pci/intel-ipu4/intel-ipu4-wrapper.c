@@ -568,8 +568,9 @@ int init_wrapper(void)
 	spin_lock_init(&psys.lock);
 	return 0;
 }
-int exit_wrapper(void)
+void exit_wrapper(void)
 {
+
 }
 
 /*
