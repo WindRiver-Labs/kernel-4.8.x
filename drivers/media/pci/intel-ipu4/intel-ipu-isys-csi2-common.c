@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013--2016 Intel Corporation.
+ * Copyright (c) 2013--2017 Intel Corporation.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License version
@@ -30,6 +30,7 @@
 #include "intel-ipu4-isys-video.h"
 
 #define CREATE_TRACE_POINTS
+#define IPU4_SOF_SEQID_TRACE
 #include "intel-ipu4-trace-event.h"
 
 static const uint32_t csi2_supported_codes_pad_sink[] = {
@@ -49,6 +50,10 @@ static const uint32_t csi2_supported_codes_pad_sink[] = {
 	MEDIA_BUS_FMT_SGBRG12_1X12,
 	MEDIA_BUS_FMT_SGRBG12_1X12,
 	MEDIA_BUS_FMT_SRGGB12_1X12,
+	MEDIA_BUS_FMT_SBGGR14_1X14,
+	MEDIA_BUS_FMT_SGBRG14_1X14,
+	MEDIA_BUS_FMT_SGRBG14_1X14,
+	MEDIA_BUS_FMT_SRGGB14_1X14,
 	MEDIA_BUS_FMT_SBGGR8_1X8,
 	MEDIA_BUS_FMT_SGBRG8_1X8,
 	MEDIA_BUS_FMT_SGRBG8_1X8,
@@ -69,6 +74,10 @@ static const uint32_t csi2_supported_codes_pad_source[] = {
 	MEDIA_BUS_FMT_SGBRG12_1X12,
 	MEDIA_BUS_FMT_SGRBG12_1X12,
 	MEDIA_BUS_FMT_SRGGB12_1X12,
+	MEDIA_BUS_FMT_SBGGR14_1X14,
+	MEDIA_BUS_FMT_SGBRG14_1X14,
+	MEDIA_BUS_FMT_SGRBG14_1X14,
+	MEDIA_BUS_FMT_SRGGB14_1X14,
 	MEDIA_BUS_FMT_SBGGR8_1X8,
 	MEDIA_BUS_FMT_SGBRG8_1X8,
 	MEDIA_BUS_FMT_SGRBG8_1X8,

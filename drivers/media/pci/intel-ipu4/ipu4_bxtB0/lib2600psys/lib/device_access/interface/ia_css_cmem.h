@@ -1,6 +1,6 @@
 /**
 * Support for Intel Camera Imaging ISP subsystem.
-* Copyright (c) 2010 - 2016, Intel Corporation.
+* Copyright (c) 2010 - 2017, Intel Corporation.
 *
 * This program is free software; you can redistribute it and/or modify it
 * under the terms and conditions of the GNU General Public License,
@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef _IA_CSS_CMEM_H_
-#define _IA_CSS_CMEM_H_
+#ifndef __IA_CSS_CMEM_H
+#define __IA_CSS_CMEM_H
 
 #include "type_support.h"
 #include "storage_class.h"
@@ -55,4 +55,4 @@ ia_css_cmem_get_cmem_addr_from_dmem(unsigned int base_addr, void *p);
 #include "ia_css_cmem_host.h"
 #endif
 
-#endif
+#endif /* __IA_CSS_CMEM_H */
