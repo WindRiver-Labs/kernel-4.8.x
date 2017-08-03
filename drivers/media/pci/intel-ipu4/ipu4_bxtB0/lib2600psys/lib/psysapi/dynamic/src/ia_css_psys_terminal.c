@@ -1,6 +1,6 @@
 /*
 * Support for Intel Camera Imaging ISP subsystem.
-* Copyright (c) 2010 - 2016, Intel Corporation.
+* Copyright (c) 2010 - 2017, Intel Corporation.
 *
 * This program is free software; you can redistribute it and/or modify it
 * under the terms and conditions of the GNU General Public License,
@@ -20,9 +20,9 @@
  * Functions to possibly inline
  */
 
-#ifndef _IA_CSS_PSYS_DYNAMIC_INLINE_
+#ifndef __IA_CSS_PSYS_DYNAMIC_INLINE__
 #include "ia_css_psys_terminal_impl.h"
-#endif /* _IA_CSS_PSYS_DYNAMIC_INLINE_ */
+#endif /* __IA_CSS_PSYS_DYNAMIC_INLINE__ */
 
 STORAGE_CLASS_INLINE void __terminal_dummy_check_alignment(void)
 {
@@ -149,8 +149,8 @@ size_t ia_css_sizeof_terminal(
 	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE,
 		"ia_css_sizeof_terminal(): enter:\n");
 
-	verifexit(manifest != NULL, EINVAL);
-	verifexit(param != NULL, EINVAL);
+	verifexit(manifest != NULL);
+	verifexit(param != NULL);
 
 	if (ia_css_is_terminal_manifest_parameter_terminal(manifest)) {
 		const ia_css_param_terminal_manifest_t *param_term_man =
@@ -222,23 +222,22 @@ ia_css_terminal_t *ia_css_terminal_create(
 	param = ia_css_terminal_param_get_parent(terminal_param);
 	fragment_count = ia_css_program_group_param_get_fragment_count(param);
 
-	verifexit(manifest != NULL, EINVAL);
-	verifexit(param != NULL, EINVAL);
+	verifexit(manifest != NULL);
+	verifexit(param != NULL);
 
 	terminal_raw_ptr = (char *) raw_mem;
 
 	terminal = (ia_css_terminal_t *) terminal_raw_ptr;
-	verifexit(terminal != NULL, EINVAL);
+	verifexit(terminal != NULL);
 
 	terminal->size = (uint16_t)ia_css_sizeof_terminal(manifest, param);
 	verifexit(ia_css_terminal_set_type(
-		terminal, ia_css_terminal_manifest_get_type(manifest)) ==
-			0, EINVAL);
+		terminal, ia_css_terminal_manifest_get_type(manifest)) == 0);
 
 	terminal->ID = ia_css_terminal_manifest_get_ID(manifest);
 
 	verifexit(ia_css_terminal_set_buffer(terminal,
-				VIED_NULL) == 0, EINVAL);
+				VIED_NULL) == 0);
 
 	if (ia_css_is_terminal_manifest_data_terminal(manifest) == true) {
 		ia_css_data_terminal_t *dterminal =
@@ -250,11 +249,11 @@ ia_css_terminal_t *ia_css_terminal_create(
 			ia_css_data_terminal_manifest_get_kernel_bitmap(
 			(const ia_css_data_terminal_manifest_t *)manifest));
 
-		verifexit(frame != NULL, EINVAL);
+		verifexit(frame != NULL);
 		verifexit(ia_css_frame_set_buffer_state(
-				frame, IA_CSS_BUFFER_NULL) == 0, EINVAL);
+				frame, IA_CSS_BUFFER_NULL) == 0);
 		verifexit(ia_css_is_kernel_bitmap_onehot(intersection) ==
-					true, EINVAL);
+					true);
 
 		terminal_raw_ptr += sizeof(ia_css_data_terminal_t);
 		dterminal->fragment_descriptor_offset =
@@ -477,7 +476,7 @@ uint16_t ia_css_param_terminal_compute_section_count(
 	IA_CSS_TRACE_0(PSYSAPI_DYNAMIC, VERBOSE,
 		"ia_css_param_terminal_compute_section_count(): enter:\n");
 
-	verifexit(manifest != NULL, EINVAL);
+	verifexit(manifest != NULL);
 	section_count = ((const ia_css_param_terminal_manifest_t *)manifest)->
 				param_manifest_section_desc_count;
 EXIT:

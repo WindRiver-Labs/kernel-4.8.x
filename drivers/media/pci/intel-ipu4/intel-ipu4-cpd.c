@@ -355,12 +355,11 @@ static int intel_ipu4_cpd_validate_moduledata(struct intel_ipu4_device *isp,
 		return -EINVAL;
 	}
 
-	if (IA_CSS_FW_PKG_RELEASE != mod_hdr->fw_pkg_date) {
-		dev_err(&isp->pdev->dev,
+	if (IA_CSS_FW_PKG_RELEASE != mod_hdr->fw_pkg_date)
+		dev_warn(&isp->pdev->dev,
 			"Moduledata and library version mismatch (%x != %x)\n",
 			mod_hdr->fw_pkg_date, IA_CSS_FW_PKG_RELEASE);
-		return -EINVAL;
-	}
+
 
 	dev_info(&isp->pdev->dev, "CSS release: %x\n", IA_CSS_FW_PKG_RELEASE);
 
