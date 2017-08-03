@@ -1,6 +1,6 @@
 /**
 * Support for Intel Camera Imaging ISP subsystem.
-* Copyright (c) 2010 - 2016, Intel Corporation.
+* Copyright (c) 2010 - 2017, Intel Corporation.
 *
 * This program is free software; you can redistribute it and/or modify it
 * under the terms and conditions of the GNU General Public License,
@@ -12,8 +12,8 @@
 * more details.
 */
 
-#ifndef _IA_CSS_XMEM_CMEM_IMPL_H_
-#define _IA_CSS_XMEM_CMEM_IMPL_H_
+#ifndef __IA_CSS_XMEM_CMEM_IMPL_H
+#define __IA_CSS_XMEM_CMEM_IMPL_H
 
 #include "ia_css_xmem_cmem.h"
 
@@ -76,4 +76,4 @@ ia_css_cmem_to_xmem_copy(
 }
 
 
-#endif /* _IA_CSS_XMEM_CMEM_IMPLH_ */
+#endif /* __IA_CSS_XMEM_CMEM_IMPL_H */
