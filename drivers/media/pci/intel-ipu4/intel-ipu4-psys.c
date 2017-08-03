@@ -482,8 +482,7 @@ static void intel_ipu4_dma_buf_release(struct dma_buf *buf)
 	kfree(kbuf);
 }
 
-int intel_ipu4_dma_buf_begin_cpu_access(struct dma_buf *dma_buf, size_t start,
-					size_t len, enum dma_data_direction dir)
+int intel_ipu4_dma_buf_begin_cpu_access(struct dma_buf *buf, enum dma_data_direction dir)
 {
 	return -ENOTTY;
 }
