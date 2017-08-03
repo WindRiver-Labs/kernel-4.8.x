@@ -1,6 +1,6 @@
 /**
 * Support for Intel Camera Imaging ISP subsystem.
-* Copyright (c) 2010 - 2016, Intel Corporation.
+* Copyright (c) 2010 - 2017, Intel Corporation.
 *
 * This program is free software; you can redistribute it and/or modify it
 * under the terms and conditions of the GNU General Public License,
@@ -52,7 +52,7 @@ int ia_css_client_pkg_get_prog_desc_entry_offset_size(
 	uint32_t *offset,
 	uint32_t *size);
 
-#ifdef _INLINE_CLIENT_PKG_
+#ifdef __INLINE_CLIENT_PKG__
 #include "ia_css_client_pkg_impl.h"
 #endif
 
