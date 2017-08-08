@@ -2800,27 +2800,12 @@ static int skl_tplg_fill_pipe_tkn(struct device *dev,
 		pipe->lp_mode = tkn_val;
 		break;
 
-	case SKL_TKN_U32_PIPE_CREATE_PRIORITY:
-		pipe->create_priority = tkn_val;
-		break;
-
 	case SKL_TKN_U32_PIPE_DIRECTION:
 		pipe->direction = tkn_val;
 		break;
 
-	case SKL_TKN_U32_PIPE_ORDER:
-		pipe->order = tkn_val;
-		break;
-
-	case SKL_TKN_U32_PIPE_MODE:
-		pipe->pipe_mode = tkn_val;
-		break;
-
 	case SKL_TKN_U32_NUM_CONFIGS:
 		pipe->nr_cfgs = tkn_val;
-		break;
-
-	case SKL_TKN_U32_PIPE_NUM_MODULES:
 		break;
 
 	default:
@@ -3102,14 +3087,6 @@ static int skl_tplg_fill_res_tkn(struct device *dev,
 		res->cpc = tkn_elem->value;
 		break;
 
-	case SKL_TKN_MM_U32_MOD_FLAGS:
-		res->mod_flags = tkn_elem->value;
-		break;
-
-	case SKL_TKN_MM_U32_OBLS:
-		res->obls = tkn_elem->value;
-		break;
-
 	case SKL_TKN_U32_MEM_PAGES:
 		res->is_pages = tkn_elem->value;
 		break;
@@ -3132,9 +3109,6 @@ static int skl_tplg_fill_res_tkn(struct device *dev,
 				tkn_elem, res, pin_idx, dir);
 		if (ret < 0)
 			return ret;
-		break;
-
-	case SKL_TKN_MM_U32_NUM_PIN:
 		break;
 
 	default:
@@ -3292,11 +3266,7 @@ static int skl_tplg_get_token(struct device *dev,
 	case SKL_TKN_U32_PIPE_PRIORITY:
 	case SKL_TKN_U32_PIPE_MEM_PGS:
 	case SKL_TKN_U32_PMODE:
-	case SKL_TKN_U32_PIPE_CREATE_PRIORITY:
 	case SKL_TKN_U32_PIPE_DIRECTION:
-	case SKL_TKN_U32_PIPE_ORDER:
-	case SKL_TKN_U32_PIPE_MODE:
-	case SKL_TKN_U32_PIPE_NUM_MODULES:
 	case SKL_TKN_U32_NUM_CONFIGS:
 		if (!is_pipe_exists) {
 			ret = skl_tplg_fill_pipe_tkn(dev, mconfig->pipe,
@@ -3788,8 +3758,7 @@ static int skl_tplg_fill_str_mfest_tkn(struct device *dev,
 		struct skl *skl)
 {
 	int tkn_count = 0;
-	static int ref_count, mod_count;
-	struct skl_module *mod;
+	static int ref_count;
 
 	switch (str_elem->token) {
 	case SKL_TKN_STR_LIB_NAME:
@@ -3802,18 +3771,6 @@ static int skl_tplg_fill_str_mfest_tkn(struct device *dev,
 			str_elem->string,
 			ARRAY_SIZE(skl->skl_sst->lib_info[ref_count].name));
 		ref_count++;
-		break;
-
-	case SKL_TKN_STR_MOD_LIB_NAME:
-		if (mod_count > skl->nr_modules - 1) {
-			mod_count = 0;
-			return -EINVAL;
-		}
-
-		mod = skl->modules[mod_count];
-		mod->library_name = devm_kstrdup(dev, str_elem->string,
-								GFP_KERNEL);
-		mod_count++;
 		break;
 
 	default:
@@ -3972,15 +3929,8 @@ static int skl_tplg_fill_mod_info(struct device *dev,
 		mod->max_output_pins = tkn_elem->value;
 		break;
 
-	case SKL_TKN_MM_U8_AUTO_START:
-		mod->auto_start = tkn_elem->value;
-		break;
-
 	case SKL_TKN_MM_U8_MAX_INST_COUNT:
 		mod->max_instance_count = tkn_elem->value;
-		break;
-
-	case SKL_TKN_MM_U8_MAX_PINS:
 		break;
 
 	case SKL_TKN_MM_U8_NUM_RES:
@@ -4005,7 +3955,7 @@ static int skl_tplg_get_int_tkn(struct device *dev,
 		struct skl *skl)
 {
 	int tkn_count = 0, ret;
-	static int mod_idx, res_val_idx, intf_val_idx, dir, lib_idx, pin_idx;
+	static int mod_idx, res_val_idx, intf_val_idx, dir, pin_idx;
 	struct skl_module_res *res = NULL;
 	struct skl_module_intf *fmt = NULL;
 	struct skl_module *mod = NULL;
@@ -4026,10 +3976,6 @@ static int skl_tplg_get_int_tkn(struct device *dev,
 		skl->conf_version = tkn_elem->value;
 		break;
 
-	case SKL_TKN_U8_LIB_IDX:
-		lib_idx = tkn_elem->value;
-		break;
-
 	case SKL_TKN_U8_NUM_MOD:
 		skl->nr_modules = tkn_elem->value;
 		skl->modules = devm_kcalloc(dev, skl->nr_modules,
@@ -4047,39 +3993,6 @@ static int skl_tplg_get_int_tkn(struct device *dev,
 		}
 		break;
 
-	case SKL_TKN_U8_PRE_LOAD_PGS:
-		skl->skl_sst->lib_info[lib_idx].pre_load_pgs = tkn_elem->value;
-		break;
-
-	case SKL_TKN_U8_NR_MODS:
-		skl->skl_sst->lib_info[lib_idx].man_nr_modules = tkn_elem->value;
-		break;
-
-	case SKL_TKN_MM_U8_BINARY_TYPE:
-		skl->skl_sst->lib_info[lib_idx].binary_type = tkn_elem->value;
-		break;
-
-	case SKL_TKN_U32_SCH_TYPE:
-	case SKL_TKN_U32_SCH_TICK_MUL:
-	case SKL_TKN_U32_SCH_TICK_DIV:
-	case SKL_TKN_U32_SCH_LL_SRC:
-	case SKL_TKN_U32_SCH_NUM_CONF:
-	case SKL_TKN_U32_SCH_NODE_INFO:
-	case SKL_TKN_U32_MEM_STAT_RECLAIM:
-	case SKL_TKN_U32_MAN_CFG_IDX:
-	case SKL_TKN_U32_DMA_MIN_SIZE:
-	case SKL_TKN_U32_DMA_MAX_SIZE:
-		break;
-
-	case SKL_TKN_U8_MAJOR_VER:
-	case SKL_TKN_U8_HOTFIX_VER:
-	case SKL_TKN_U8_MINOR_VER:
-	case SKL_TKN_MM_U8_MAJOR_VER:
-	case SKL_TKN_MM_U8_HOTFIX_VER:
-	case SKL_TKN_MM_U8_MINOR_VER:
-	case SKL_TKN_MM_U8_BUILD_VER:
-		break;
-
 	case SKL_TKN_MM_U8_MOD_IDX:
 		mod_idx = tkn_elem->value;
 		break;
@@ -4088,9 +4001,7 @@ static int skl_tplg_get_int_tkn(struct device *dev,
 	case SKL_TKN_U8_OUT_PIN_TYPE:
 	case SKL_TKN_U8_IN_QUEUE_COUNT:
 	case SKL_TKN_U8_OUT_QUEUE_COUNT:
-	case SKL_TKN_MM_U8_AUTO_START:
 	case SKL_TKN_MM_U8_MAX_INST_COUNT:
-	case SKL_TKN_MM_U8_MAX_PINS:
 	case SKL_TKN_MM_U8_NUM_RES:
 	case SKL_TKN_MM_U8_NUM_INTF:
 		ret = skl_tplg_fill_mod_info(dev, tkn_elem, mod);
@@ -4122,14 +4033,11 @@ static int skl_tplg_get_int_tkn(struct device *dev,
 	case SKL_TKN_MM_U32_CPS:
 	case SKL_TKN_MM_U32_DMA_SIZE:
 	case SKL_TKN_MM_U32_CPC:
-	case SKL_TKN_MM_U32_MOD_FLAGS:
-	case SKL_TKN_MM_U32_OBLS:
 	case SKL_TKN_U32_MEM_PAGES:
 	case SKL_TKN_U32_OBS:
 	case SKL_TKN_U32_IBS:
 	case SKL_TKN_MM_U32_RES_PIN_ID:
 	case SKL_TKN_MM_U32_PIN_BUF:
-	case SKL_TKN_MM_U32_NUM_PIN:
 		ret = skl_tplg_fill_res_tkn(dev, tkn_elem, res,
 				pin_idx, dir);
 		if (ret < 0)
