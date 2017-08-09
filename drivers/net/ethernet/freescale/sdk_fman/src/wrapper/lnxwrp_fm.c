@@ -979,17 +979,6 @@ static t_Error InitFmDev(t_LnxWrpFmDev  *p_LnxWrpFmDev)
                    fw->microcode[0].revision));
     }
 
-#ifdef CONFIG_FMAN_ARM
-	{ /* endianness adjustments: byteswap the ucode retrieved from the f/w blob */
-		int i;
-		int usz = p_LnxWrpFmDev->fmDevSettings.param.firmware.size;
-		void * p_Code = p_LnxWrpFmDev->fmDevSettings.param.firmware.p_Code;
-
-		for(i=0; i < usz / 4; ++i)
-			((u32 *)p_Code)[i] = be32_to_cpu(((u32 *)p_Code)[i]);
-	}
-#endif
-
     p_LnxWrpFmDev->fmDevSettings.param.h_FmMuram = p_LnxWrpFmDev->h_MuramDev;
 
 #if (DPAA_VERSION >= 11)
