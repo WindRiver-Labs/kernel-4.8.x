@@ -695,6 +695,7 @@ struct qman_portal *qman_create_portal(
 	portal->pdev->dev.coherent_dma_mask = DMA_BIT_MASK(40);
 	portal->pdev->dev.dma_mask = &portal->pdev->dev.coherent_dma_mask;
 #else
+	arch_setup_dma_ops(&portal->pdev->dev, 0, 0, NULL, false);
 	if (dma_set_mask(&portal->pdev->dev, DMA_BIT_MASK(40))) {
 		pr_err("qman_portal - dma_set_mask() failed\n");
 		goto fail_devadd;
