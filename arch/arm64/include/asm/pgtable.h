@@ -350,7 +350,7 @@ static inline int pmd_protnone(pmd_t pmd)
 	__pgprot(pgprot_val(pgprot_cached(prot)) & ~PTE_SHARED)
 #define pgprot_device(prot) \
 	__pgprot_modify(prot, PTE_ATTRINDX_MASK, PTE_ATTRINDX(MT_DEVICE_nGnRE) | PTE_PXN | PTE_UXN)
-#define PROT_NORMAL_NS		(PTE_TYPE_PAGE | PTE_AF | PTE_PXN | PTE_UXN | \
+#define PROT_NORMAL_NS		(PTE_TYPE_PAGE | PTE_AF | PTE_PXN | PTE_UXN | PTE_DIRTY | PTE_WRITE | \
 				 PTE_ATTRINDX(MT_NORMAL))
 #define __HAVE_PHYS_MEM_ACCESS_PROT
 struct file;
