@@ -3443,7 +3443,18 @@ t_Handle FM_Config(t_FmParams *p_FmParam)
             REPORT_ERROR(MAJOR, E_NO_MEMORY, ("FM firmware code"));
             return NULL;
         }
-        memcpy(p_Fm->firmware.p_Code, p_FmParam->firmware.p_Code ,p_Fm->firmware.size);
+	#ifdef CONFIG_FMAN_ARM
+	{ 	/* endianness adjustments: byteswap the ucode retrieved from the f/w blob */
+		int i;
+		int usz = p_FmParam->firmware.size;
+		void * p_Code = p_FmParam->firmware.p_Code;
+
+		for(i=0; i < usz / 4; ++i)
+			((u32 *)(p_Fm->firmware.p_Code))[i] = be32_to_cpu(((u32 *)p_Code)[i]);
+	}
+	#else
+	memcpy(p_Fm->firmware.p_Code, p_FmParam->firmware.p_Code ,p_Fm->firmware.size);
+	#endif
     }
 
     if (p_Fm->guestId != NCSW_MASTER_ID)
