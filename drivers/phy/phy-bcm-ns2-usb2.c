@@ -24,6 +24,9 @@
 
 #define USB2H_IDM_IDM_RESET_CONTROL__RESET 0
 #define USB2H_IDM_IDM_IO_CONTROL_DIRECT__clk_enable 0
+#define USB2H_IDM_IDM_IO_CONTROL_DIRECT_l1_sleepm_override     BIT(15)
+#define USB2H_IDM_IDM_IO_CONTROL_DIRECT_l1_suspendm_override   BIT(14)
+#define USB2H_IDM_IDM_IO_CONTROL_DIRECT_l2_suspendm_override   BIT(13)
 #define USB2H_Ohci_Ehci_Strap__ohci_app_port_ovrcur_pol 11
 #define USB2H_Ohci_Ehci_Strap__ppc_inversion 12
 #define ICFG_USB2H_PHY_MISC_STATUS_PLLLOCK    0
@@ -149,12 +152,29 @@ static int bcm_phy_init(struct phy *phy)
 			(0x3 << USB2H_Phy_Ctrl_P0__PHY_Test_port_UTMI_Pwr_Dn) |
 			(0x3 << USB2H_Phy_Ctrl_P0__PHY_PLL_Pwr_Dn)),
 		iphy->phy_ctrl_p0);
+
+       /*
+        * USB PHY Sleep and Suspend override.
+        * Single PHY is used for EHCI and OHCI controller.
+        * If EHCI controller goes to suspend, PHY also enters to
+        * Suspend. By that time OHCI controller might be still active.
+        * If OHCI Controller tries to enters to suspend, kernel crash
+        * is observed.
+        * The following settings overwrites the Controller UTMI suspend and
+        * sleep signals going to PHY.
+        */
+       reg_data = readl(iphy->idm_io_ctl_direct);
+       reg_data |= USB2H_IDM_IDM_IO_CONTROL_DIRECT_l1_sleepm_override;
+       reg_data |= USB2H_IDM_IDM_IO_CONTROL_DIRECT_l1_suspendm_override;
+       reg_data |= USB2H_IDM_IDM_IO_CONTROL_DIRECT_l2_suspendm_override;
+       writel(reg_data, iphy->idm_io_ctl_direct);
+
 	return 0;
 }
 
 static struct phy_ops ops = {
 	.init		= bcm_phy_init,
-	.power_off	= ns2_usb2_phy_shutdown,
+	.exit		= ns2_usb2_phy_shutdown,
 };
 
 static int bcm_phy_probe(struct platform_device *pdev)
