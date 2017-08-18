@@ -28,6 +28,7 @@
 #include <asm/insn.h>
 #include <asm/io.h>
 #include <asm/intel_pt.h>
+#include <asm/intel-family.h>
 
 #include "../perf_event.h"
 #include "pt.h"
@@ -35,13 +36,6 @@
 static DEFINE_PER_CPU(struct pt, pt_ctx);
 
 static struct pt_pmu pt_pmu;
-
-enum cpuid_regs {
-	CR_EAX = 0,
-	CR_ECX,
-	CR_EDX,
-	CR_EBX
-};
 
 /*
  * Capabilities of Intel PT hardware, such as number of address bits or
@@ -64,19 +58,21 @@ static struct pt_cap_desc {
 	u8		reg;
 	u32		mask;
 } pt_caps[] = {
-	PT_CAP(max_subleaf,		0, CR_EAX, 0xffffffff),
-	PT_CAP(cr3_filtering,		0, CR_EBX, BIT(0)),
-	PT_CAP(psb_cyc,			0, CR_EBX, BIT(1)),
-	PT_CAP(ip_filtering,		0, CR_EBX, BIT(2)),
-	PT_CAP(mtc,			0, CR_EBX, BIT(3)),
-	PT_CAP(topa_output,		0, CR_ECX, BIT(0)),
-	PT_CAP(topa_multiple_entries,	0, CR_ECX, BIT(1)),
-	PT_CAP(single_range_output,	0, CR_ECX, BIT(2)),
-	PT_CAP(payloads_lip,		0, CR_ECX, BIT(31)),
-	PT_CAP(num_address_ranges,	1, CR_EAX, 0x3),
-	PT_CAP(mtc_periods,		1, CR_EAX, 0xffff0000),
-	PT_CAP(cycle_thresholds,	1, CR_EBX, 0xffff),
-	PT_CAP(psb_periods,		1, CR_EBX, 0xffff0000),
+	PT_CAP(max_subleaf,		0, CPUID_EAX, 0xffffffff),
+	PT_CAP(cr3_filtering,		0, CPUID_EBX, BIT(0)),
+	PT_CAP(psb_cyc,			0, CPUID_EBX, BIT(1)),
+	PT_CAP(ip_filtering,		0, CPUID_EBX, BIT(2)),
+	PT_CAP(mtc,			0, CPUID_EBX, BIT(3)),
+	PT_CAP(ptwrite,			0, CPUID_EBX, BIT(4)),
+	PT_CAP(power_event_trace,	0, CPUID_EBX, BIT(5)),
+	PT_CAP(topa_output,		0, CPUID_ECX, BIT(0)),
+	PT_CAP(topa_multiple_entries,	0, CPUID_ECX, BIT(1)),
+	PT_CAP(single_range_output,	0, CPUID_ECX, BIT(2)),
+	PT_CAP(payloads_lip,		0, CPUID_ECX, BIT(31)),
+	PT_CAP(num_address_ranges,	1, CPUID_EAX, 0x3),
+	PT_CAP(mtc_periods,		1, CPUID_EAX, 0xffff0000),
+	PT_CAP(cycle_thresholds,	1, CPUID_EBX, 0xffff),
+	PT_CAP(psb_periods,		1, CPUID_EBX, 0xffff0000),
 };
 
 static u32 pt_cap_get(enum pt_capabilities cap)
@@ -103,19 +99,23 @@ static struct attribute_group pt_cap_group = {
 	.name	= "caps",
 };
 
+PMU_FORMAT_ATTR(pt,		"config:0"	);
 PMU_FORMAT_ATTR(cyc,		"config:1"	);
 PMU_FORMAT_ATTR(mtc,		"config:9"	);
 PMU_FORMAT_ATTR(tsc,		"config:10"	);
 PMU_FORMAT_ATTR(noretcomp,	"config:11"	);
+PMU_FORMAT_ATTR(branch,		"config:13"	);
 PMU_FORMAT_ATTR(mtc_period,	"config:14-17"	);
 PMU_FORMAT_ATTR(cyc_thresh,	"config:19-22"	);
 PMU_FORMAT_ATTR(psb_period,	"config:24-27"	);
 
 static struct attribute *pt_formats_attr[] = {
+	&format_attr_pt.attr,
 	&format_attr_cyc.attr,
 	&format_attr_mtc.attr,
 	&format_attr_tsc.attr,
 	&format_attr_noretcomp.attr,
+	&format_attr_branch.attr,
 	&format_attr_mtc_period.attr,
 	&format_attr_cyc_thresh.attr,
 	&format_attr_psb_period.attr,
@@ -196,6 +196,19 @@ static int __init pt_pmu_hw_init(void)
 		pt_pmu.tsc_art_den = eax;
 	}
 
+	/* model-specific quirks */
+	switch (boot_cpu_data.x86_model) {
+	case INTEL_FAM6_BROADWELL_CORE:
+	case INTEL_FAM6_BROADWELL_XEON_D:
+	case INTEL_FAM6_BROADWELL_GT3E:
+	case INTEL_FAM6_BROADWELL_X:
+		/* not setting BRANCH_EN will #GP, erratum BDM106 */
+		pt_pmu.branch_en_always_on = true;
+		break;
+	default:
+		break;
+	}
+
 	if (boot_cpu_has(X86_FEATURE_VMX)) {
 		/*
 		 * Intel SDM, 36.5 "Tracing post-VMXON" says that
@@ -211,10 +224,10 @@ static int __init pt_pmu_hw_init(void)
 
 	for (i = 0; i < PT_CPUID_LEAVES; i++) {
 		cpuid_count(20, i,
-			    &pt_pmu.caps[CR_EAX + i*PT_CPUID_REGS_NUM],
-			    &pt_pmu.caps[CR_EBX + i*PT_CPUID_REGS_NUM],
-			    &pt_pmu.caps[CR_ECX + i*PT_CPUID_REGS_NUM],
-			    &pt_pmu.caps[CR_EDX + i*PT_CPUID_REGS_NUM]);
+			    &pt_pmu.caps[CPUID_EAX + i*PT_CPUID_REGS_NUM],
+			    &pt_pmu.caps[CPUID_EBX + i*PT_CPUID_REGS_NUM],
+			    &pt_pmu.caps[CPUID_ECX + i*PT_CPUID_REGS_NUM],
+			    &pt_pmu.caps[CPUID_EDX + i*PT_CPUID_REGS_NUM]);
 	}
 
 	ret = -ENOMEM;
@@ -259,10 +272,28 @@ fail:
 #define RTIT_CTL_MTC	(RTIT_CTL_MTC_EN	| \
 			 RTIT_CTL_MTC_RANGE)
 
-#define PT_CONFIG_MASK (RTIT_CTL_TSC_EN		| \
+#define RTIT_CTL_PTW	(RTIT_CTL_PTW_EN	| \
+			 RTIT_CTL_FUP_ON_PTW)
+
+/*
+ * Bit 0 (TraceEn) in the attr.config is meaningless as the
+ * corresponding bit in the RTIT_CTL can only be controlled
+ * by the driver; therefore, repurpose it to mean: pass
+ * through the bit that was previously assumed to be always
+ * on for PT, thereby allowing the user to *not* set it if
+ * they so wish. See also pt_event_valid() and pt_config().
+ */
+#define RTIT_CTL_PASSTHROUGH RTIT_CTL_TRACEEN
+
+#define PT_CONFIG_MASK (RTIT_CTL_TRACEEN	| \
+			RTIT_CTL_TSC_EN		| \
 			RTIT_CTL_DISRETC	| \
+			RTIT_CTL_BRANCH_EN	| \
 			RTIT_CTL_CYC_PSB	| \
-			RTIT_CTL_MTC)
+			RTIT_CTL_MTC		| \
+			RTIT_CTL_PWR_EVT_EN	| \
+			RTIT_CTL_FUP_ON_PTW	| \
+			RTIT_CTL_PTW_EN)
 
 static bool pt_event_valid(struct perf_event *event)
 {
@@ -308,6 +339,47 @@ static bool pt_event_valid(struct perf_event *event)
 			RTIT_CTL_MTC_RANGE_OFFSET;
 
 		if (!(allowed & BIT(requested)))
+			return false;
+	}
+
+	if (config & RTIT_CTL_PWR_EVT_EN &&
+	    !pt_cap_get(PT_CAP_power_event_trace))
+		return false;
+
+	if (config & RTIT_CTL_PTW) {
+		if (!pt_cap_get(PT_CAP_ptwrite))
+			return false;
+
+		/* FUPonPTW without PTW doesn't make sense */
+		if ((config & RTIT_CTL_FUP_ON_PTW) &&
+		    !(config & RTIT_CTL_PTW_EN))
+			return false;
+	}
+
+	/*
+	 * Setting bit 0 (TraceEn in RTIT_CTL MSR) in the attr.config
+	 * clears the assomption that BranchEn must always be enabled,
+	 * as was the case with the first implementation of PT.
+	 * If this bit is not set, the legacy behavior is preserved
+	 * for compatibility with the older userspace.
+	 *
+	 * Re-using bit 0 for this purpose is fine because it is never
+	 * directly set by the user; previous attempts at setting it in
+	 * the attr.config resulted in -EINVAL.
+	 */
+	if (config & RTIT_CTL_PASSTHROUGH) {
+		/*
+		 * Disallow not setting BRANCH_EN where BRANCH_EN is
+		 * always required.
+		 */
+		if (pt_pmu.branch_en_always_on &&
+		    !(config & RTIT_CTL_BRANCH_EN))
+			return false;
+	} else {
+		/*
+		 * Disallow BRANCH_EN without the PASSTHROUGH.
+		 */
+		if (config & RTIT_CTL_BRANCH_EN)
 			return false;
 	}
 
@@ -398,7 +470,20 @@ static void pt_config(struct perf_event *event)
 	}
 
 	reg = pt_config_filters(event);
-	reg |= RTIT_CTL_TOPA | RTIT_CTL_BRANCH_EN | RTIT_CTL_TRACEEN;
+	reg |= RTIT_CTL_TOPA | RTIT_CTL_TRACEEN;
+
+	/*
+	 * Previously, we had BRANCH_EN on by default, but now that PT has
+	 * grown features outside of branch tracing, it is useful to allow
+	 * the user to disable it. Setting bit 0 in the event's attr.config
+	 * allows BRANCH_EN to pass through instead of being always on. See
+	 * also the comment in pt_event_valid().
+	 */
+	if (event->attr.config & BIT(0)) {
+		reg |= event->attr.config & RTIT_CTL_BRANCH_EN;
+	} else {
+		reg |= RTIT_CTL_BRANCH_EN;
+	}
 
 	if (!event->attr.exclude_kernel)
 		reg |= RTIT_CTL_OS;
