@@ -190,11 +190,18 @@
 
 #define X86_FEATURE_CPB		( 7*32+ 2) /* AMD Core Performance Boost */
 #define X86_FEATURE_EPB		( 7*32+ 3) /* IA32_ENERGY_PERF_BIAS support */
+#define X86_FEATURE_CAT_L3	( 7*32+ 4) /* Cache Allocation Technology L3 */
+#define X86_FEATURE_CAT_L2	( 7*32+ 5) /* Cache Allocation Technology L2 */
+#define X86_FEATURE_CDP_L3	( 7*32+ 6) /* Code and Data Prioritization L3 */
 
 #define X86_FEATURE_HW_PSTATE	( 7*32+ 8) /* AMD HW-PState */
 #define X86_FEATURE_PROC_FEEDBACK ( 7*32+ 9) /* AMD ProcFeedbackInterface */
 
 #define X86_FEATURE_INTEL_PT	( 7*32+15) /* Intel Processor Trace */
+#define X86_FEATURE_AVX512_4VNNIW (7*32+16) /* AVX-512 Neural Network Instructions */
+#define X86_FEATURE_AVX512_4FMAPS (7*32+17) /* AVX-512 Multiply Accumulation Single precision */
+
+#define X86_FEATURE_MBA         ( 7*32+18) /* Memory Bandwidth Allocation */
 
 /* Virtualization flags: Linux defined, word 8 */
 #define X86_FEATURE_TPR_SHADOW  ( 8*32+ 0) /* Intel TPR Shadow */
@@ -220,6 +227,7 @@
 #define X86_FEATURE_RTM		( 9*32+11) /* Restricted Transactional Memory */
 #define X86_FEATURE_CQM		( 9*32+12) /* Cache QoS Monitoring */
 #define X86_FEATURE_MPX		( 9*32+14) /* Memory Protection Extension */
+#define X86_FEATURE_RDT_A	( 9*32+15) /* Resource Director Technology Allocation */
 #define X86_FEATURE_AVX512F	( 9*32+16) /* AVX-512 Foundation */
 #define X86_FEATURE_AVX512DQ	( 9*32+17) /* AVX-512 DQ (Double/Quad granular) Instructions */
 #define X86_FEATURE_RDSEED	( 9*32+18) /* The RDSEED instruction */
