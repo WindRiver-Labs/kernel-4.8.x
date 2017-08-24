@@ -115,6 +115,7 @@ static void mpc85xx_take_timebase(void)
 	local_irq_restore(flags);
 }
 
+extern void _tlbil_all(void);
 static void smp_85xx_mach_cpu_die(void)
 {
 	unsigned int cpu = smp_processor_id();
@@ -132,6 +133,7 @@ static void smp_85xx_mach_cpu_die(void)
 	generic_set_cpu_dead(cpu);
 
 	cur_cpu_spec->cpu_down_flush();
+	_tlbil_all();
 
 	qoriq_pm_ops->cpu_die(cpu);
 
