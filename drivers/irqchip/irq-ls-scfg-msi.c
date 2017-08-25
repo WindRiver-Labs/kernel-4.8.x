@@ -429,7 +429,7 @@ _err:
 	return err;
 }
 
-static int __init ls_scfg_msi_probe(struct platform_device *pdev)
+static int ls_scfg_msi_probe(struct platform_device *pdev)
 {
 	struct ls_scfg_msi *msi_data;
 	const struct soc_device_attribute *match;

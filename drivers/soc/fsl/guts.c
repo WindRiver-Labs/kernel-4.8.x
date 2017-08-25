@@ -136,7 +136,7 @@ u32 fsl_guts_get_svr(void)
 }
 EXPORT_SYMBOL(fsl_guts_get_svr);
 
-static int fsl_guts_probe(struct platform_device *pdev)
+static int __init fsl_guts_probe(struct platform_device *pdev)
 {
 	struct device_node *np = pdev->dev.of_node;
 	const struct fsl_soc_die_attr *soc_die;
@@ -231,7 +231,7 @@ static const struct of_device_id fsl_guts_of_match[] = {
 };
 MODULE_DEVICE_TABLE(of, fsl_guts_of_match);
 
-static struct platform_driver fsl_guts_driver = {
+static struct platform_driver __refdata fsl_guts_driver = {
 	.driver = {
 		.name = "fsl-guts",
 		.of_match_table = fsl_guts_of_match,
