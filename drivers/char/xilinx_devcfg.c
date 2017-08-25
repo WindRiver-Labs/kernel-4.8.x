@@ -29,8 +29,6 @@
 #include <linux/types.h>
 #include <linux/uaccess.h>
 
-#include <mach/slcr.h>
-
 #define DRIVER_NAME "xdevcfg"
 #define XDEVCFG_DEVICES 1
 
@@ -1887,7 +1885,7 @@ static void xdevcfg_fclk_remove(struct device *dev)
  */
 static int xdevcfg_drv_probe(struct platform_device *pdev)
 {
-	struct resource *regs_res, *irq_res;
+	struct resource *res;
 	struct xdevcfg_drvdata *drvdata;
 	dev_t devt;
 	int retval;
@@ -1965,9 +1963,9 @@ static int xdevcfg_drv_probe(struct platform_device *pdev)
 	 *  - Set the CPU in user mode
 	 */
 	ctrlreg = xdevcfg_readreg(drvdata->base_address + XDCFG_CTRL_OFFSET);
-+	ctrlreg &= ~XDCFG_CTRL_PCAP_PR_MASK;
-+	ctrlreg |= XDCFG_CTRL_PCFG_PROG_B_MASK | XDCFG_CTRL_PCAP_MODE_MASK;
-+	xdevcfg_writereg(drvdata->base_address + XDCFG_CTRL_OFFSET, ctrlreg);
+	ctrlreg &= ~XDCFG_CTRL_PCAP_PR_MASK;
+	ctrlreg |= XDCFG_CTRL_PCFG_PROG_B_MASK | XDCFG_CTRL_PCAP_MODE_MASK;
+	xdevcfg_writereg(drvdata->base_address + XDCFG_CTRL_OFFSET, ctrlreg);
 
 	/* Ensure internal PCAP loopback is disabled */
 	ctrlreg = xdevcfg_readreg(drvdata->base_address + XDCFG_MCTRL_OFFSET);
@@ -2021,10 +2019,10 @@ failed8:
 failed7:
 	class_destroy(drvdata->class);
 failed6:
-failed5:
-	clk_disable_unprepare(drvdata->clk);
 	/* Unregister char driver */
 	unregister_chrdev_region(devt, XDEVCFG_DEVICES);
+failed5:
+	clk_disable_unprepare(drvdata->clk);
 
 	return retval;
 }
@@ -2040,7 +2038,6 @@ failed5:
 static int xdevcfg_drv_remove(struct platform_device *pdev)
 {
 	struct xdevcfg_drvdata *drvdata;
-	struct resource *res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 
 	drvdata = platform_get_drvdata(pdev);
 
