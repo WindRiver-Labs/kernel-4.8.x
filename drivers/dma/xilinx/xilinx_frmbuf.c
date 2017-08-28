@@ -130,7 +130,6 @@ struct xilinx_frmbuf_tx_descriptor {
  * @idle: Channel idle state
  * @tasklet: Cleanup work after irq
  * @vid_fmt: Reference to currently assigned video format description
- * @chan_config: Video configuration set by DMA client
  */
 struct xilinx_frmbuf_chan {
 	struct xilinx_frmbuf_device *xdev;
@@ -158,6 +157,7 @@ struct xilinx_frmbuf_chan {
  * @common: DMA device structure
  * @chan: Driver specific dma channel
  * @rst_gpio: GPIO reset
+ * @enabled_vid_fmts: Bitmask of video formats enabled in hardware
  */
 struct xilinx_frmbuf_device {
 	void __iomem *regs;
@@ -165,80 +165,102 @@ struct xilinx_frmbuf_device {
 	struct dma_device common;
 	struct xilinx_frmbuf_chan chan;
 	struct gpio_desc *rst_gpio;
+	u32 enabled_vid_fmts;
 };
 
 /**
  * struct xilinx_frmbuf_format_desc
+ * @dts_name: Device tree name for this entry.
  * @id: Format ID
  * @bytes_per_pixel: Bytes per pixel
  * @num_planes: Expected number of plane buffers in framebuffer for this format
  * @drm_fmt: DRM video framework equivalent fourcc code
  * @v4l2_fmt: Video 4 Linux framework equivalent fourcc code
+ * @fmt_bitmask: Flag identifying this format in device-specific "enabled"
+ *	bitmap
  */
 struct xilinx_frmbuf_format_desc {
+	const char *dts_name;
 	unsigned int id;
 	unsigned int bytes_per_pixel;
 	u32 num_planes;
 	u32 drm_fmt;
 	u32 v4l2_fmt;
+	u32 fmt_bitmask;
 };
 
 static const struct xilinx_frmbuf_format_desc xilinx_frmbuf_formats[] = {
-	{
+	{		
+		.dts_name = "xbgr8888",	
 		.id = XILINX_FRMBUF_FMT_RGBX8,
 		.bpp = 4,
 		.num_planes = 1,
 		.drm_fmt = DRM_FORMAT_XBGR8888,
-		.v4l2_fmt = 0
+		.v4l2_fmt = 0,
+		.fmt_bitmask = BIT(0),
 	},
 	{
+		.dts_name = "unsupported",
 		.id = XILINX_FRMBUF_FMT_YUVX8,
 		.bpp = 4,
 		.num_planes = 1,
 		.drm_fmt = 0,
-		.v4l2_fmt = 0
+		.v4l2_fmt = 0,
+		.fmt_bitmask = BIT(1),
 	},
 	{
+		.dts_name = "yuyv",
 		.id = XILINX_FRMBUF_FMT_YUYV8,
 		.bpp = 2,
 		.num_planes = 1,
 		.drm_fmt = DRM_FORMAT_YUYV,
-		.v4l2_fmt = V4L2_PIX_FMT_YUYV
+		.v4l2_fmt = V4L2_PIX_FMT_YUYV,
+		.fmt_bitmask = BIT(2),
 	},
 	{
+		.dts_name = "nv16",
 		.id = XILINX_FRMBUF_FMT_Y_UV8,
 		.bpp = 1,
 		.num_planes = 2,
 		.drm_fmt = DRM_FORMAT_NV16,
-		.v4l2_fmt = V4L2_PIX_FMT_NV16
+		.v4l2_fmt = V4L2_PIX_FMT_NV16,
+		.fmt_bitmask = BIT(3),
 	},
 	{
+		.dts_name = "nv12",
 		.id = XILINX_FRMBUF_FMT_Y_UV8_420,
 		.bpp = 1,
 		.num_planes = 2,
 		.drm_fmt = DRM_FORMAT_NV12,
-		.v4l2_fmt = V4L2_PIX_FMT_NV12
+		.v4l2_fmt = V4L2_PIX_FMT_NV12,
+		.fmt_bitmask = BIT(4),
 	},
 	{
+		.dts_name = "bgr888",
 		.id = XILINX_FRMBUF_FMT_RGB8,
 		.bpp = 3,
 		.num_planes = 1,
 		.drm_fmt = DRM_FORMAT_BGR888,
-		.v4l2_fmt = V4L2_PIX_FMT_RGB24
+		.v4l2_fmt = V4L2_PIX_FMT_RGB24,
+		.fmt_bitmask = BIT(5),
 	},
 	{
+		.dts_name = "unsupported",
 		.id = XILINX_FRMBUF_FMT_YUV8,
 		.bpp = 3,
 		.num_planes = 1,
 		.drm_fmt = 0,
-		.v4l2_fmt = 0
+		.v4l2_fmt = 0,
+		.fmt_bitmask = BIT(6),
 	},
 	{
+		.dts_name = "y8",
 		.id = XILINX_FRMBUF_FMT_Y8,
 		.bpp = 1,
 		.num_planes = 1,
 		.drm_fmt = 0,
-		.v4l2_fmt = V4L2_PIX_FMT_GREY
+		.v4l2_fmt = V4L2_PIX_FMT_GREY,
+		.fmt_bitmask = BIT(7),
 	},
 };
 
@@ -302,38 +324,25 @@ static inline void frmbuf_set(struct xilinx_frmbuf_chan *chan, u32 reg,
 	frmbuf_write(chan, reg, frmbuf_read(chan, reg) | set);
 }
 
-static int xilinx_frmbuf_set_vid_fmt(struct xilinx_frmbuf_chan *chan)
+static int frmbuf_verify_format(struct dma_chan *chan, u32 fourcc, u32 type)
 {
-	struct xilinx_xdma_config *config;
-	int i;
-	u32 fourcc;
-	enum vid_frmwork_type type;
-	struct device *dev = chan->xdev->dev;
+	struct xilinx_frmbuf_chan *xil_chan = to_xilinx_chan(chan);
+	u32 i, sz = ARRAY_SIZE(xilinx_frmbuf_formats);
 
-	config = chan->common.private;
-	if (!config) {
-		dev_err(dev, "Missing dma config in dma_chan obj\n");
-		return -EINVAL;
+	for (i = 0; i < sz; i++) {
+		if ((type == XDMA_DRM &&
+		     fourcc != xilinx_frmbuf_formats[i].drm_fmt) ||
+		   (type == XDMA_V4L2 &&
+		    fourcc != xilinx_frmbuf_formats[i].v4l2_fmt))
+			continue;
+
+		if (!(xilinx_frmbuf_formats[i].fmt_bitmask &
+		      xil_chan->xdev->enabled_vid_fmts))
+			return -EINVAL;
+
+		xil_chan->vid_fmt = &xilinx_frmbuf_formats[i];
+		return 0;
 	}
-
-	type = config->type;
-	fourcc = config->fourcc;
-
-	for (i = 0; i < ARRAY_SIZE(xilinx_frmbuf_formats); i++) {
-		if (type == XDMA_DRM &&
-		    fourcc == xilinx_frmbuf_formats[i].drm_fmt) {
-			chan->vid_fmt = &xilinx_frmbuf_formats[i];
-			return 0;
-		} else if (type == XDMA_V4L2 &&
-			fourcc == xilinx_frmbuf_formats[i].v4l2_fmt) {
-			chan->vid_fmt = &xilinx_frmbuf_formats[i];
-			return 0;
-		}
-	}
-
-	dev_err(dev, "No matching video format for fourcc code = %u\n",
-		config->fourcc);
-
 	return -EINVAL;
 }
 
@@ -712,7 +721,7 @@ xilinx_frmbuf_dma_prep_interleaved(struct dma_chan *dchan,
 	struct xilinx_frmbuf_desc_hw *hw;
 	int bytes_per_pixel;
 
-	if (chan->direction != xt->dir || !chan->vid_fmt->bpp)
+	if (chan->direction != xt->dir || !chan->vid_fmt)
 		goto error;
 
 	if (!xt->numf || !xt->sgl[0].size)
@@ -889,6 +898,9 @@ static int xilinx_frmbuf_probe(struct platform_device *pdev)
 	enum dma_transfer_direction dma_dir;
 	const struct of_device_id *match;
 	int err;
+	u32 i, j;
+	int hw_vid_fmt_cnt;
+	const char *vid_fmts[ARRAY_SIZE(xilinx_frmbuf_formats)];
 
 	xdev = devm_kzalloc(&pdev->dev, sizeof(*xdev), GFP_KERNEL);
 	if (!xdev)
@@ -944,6 +956,32 @@ static int xilinx_frmbuf_probe(struct platform_device *pdev)
 		dev_info(&pdev->dev, "Xilinx AXI frmbuf DMA_MEM_TO_DEV\n");
 	} else {
 		return -EINVAL;
+	}
+
+	/* read supported video formats and update internal table */
+	hw_vid_fmt_cnt = of_property_count_strings(node, "xlnx,vid-formats");
+
+	err = of_property_read_string_array(node, "xlnx,vid-formats",
+					    vid_fmts, hw_vid_fmt_cnt);
+	if (err < 0) {
+		dev_err(&pdev->dev,
+			"Missing or invalid xlnx,vid-formats dts prop\n");
+		return err;
+	}
+
+	for (i = 0; i < hw_vid_fmt_cnt; i++) {
+		const char *vid_fmt_name = vid_fmts[i];
+
+		for (j = 0; j < ARRAY_SIZE(xilinx_frmbuf_formats); j++) {
+			const char *dts_name =
+				xilinx_frmbuf_formats[j].dts_name;
+
+			if (strcmp(vid_fmt_name, dts_name))
+				continue;
+
+			xdev->enabled_vid_fmts |=
+				xilinx_frmbuf_formats[j].fmt_bitmask;
+		}
 	}
 
 	xdev->common.device_alloc_chan_resources =
