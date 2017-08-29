@@ -442,8 +442,8 @@ void bman_crash_shutdown(void)
 				dn->full_name);
 			continue;
 		}
-		base = range[0];
-		count = range[1];
+		base = be32_to_cpu(range[0]);
+		count = be32_to_cpu(range[1]);
 
 		for (i = 0; i < count; i++)
 			bman_drain_one_pool(base + i);
