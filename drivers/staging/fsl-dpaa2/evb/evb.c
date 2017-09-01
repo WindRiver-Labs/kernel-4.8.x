@@ -33,6 +33,7 @@
 #include <linux/etherdevice.h>
 #include <linux/rtnetlink.h>
 #include <linux/if_vlan.h>
+#include <linux/msi.h>
 
 #include <uapi/linux/if_bridge.h>
 #include <net/netlink.h>
@@ -43,7 +44,7 @@
 #include "dpdmux-cmd.h"
 
 /* Minimal supported DPDMUX version */
-#define DPDMUX_MIN_VER_MAJOR			5
+#define DPDMUX_MIN_VER_MAJOR			6
 #define DPDMUX_MIN_VER_MINOR			0
 
 /* IRQ index */
@@ -161,7 +162,7 @@ static irqreturn_t _evb_irq0_handler_thread(int irq_num, void *arg)
 	/* Sanity check */
 	if (WARN_ON(!evb_dev || !evb_dev->irqs || !evb_dev->irqs[irq_index]))
 		goto out;
-	if (WARN_ON(evb_dev->irqs[irq_index]->irq_number != irq_num))
+	if (WARN_ON(evb_dev->irqs[irq_index]->msi_desc->irq != irq_num))
 		goto out;
 
 	err = dpdmux_get_irq_status(io, 0, token, irq_index, &status);
@@ -215,7 +216,7 @@ static int evb_setup_irqs(struct fsl_mc_device *evb_dev)
 
 	irq = evb_dev->irqs[irq_index];
 
-	err = devm_request_threaded_irq(dev, irq->irq_number,
+	err = devm_request_threaded_irq(dev, irq->msi_desc->irq,
 					evb_irq0_handler,
 					_evb_irq0_handler_thread,
 					IRQF_NO_SUSPEND | IRQF_ONESHOT,
@@ -242,7 +243,7 @@ static int evb_setup_irqs(struct fsl_mc_device *evb_dev)
 	return 0;
 
 free_devm_irq:
-	devm_free_irq(dev, irq->irq_number, dev);
+	devm_free_irq(dev, irq->msi_desc->irq, dev);
 free_irq:
 	fsl_mc_free_irqs(evb_dev);
 	return err;
@@ -258,7 +259,7 @@ static void evb_teardown_irqs(struct fsl_mc_device *evb_dev)
 			      DPDMUX_IRQ_INDEX_IF, 0);
 
 	devm_free_irq(dev,
-		      evb_dev->irqs[DPDMUX_IRQ_INDEX_IF]->irq_number,
+		      evb_dev->irqs[DPDMUX_IRQ_INDEX_IF]->msi_desc->irq,
 		      dev);
 	fsl_mc_free_irqs(evb_dev);
 }
@@ -460,10 +461,10 @@ static int evb_change_mtu(struct net_device *netdev,
 		return -EINVAL;
 	}
 
-	err = dpdmux_ul_set_max_frame_length(evb_priv->mc_io,
-					    0,
-					    evb_priv->mux_handle,
-					    (uint16_t)mtu);
+	err = dpdmux_set_max_frame_length(evb_priv->mc_io,
+					  0,
+					  evb_priv->mux_handle,
+					  (uint16_t)mtu);
 
 	if (unlikely(err)) {
 		netdev_err(netdev, "dpdmux_ul_set_max_frame_length err %d\n",
@@ -984,6 +985,8 @@ static int evb_init(struct fsl_mc_device *evb_dev)
 	struct device		*dev = &evb_dev->dev;
 	struct net_device	*netdev = dev_get_drvdata(dev);
 	struct evb_priv		*priv = netdev_priv(netdev);
+	u16			version_major;
+	u16			version_minor;
 	int			err = 0;
 
 	priv->dev_id = evb_dev->obj_desc.id;
@@ -1006,12 +1009,20 @@ static int evb_init(struct fsl_mc_device *evb_dev)
 		goto err_close;
 	}
 
+	err = dpdmux_get_api_version(priv->mc_io, 0,
+				     &version_major,
+				     &version_minor);
+	if (unlikely(err)) {
+		dev_err(dev, "dpdmux_get_api_version err %d\n", err);
+		goto err_close;
+	}
+
 	/* Minimum supported DPDMUX version check */
-	if (priv->attr.version.major < DPDMUX_MIN_VER_MAJOR ||
-	    (priv->attr.version.major == DPDMUX_MIN_VER_MAJOR &&
-	     priv->attr.version.minor < DPDMUX_MIN_VER_MINOR)) {
+	if (version_major < DPDMUX_MIN_VER_MAJOR ||
+	    (version_major == DPDMUX_MIN_VER_MAJOR &&
+	     version_minor < DPDMUX_MIN_VER_MINOR)) {
 		dev_err(dev, "DPDMUX version %d.%d not supported. Use %d.%d or greater.\n",
-			priv->attr.version.major, priv->attr.version.minor,
+			version_major, version_minor,
 			DPDMUX_MIN_VER_MAJOR, DPDMUX_MIN_VER_MAJOR);
 		err = -ENOTSUPP;
 		goto err_close;
@@ -1151,7 +1162,7 @@ static int evb_probe(struct fsl_mc_device *evb_dev)
 			}
 
 			rtnl_lock();
-			err = netdev_master_upper_dev_link(port_netdev, netdev);
+			err = netdev_master_upper_dev_link(port_netdev, netdev, NULL, NULL);
 			if (unlikely(err)) {
 				dev_err(dev, "netdev_master_upper_dev_link err %d\n",
 					err);
@@ -1203,12 +1214,10 @@ err_free_netdev:
 	return err;
 }
 
-static const struct fsl_mc_device_match_id evb_match_id_table[] = {
+static const struct fsl_mc_device_id evb_match_id_table[] = {
 	{
 		.vendor = FSL_MC_VENDOR_FREESCALE,
 		.obj_type = "dpdmux",
-		.ver_major = DPDMUX_VER_MAJOR,
-		.ver_minor = DPDMUX_VER_MINOR,
 	},
 	{}
 };

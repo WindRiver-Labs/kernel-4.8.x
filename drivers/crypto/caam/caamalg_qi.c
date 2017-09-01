@@ -2255,6 +2255,7 @@ static int __init caam_qi_algapi_init(void)
 	}
 
 	pdev = of_find_device_by_node(dev_node);
+	of_node_put(dev_node);
 	if (!pdev)
 		return -ENODEV;
 
@@ -2264,9 +2265,8 @@ static int __init caam_qi_algapi_init(void)
 	* If priv is NULL, it's probably because the caam driver wasn't
 	* properly initialized (e.g. RNG4 init failed). Thus, bail out here.
 	*/
-	if (!priv)
+	if (!priv || !priv->qi_present)
 		return -ENODEV;
-	of_node_put(dev_node);
 
 	INIT_LIST_HEAD(&alg_list);
 
@@ -2294,8 +2294,7 @@ static int __init caam_qi_algapi_init(void)
 	}
 
 	if (!list_empty(&alg_list))
-		dev_info(priv->qidev, "%s algorithms registered in /proc/crypto\n",
-			 (char *)of_get_property(dev_node, "compatible", NULL));
+		dev_info(priv->qidev, "algorithms registered in /proc/crypto\n");
 
 	return err;
 }

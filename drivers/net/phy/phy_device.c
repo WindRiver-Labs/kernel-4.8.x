@@ -874,6 +874,9 @@ int phy_attach_direct(struct net_device *dev, struct phy_device *phydev,
 		if (phydev->is_c45)
 			d->driver =
 				&genphy_driver[GENPHY_DRV_10G].mdiodrv.driver;
+		else if (phydev->speed == SPEED_10000)
+			d->driver =
+				&genphy_driver[GENPHY_DRV_10G].mdiodrv.driver;
 		else
 			d->driver =
 				&genphy_driver[GENPHY_DRV_1G].mdiodrv.driver;

@@ -701,7 +701,7 @@ err_disable:
 	return err;
 }
 
-static const struct fsl_mc_device_match_id dpaa2_dpdcei_match_id_table[] = {
+static const struct fsl_mc_device_id dpaa2_dpdcei_match_id_table[] = {
 	{
 		.vendor = FSL_MC_VENDOR_FREESCALE,
 		.obj_type = "dpdcei",

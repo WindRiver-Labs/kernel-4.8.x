@@ -104,27 +104,15 @@ static enum qman_cb_dqrr_result qm_tx_conf_dqrr_cb(struct qman_portal *portal,
 #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
 {
 	/* extract the HC frame address */
-	uint64_t hcf_va = (uint64_t)XX_PhysToVirt(((struct qm_fd *)&dq->fd)->addr);
+	uint32_t *hcf_va = XX_PhysToVirt(qm_fd_addr((struct qm_fd *)&dq->fd));
 	int hcf_l = ((struct qm_fd *)&dq->fd)->length20;
 	int i;
 
 	/* 32b byteswap of all data in the HC Frame */
 	for(i = 0; i < hcf_l / 4; ++i)
-		((uint32_t *)(hcf_va))[i] =
-			___constant_swab32(((uint32_t *)(hcf_va))[i]);
+		hcf_va[i] =
+			___constant_swab32(hcf_va[i]);
 }
-{
-	/* byteswap FD's 40bit address field LE to BE*/
-	uint8_t t;
-
-	t = ((uint8_t*)&dq->fd)[6];
-	((uint8_t*)&dq->fd)[6] = ((uint8_t*)&dq->fd)[5];
-	((uint8_t*)&dq->fd)[5] = ((uint8_t*)&dq->fd)[4];
-	((uint8_t*)&dq->fd)[4] = ((uint8_t*)&dq->fd)[3];
-	((uint8_t*)&dq->fd)[3] = ((uint8_t*)&dq->fd)[7];
-	((uint8_t*)&dq->fd)[7] = t;
-}
-
 #endif
 	FM_PCD_HcTxConf(p_LnxWrpFmDev->h_PcdDev, (t_DpaaFD *)&dq->fd);
 	spin_lock_irqsave(&lock, flags);
@@ -241,26 +229,15 @@ static t_Error QmEnqueueCB(t_Handle h_Arg, void *p_Fd)
 
 #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
 {
-	/* byteswap FD's 40bit address field */
-	uint8_t t;
-
-	t = ((uint8_t*)p_Fd)[7];
-	((uint8_t*)p_Fd)[7] = ((uint8_t*)p_Fd)[3];
-	((uint8_t*)p_Fd)[3] = ((uint8_t*)p_Fd)[4];
-	((uint8_t*)p_Fd)[4] = ((uint8_t*)p_Fd)[5];
-	((uint8_t*)p_Fd)[5] = ((uint8_t*)p_Fd)[6];
-	((uint8_t*)p_Fd)[6] = t;
-}
-{
 	/* extract the HC frame address */
-	uint64_t hcf_va = (uint64_t)XX_PhysToVirt(((struct qm_fd *) p_Fd)->addr);
+	uint32_t *hcf_va = XX_PhysToVirt(qm_fd_addr((struct qm_fd *) p_Fd));
 	int hcf_l = ((struct qm_fd *)p_Fd)->length20;
 	int i;
 
 	/* 32b byteswap of all data in the HC Frame */
 	for(i = 0; i < hcf_l / 4; ++i)
-		((uint32_t *)(hcf_va))[i] =
-			___constant_swab32(((uint32_t *)(hcf_va))[i]);
+		hcf_va[i] =
+			___constant_swab32(hcf_va[i]);
 }
 #endif
 
@@ -1195,7 +1172,7 @@ static t_Error InitFmPcdDev(t_LnxWrpFmDev *p_LnxWrpFmDev)
 			FqAlloc(p_LnxWrpFmDev,
 				0,
 				QMAN_FQ_FLAG_NO_ENQUEUE,
-				p_LnxWrpFmDev->hcCh, 7);
+				p_LnxWrpFmDev->hcCh, 1);
 		if (!p_LnxWrpFmDev->hc_tx_conf_fq)
 			RETURN_ERROR(MAJOR, E_NULL_POINTER,
 				     ("Frame queue allocation failed..."));
@@ -1204,7 +1181,7 @@ static t_Error InitFmPcdDev(t_LnxWrpFmDev *p_LnxWrpFmDev)
 			FqAlloc(p_LnxWrpFmDev,
 				0,
 				QMAN_FQ_FLAG_NO_ENQUEUE,
-				p_LnxWrpFmDev->hcCh, 7);
+				p_LnxWrpFmDev->hcCh, 2);
 		if (!p_LnxWrpFmDev->hc_tx_err_fq)
 			RETURN_ERROR(MAJOR, E_NULL_POINTER,
 				     ("Frame queue allocation failed..."));

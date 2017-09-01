@@ -30,11 +30,13 @@
 #define PORT_PHY3	0xB0
 #define PORT_PHY4	0xB4
 #define PORT_PHY5	0xB8
+#define PORT_AXICC	0xBC
 #define PORT_TRANS	0xC8
 
 /* port register default value */
 #define AHCI_PORT_PHY_1_CFG	0xa003fffe
 #define AHCI_PORT_TRANS_CFG	0x08000029
+#define AHCI_PORT_AXICC_CFG	0x3fffffff
 
 /* for ls1021a */
 #define LS1021A_PORT_PHY2	0x28183414
@@ -51,6 +53,7 @@
 enum ahci_qoriq_type {
 	AHCI_LS1021A,
 	AHCI_LS1043A,
+	AHCI_LS1046A,
 	AHCI_LS2080A,
 };
 
@@ -58,11 +61,13 @@ struct ahci_qoriq_priv {
 	struct ccsr_ahci *reg_base;
 	enum ahci_qoriq_type type;
 	void __iomem *ecc_addr;
+	bool is_dmacoherent;
 };
 
 static const struct of_device_id ahci_qoriq_of_match[] = {
 	{ .compatible = "fsl,ls1021a-ahci", .data = (void *)AHCI_LS1021A},
 	{ .compatible = "fsl,ls1043a-ahci", .data = (void *)AHCI_LS1043A},
+	{ .compatible = "fsl,ls1046a-ahci", .data = (void *)AHCI_LS1046A},
 	{ .compatible = "fsl,ls2080a-ahci", .data = (void *)AHCI_LS2080A},
 	{},
 };
@@ -155,6 +160,8 @@ static int ahci_qoriq_phy_init(struct ahci_host_priv *hpriv)
 
 	switch (qpriv->type) {
 	case AHCI_LS1021A:
+		if (!qpriv->ecc_addr)
+			return -EINVAL;
 		writel(SATA_ECC_DISABLE, qpriv->ecc_addr);
 		writel(AHCI_PORT_PHY_1_CFG, reg_base + PORT_PHY1);
 		writel(LS1021A_PORT_PHY2, reg_base + PORT_PHY2);
@@ -165,9 +172,22 @@ static int ahci_qoriq_phy_init(struct ahci_host_priv *hpriv)
 		break;
 
 	case AHCI_LS1043A:
+		if (!qpriv->ecc_addr)
+			return -EINVAL;
+		writel(0x80000000, qpriv->ecc_addr);
 		writel(AHCI_PORT_PHY_1_CFG, reg_base + PORT_PHY1);
 		writel(LS1043A_PORT_PHY2, reg_base + PORT_PHY2);
 		writel(LS1043A_PORT_PHY3, reg_base + PORT_PHY3);
+		writel(AHCI_PORT_TRANS_CFG, reg_base + PORT_TRANS);
+		if (qpriv->is_dmacoherent)
+			writel(AHCI_PORT_AXICC_CFG, reg_base + PORT_AXICC);
+		break;
+
+	case AHCI_LS1046A:
+		if (!qpriv->ecc_addr)
+			return -EINVAL;
+		writel(0x80000000, qpriv->ecc_addr);
+		writel(AHCI_PORT_PHY_1_CFG, reg_base + PORT_PHY1);
 		writel(AHCI_PORT_TRANS_CFG, reg_base + PORT_TRANS);
 		break;
 
@@ -204,9 +224,9 @@ static int ahci_qoriq_probe(struct platform_device *pdev)
 
 	qoriq_priv->type = (enum ahci_qoriq_type)of_id->data;
 
-	if (qoriq_priv->type == AHCI_LS1021A) {
-		res = platform_get_resource_byname(pdev, IORESOURCE_MEM,
-				"sata-ecc");
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM,
+			"sata-ecc");
+	if (res) {
 		qoriq_priv->ecc_addr = devm_ioremap_resource(dev, res);
 		if (IS_ERR(qoriq_priv->ecc_addr))
 			return PTR_ERR(qoriq_priv->ecc_addr);
@@ -215,6 +235,8 @@ static int ahci_qoriq_probe(struct platform_device *pdev)
 	rc = ahci_platform_enable_resources(hpriv);
 	if (rc)
 		return rc;
+
+	qoriq_priv->is_dmacoherent = of_property_read_bool(np, "dma-coherent");
 
 	hpriv->plat_data = qoriq_priv;
 	rc = ahci_qoriq_phy_init(hpriv);

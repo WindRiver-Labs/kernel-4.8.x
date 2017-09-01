@@ -34,6 +34,30 @@
 #include "../include/dprc.h"
 #include "dprc-cmd.h"
 
+int dprc_get_container_id(struct fsl_mc_io *mc_io,
+			  uint32_t cmd_flags,
+			  int *container_id)
+{
+	struct mc_command cmd = { 0 };
+	int err;
+
+	/* prepare command */
+	cmd.header = mc_encode_cmd_header(DPRC_CMDID_GET_CONT_ID,
+					  cmd_flags,
+					  0);
+
+	/* send command to mc*/
+	err = mc_send_command(mc_io, &cmd);
+	if (err)
+		return err;
+
+	/* retrieve response parameters */
+	*container_id = (int)get_mc_cmd_create_object_id(&cmd);
+
+	return 0;
+}
+EXPORT_SYMBOL(dprc_get_container_id);
+
 /**
  * dprc_open() - Open DPRC object for use
  * @mc_io:	Pointer to MC portal's I/O object
@@ -184,6 +208,7 @@ int dprc_destroy_container(struct fsl_mc_io *mc_io,
 	/* send command to mc*/
 	return mc_send_command(mc_io, &cmd);
 }
+EXPORT_SYMBOL(dprc_destroy_container);
 
 /**
  * dprc_reset_container - Reset child container.
@@ -224,6 +249,7 @@ int dprc_reset_container(struct fsl_mc_io *mc_io,
 	/* send command to mc*/
 	return mc_send_command(mc_io, &cmd);
 }
+EXPORT_SYMBOL(dprc_reset_container);
 
 /**
  * dprc_get_irq() - Get IRQ information from the DPRC.
@@ -270,6 +296,7 @@ int dprc_get_irq(struct fsl_mc_io *mc_io,
 
 	return 0;
 }
+EXPORT_SYMBOL(dprc_get_irq);
 
 /**
  * dprc_set_irq() - Set IRQ information for the DPRC to trigger an interrupt.
@@ -303,6 +330,7 @@ int dprc_set_irq(struct fsl_mc_io *mc_io,
 	/* send command to mc*/
 	return mc_send_command(mc_io, &cmd);
 }
+EXPORT_SYMBOL(dprc_set_irq);
 
 /**
  * dprc_get_irq_enable() - Get overall interrupt state.
@@ -342,6 +370,7 @@ int dprc_get_irq_enable(struct fsl_mc_io *mc_io,
 
 	return 0;
 }
+EXPORT_SYMBOL(dprc_get_irq_enable);
 
 /**
  * dprc_set_irq_enable() - Set overall interrupt state.
@@ -377,6 +406,7 @@ int dprc_set_irq_enable(struct fsl_mc_io *mc_io,
 	/* send command to mc*/
 	return mc_send_command(mc_io, &cmd);
 }
+EXPORT_SYMBOL(dprc_set_irq_enable);
 
 /**
  * dprc_get_irq_mask() - Get interrupt mask.
@@ -419,6 +449,7 @@ int dprc_get_irq_mask(struct fsl_mc_io *mc_io,
 
 	return 0;
 }
+EXPORT_SYMBOL(dprc_get_irq_mask);
 
 /**
  * dprc_set_irq_mask() - Set interrupt mask.
@@ -455,6 +486,7 @@ int dprc_set_irq_mask(struct fsl_mc_io *mc_io,
 	/* send command to mc*/
 	return mc_send_command(mc_io, &cmd);
 }
+EXPORT_SYMBOL(dprc_set_irq_mask);
 
 /**
  * dprc_get_irq_status() - Get the current status of any pending interrupts.
@@ -497,6 +529,7 @@ int dprc_get_irq_status(struct fsl_mc_io *mc_io,
 
 	return 0;
 }
+EXPORT_SYMBOL(dprc_get_irq_status);
 
 /**
  * dprc_clear_irq_status() - Clear a pending interrupt's status
@@ -529,6 +562,7 @@ int dprc_clear_irq_status(struct fsl_mc_io *mc_io,
 	/* send command to mc*/
 	return mc_send_command(mc_io, &cmd);
 }
+EXPORT_SYMBOL(dprc_clear_irq_status);
 
 /**
  * dprc_get_attributes() - Obtains container attributes
@@ -564,11 +598,10 @@ int dprc_get_attributes(struct fsl_mc_io *mc_io,
 	attr->icid = le16_to_cpu(rsp_params->icid);
 	attr->options = le32_to_cpu(rsp_params->options);
 	attr->portal_id = le32_to_cpu(rsp_params->portal_id);
-	attr->version.major = le16_to_cpu(rsp_params->version_major);
-	attr->version.minor = le16_to_cpu(rsp_params->version_minor);
 
 	return 0;
 }
+EXPORT_SYMBOL(dprc_get_attributes);
 
 /**
  * dprc_set_res_quota() - Set allocation policy for a specific resource/object
@@ -617,6 +650,7 @@ int dprc_set_res_quota(struct fsl_mc_io *mc_io,
 	/* send command to mc*/
 	return mc_send_command(mc_io, &cmd);
 }
+EXPORT_SYMBOL(dprc_set_res_quota);
 
 /**
  * dprc_get_res_quota() - Gets the allocation policy of a specific
@@ -664,6 +698,7 @@ int dprc_get_res_quota(struct fsl_mc_io *mc_io,
 
 	return 0;
 }
+EXPORT_SYMBOL(dprc_get_res_quota);
 
 /**
  * dprc_assign() - Assigns objects or resource to a child container.
@@ -720,6 +755,7 @@ int dprc_assign(struct fsl_mc_io *mc_io,
 	/* send command to mc*/
 	return mc_send_command(mc_io, &cmd);
 }
+EXPORT_SYMBOL(dprc_assign);
 
 /**
  * dprc_unassign() - Un-assigns objects or resources from a child container
@@ -760,6 +796,7 @@ int dprc_unassign(struct fsl_mc_io *mc_io,
 	/* send command to mc*/
 	return mc_send_command(mc_io, &cmd);
 }
+EXPORT_SYMBOL(dprc_unassign);
 
 /**
  * dprc_get_pool_count() - Get the number of dprc's pools
@@ -794,6 +831,7 @@ int dprc_get_pool_count(struct fsl_mc_io *mc_io,
 
 	return 0;
 }
+EXPORT_SYMBOL(dprc_get_pool_count);
 
 /**
  * dprc_get_pool() - Get the type (string) of a certain dprc's pool
@@ -840,6 +878,7 @@ int dprc_get_pool(struct fsl_mc_io *mc_io,
 
 	return 0;
 }
+EXPORT_SYMBOL(dprc_get_pool);
 
 /**
  * dprc_get_obj_count() - Obtains the number of objects in the DPRC
@@ -1301,6 +1340,7 @@ int dprc_connect(struct fsl_mc_io *mc_io,
 	/* send command to mc*/
 	return mc_send_command(mc_io, &cmd);
 }
+EXPORT_SYMBOL(dprc_connect);
 
 /**
  * dprc_disconnect() - Disconnect one endpoint to remove its network connection
@@ -1332,6 +1372,7 @@ int dprc_disconnect(struct fsl_mc_io *mc_io,
 	/* send command to mc*/
 	return mc_send_command(mc_io, &cmd);
 }
+EXPORT_SYMBOL(dprc_disconnect);
 
 /**
 * dprc_get_connection() - Get connected endpoint and link status if connection
@@ -1385,3 +1426,26 @@ int dprc_get_connection(struct fsl_mc_io *mc_io,
 
 	return 0;
 }
+EXPORT_SYMBOL(dprc_get_connection);
+
+int dprc_get_api_version(struct fsl_mc_io *mc_io,
+			   uint32_t cmd_flags,
+			   uint16_t *major_ver,
+			   uint16_t *minor_ver)
+{
+	struct mc_command cmd = { 0 };
+	int err;
+
+	cmd.header = mc_encode_cmd_header(DPRC_CMDID_GET_VERSION,
+					cmd_flags,
+					0);
+
+	err = mc_send_command(mc_io, &cmd);
+	if (err)
+		return err;
+
+	get_mc_cmd_object_api_ver(&cmd, major_ver, minor_ver);
+
+	return 0;
+}
+EXPORT_SYMBOL(dprc_get_api_version);

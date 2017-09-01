@@ -586,6 +586,9 @@ int phy_start_aneg(struct phy_device *phydev)
 		}
 	}
 
+	if (phydev->irq != PHY_POLL && of_machine_is_compatible("fsl,ls1046a"))
+			queue_delayed_work(system_power_efficient_wq, &phydev->state_queue,
+				   PHY_STATE_TIME * HZ);
 out_unlock:
 	mutex_unlock(&phydev->lock);
 	return err;
