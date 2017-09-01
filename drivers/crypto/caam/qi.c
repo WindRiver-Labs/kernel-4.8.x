@@ -20,7 +20,7 @@
 #define PREHDR_RSLS_SHIFT	31
 #ifndef CONFIG_FSL_DPAA_ETH_MAX_BUF_COUNT
 /* If DPA_ETH is not available, then use a reasonably backlog per CPU */
-#define MAX_RSP_FQ_BACKLOG_PER_CPU	64
+#define MAX_RSP_FQ_BACKLOG_PER_CPU	128
 #endif
 #define CAAM_QI_MEMCACHE_SIZE	256	/* Length of a single buffer in
 					   the QI driver memory cache. */
@@ -54,7 +54,7 @@ struct caam_napi {
 struct caam_qi_pcpu_priv {
 	struct caam_napi caam_napi;
 	struct net_device net_dev;	/* netdev used by NAPI */
-	struct qman_fq rsp_fq;		/* Response FQ from CAAM */
+	struct qman_fq *rsp_fq;		/* Response FQ from CAAM */
 } ____cacheline_aligned;
 
 static DEFINE_PER_CPU(struct caam_qi_pcpu_priv, pcpu_qipriv);
@@ -199,11 +199,13 @@ static struct qman_fq *create_caam_req_fq(struct device *qidev,
 
 	flags = fq_sched_flag;
 	opts.we_mask = QM_INITFQ_WE_FQCTRL | QM_INITFQ_WE_DESTWQ |
-			QM_INITFQ_WE_CONTEXTB | QM_INITFQ_WE_CONTEXTA;
+			QM_INITFQ_WE_CONTEXTB | QM_INITFQ_WE_CONTEXTA |
+			QM_INITFQ_WE_CGID;
 
-	opts.fqd.fq_ctrl = QM_FQCTRL_CPCSTASH;
+	opts.fqd.fq_ctrl = QM_FQCTRL_CPCSTASH | QM_FQCTRL_CGE;
 	opts.fqd.dest.channel = qm_channel_caam;
 	opts.fqd.dest.wq = 2;
+	opts.fqd.cgid = qipriv.rsp_cgr.cgrid;
 	opts.fqd.context_b = qman_fq_fqid(rsp_fq);
 	opts.fqd.context_a.hi = upper_32_bits(hwdesc);
 	opts.fqd.context_a.lo = lower_32_bits(hwdesc);
@@ -423,7 +425,6 @@ struct caam_drv_ctx *caam_drv_ctx_init(struct device *qidev,
 	size_t size;
 	u32 num_words;
 	dma_addr_t hwdesc;
-	struct qman_fq *rsp_fq;
 	struct caam_drv_ctx *drv_ctx;
 	const cpumask_t *cpus = qman_affine_cpus();
 	static DEFINE_PER_CPU(int, last_cpu);
@@ -474,11 +475,10 @@ struct caam_drv_ctx *caam_drv_ctx_init(struct device *qidev,
 	drv_ctx->cpu = *cpu;
 
 	/* Find response FQ hooked with this CPU*/
-	rsp_fq = &per_cpu(pcpu_qipriv.rsp_fq, drv_ctx->cpu);
-	drv_ctx->rsp_fq = rsp_fq;
+	drv_ctx->rsp_fq = per_cpu(pcpu_qipriv.rsp_fq, drv_ctx->cpu);
 
 	/*Attach request FQ*/
-	drv_ctx->req_fq = create_caam_req_fq(qidev, rsp_fq,
+	drv_ctx->req_fq = create_caam_req_fq(qidev, drv_ctx->rsp_fq,
 					     hwdesc, QMAN_INITFQ_FLAG_SCHED);
 	if (unlikely(IS_ERR_OR_NULL(drv_ctx->req_fq))) {
 		dev_err(qidev, "create_caam_req_fq failed\n");
@@ -555,8 +555,10 @@ int caam_qi_shutdown(struct device *qidev)
 		napi_disable(irqtask);
 		netif_napi_del(irqtask);
 
-		if (kill_fq(qidev, &per_cpu(pcpu_qipriv.rsp_fq, i)))
+		if (kill_fq(qidev, per_cpu(pcpu_qipriv.rsp_fq, i)))
 			dev_err(qidev, "Rsp FQ kill failed, cpu: %d\n", i);
+
+		kfree(per_cpu(pcpu_qipriv.rsp_fq, i));
 	}
 
 	/*
@@ -662,7 +664,9 @@ static int alloc_rsp_fq_cpu(struct device *qidev, unsigned int cpu)
 	int ret;
 	u32 flags;
 
-	fq = &per_cpu(pcpu_qipriv.rsp_fq, cpu);
+	fq = kzalloc(sizeof(*fq), GFP_KERNEL | GFP_DMA);
+	if (!fq)
+		return -ENOMEM;
 
 	fq->cb.dqrr = caam_rsp_fq_dqrr_cb;
 
@@ -671,6 +675,7 @@ static int alloc_rsp_fq_cpu(struct device *qidev, unsigned int cpu)
 	ret = qman_create_fq(0, flags, fq);
 	if (ret) {
 		dev_err(qidev, "Rsp FQ create failed\n");
+		kfree(fq);
 		return -ENODEV;
 	}
 
@@ -678,7 +683,7 @@ static int alloc_rsp_fq_cpu(struct device *qidev, unsigned int cpu)
 
 	opts.we_mask = QM_INITFQ_WE_FQCTRL | QM_INITFQ_WE_DESTWQ |
 		QM_INITFQ_WE_CONTEXTB | QM_INITFQ_WE_CONTEXTA |
-		QM_INITFQ_WE_CGID | QMAN_INITFQ_FLAG_LOCAL;
+		QM_INITFQ_WE_CGID;
 
 	opts.fqd.fq_ctrl = QM_FQCTRL_CTXASTASHING |
 			   QM_FQCTRL_CPCSTASH |
@@ -697,8 +702,12 @@ static int alloc_rsp_fq_cpu(struct device *qidev, unsigned int cpu)
 	ret = qman_init_fq(fq, flags, &opts);
 	if (ret) {
 		dev_err(qidev, "Rsp FQ init failed\n");
+		kfree(fq);
 		return -ENODEV;
 	}
+
+	per_cpu(pcpu_qipriv.rsp_fq, cpu) = fq;
+
 #ifdef DEBUG
 	dev_info(qidev, "Allocated response FQ %u for CPU %u",
 		 fq->fqid, cpu);
@@ -738,7 +747,7 @@ static int alloc_cgrs(struct device *qidev)
 	 *       using the dpa_eth buffers (which can be >1 if f.i. PME/DCE are
 	 *       also used.
 	 */
-	val = num_cpus * CONFIG_FSL_DPAA_ETH_MAX_BUF_COUNT / 2;
+	val = num_cpus * CONFIG_FSL_DPAA_ETH_MAX_BUF_COUNT;
 #else
 	val = num_cpus * MAX_RSP_FQ_BACKLOG_PER_CPU;
 #endif
@@ -774,14 +783,27 @@ static int alloc_rsp_fqs(struct device *qidev)
 	return 0;
 }
 
+static void free_rsp_fqs(void)
+{
+	const cpumask_t *cpus = qman_affine_cpus();
+	int i;
+
+	for_each_cpu(i, cpus)
+		kfree(per_cpu(pcpu_qipriv.rsp_fq, i));
+}
+
 int caam_qi_init(struct platform_device *caam_pdev, struct device_node *np)
 {
 	struct platform_device *qi_pdev;
-	struct device *ctrldev, *qidev;
+	struct device *ctrldev = &caam_pdev->dev, *qidev;
 	struct caam_drv_private *ctrlpriv;
 	int err, i;
 	const cpumask_t *cpus = qman_affine_cpus();
 	struct cpumask old_cpumask = *tsk_cpus_allowed(current);
+	static struct platform_device_info qi_pdev_info = {
+		.name = "caam_qi",
+		.id = PLATFORM_DEVID_NONE
+	};
 
 	/*
 	 * QMAN requires that CGR must be removed from same CPU+portal from
@@ -793,23 +815,17 @@ int caam_qi_init(struct platform_device *caam_pdev, struct device_node *np)
 	mod_init_cpu = cpumask_first(cpus);
 	set_cpus_allowed_ptr(current, get_cpu_mask(mod_init_cpu));
 
-	qi_pdev = platform_device_register_simple("caam_qi", 0, NULL, 0);
+	qi_pdev_info.parent = ctrldev;
+	qi_pdev_info.dma_mask = dma_get_mask(ctrldev);
+	qi_pdev = platform_device_register_full(&qi_pdev_info);
 	if (IS_ERR(qi_pdev))
 		return PTR_ERR(qi_pdev);
 
-	ctrldev = &caam_pdev->dev;
 	ctrlpriv = dev_get_drvdata(ctrldev);
 	qidev = &qi_pdev->dev;
 
 	qipriv.qi_pdev = qi_pdev;
 	dev_set_drvdata(qidev, &qipriv);
-
-	/* Copy dma mask from controlling device */
-	err = dma_set_mask(qidev, dma_get_mask(ctrldev));
-	if (err) {
-		platform_device_unregister(qi_pdev);
-		return -ENODEV;
-	}
 
 	/* Response path cannot be congested */
 	caam_congested = false;
@@ -834,6 +850,7 @@ int caam_qi_init(struct platform_device *caam_pdev, struct device_node *np)
 	err = alloc_rsp_fqs(qidev);
 	if (err) {
 		dev_err(qidev, "Can't allocate SEC response FQs\n");
+		free_rsp_fqs();
 		platform_device_unregister(qi_pdev);
 		return err;
 	}
@@ -864,6 +881,7 @@ int caam_qi_init(struct platform_device *caam_pdev, struct device_node *np)
 				     SLAB_CACHE_DMA, NULL);
 	if (!qi_cache) {
 		dev_err(qidev, "Can't allocate SEC cache\n");
+		free_rsp_fqs();
 		platform_device_unregister(qi_pdev);
 		return err;
 	}

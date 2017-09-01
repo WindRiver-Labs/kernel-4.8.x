@@ -44,14 +44,13 @@
 #include <linux/of_net.h>
 #include <linux/phy.h>
 #include <linux/phy_fixed.h>
+#include <linux/msi.h>
 
 #include "../../fsl-mc/include/mc.h"
 #include "../../fsl-mc/include/mc-sys.h"
 
 #include "dpmac.h"
 #include "dpmac-cmd.h"
-
-#define DPAA2_SUPPORTED_DPMAC_VERSION	3
 
 struct dpaa2_mac_priv {
 	struct net_device		*netdev;
@@ -69,24 +68,15 @@ struct dpaa2_mac_priv {
  * This must be kept in sync with enum dpmac_eth_if.
  */
 static phy_interface_t dpaa2_mac_iface_mode[] =  {
-	/* DPMAC_ETH_IF_MII */
-	PHY_INTERFACE_MODE_MII,
-	/* DPMAC_ETH_IF_RMII */
-	PHY_INTERFACE_MODE_RMII,
-	/* DPMAC_ETH_IF_SMII */
-	PHY_INTERFACE_MODE_SMII,
-	/* DPMAC_ETH_IF_GMII */
-	PHY_INTERFACE_MODE_GMII,
-	/* DPMAC_ETH_IF_RGMII */
-	PHY_INTERFACE_MODE_RGMII,
-	/* DPMAC_ETH_IF_SGMII */
-	PHY_INTERFACE_MODE_SGMII,
-	/* DPMAC_ETH_IF_QSGMII */
-	PHY_INTERFACE_MODE_QSGMII,
-	/* DPMAC_ETH_IF_XAUI */
-	PHY_INTERFACE_MODE_XGMII,
-	/* DPMAC_ETH_IF_XFI */
-	PHY_INTERFACE_MODE_XGMII,
+	PHY_INTERFACE_MODE_MII,		/* DPMAC_ETH_IF_MII */
+	PHY_INTERFACE_MODE_RMII,	/* DPMAC_ETH_IF_RMII */
+	PHY_INTERFACE_MODE_SMII,	/* DPMAC_ETH_IF_SMII */
+	PHY_INTERFACE_MODE_GMII,	/* DPMAC_ETH_IF_GMII */
+	PHY_INTERFACE_MODE_RGMII,	/* DPMAC_ETH_IF_RGMII */
+	PHY_INTERFACE_MODE_SGMII,	/* DPMAC_ETH_IF_SGMII */
+	PHY_INTERFACE_MODE_QSGMII,	/* DPMAC_ETH_IF_QSGMII */
+	PHY_INTERFACE_MODE_XGMII,	/* DPMAC_ETH_IF_XAUI */
+	PHY_INTERFACE_MODE_XGMII,	/* DPMAC_ETH_IF_XFI */
 };
 
 static void dpaa2_mac_link_changed(struct net_device *netdev)
@@ -120,7 +110,7 @@ static void dpaa2_mac_link_changed(struct net_device *netdev)
 		phy_print_status(phydev);
 	}
 
-	/* We must call into the MC firmware at all times, because we don't know
+	/* We must interrogate MC at all times, because we don't know
 	 * when and whether a potential DPNI may have read the link state.
 	 */
 	err = dpmac_set_link_state(priv->mc_dev->mc_io, 0,
@@ -128,9 +118,6 @@ static void dpaa2_mac_link_changed(struct net_device *netdev)
 	if (unlikely(err))
 		dev_err(&priv->mc_dev->dev, "dpmac_set_link_state: %d\n", err);
 }
-
-/* IRQ bits that we handle */
-static const u32 dpmac_irq_mask = DPMAC_IRQ_EVENT_LINK_CFG_REQ;
 
 #ifdef CONFIG_FSL_DPAA2_MAC_NETDEVS
 static netdev_tx_t dpaa2_mac_drop_frame(struct sk_buff *skb,
@@ -407,7 +394,7 @@ static int setup_irqs(struct fsl_mc_device *mc_dev)
 	}
 
 	err = devm_request_threaded_irq(&mc_dev->dev,
-					mc_dev->irqs[0]->irq_number,
+					mc_dev->irqs[0]->msi_desc->irq,
 					NULL, &dpaa2_mac_irq_handler,
 					IRQF_NO_SUSPEND | IRQF_ONESHOT,
 					dev_name(&mc_dev->dev), &mc_dev->dev);
@@ -418,7 +405,7 @@ static int setup_irqs(struct fsl_mc_device *mc_dev)
 	}
 
 	err = dpmac_set_irq_mask(mc_dev->mc_io, 0, mc_dev->mc_handle,
-				 DPMAC_IRQ_INDEX, dpmac_irq_mask);
+				 DPMAC_IRQ_INDEX, DPMAC_IRQ_EVENT_LINK_CFG_REQ);
 	if (err) {
 		dev_err(&mc_dev->dev, "dpmac_set_irq_mask err %d\n", err);
 		goto free_irq;
@@ -442,11 +429,6 @@ static void teardown_irqs(struct fsl_mc_device *mc_dev)
 {
 	int err;
 
-	err = dpmac_set_irq_mask(mc_dev->mc_io, 0, mc_dev->mc_handle,
-				 DPMAC_IRQ_INDEX, dpmac_irq_mask);
-	if (err)
-		dev_err(&mc_dev->dev, "dpmac_set_irq_mask err %d\n", err);
-
 	err = dpmac_set_irq_enable(mc_dev->mc_io, 0, mc_dev->mc_handle,
 				   DPMAC_IRQ_INDEX, 0);
 	if (err)
@@ -455,7 +437,7 @@ static void teardown_irqs(struct fsl_mc_device *mc_dev)
 	fsl_mc_free_irqs(mc_dev);
 }
 
-static struct device_node *lookup_node(struct device *dev, int dpmac_id)
+static struct device_node *find_dpmac_node(struct device *dev, u16 dpmac_id)
 {
 	struct device_node *dpmacs, *dpmac = NULL;
 	struct device_node *mc_node = dev->of_node;
@@ -532,11 +514,8 @@ static int dpaa2_mac_probe(struct fsl_mc_device *mc_dev)
 		goto err_close;
 	}
 
-	dev_info_once(dev, "Using DPMAC API %d.%d\n",
-		      priv->attr.version.major, priv->attr.version.minor);
-
 	/* Look up the DPMAC node in the device-tree. */
-	dpmac_node = lookup_node(dev, priv->attr.id);
+	dpmac_node = find_dpmac_node(dev, priv->attr.id);
 	if (!dpmac_node) {
 		dev_err(dev, "No dpmac@%d subnode found.\n", priv->attr.id);
 		err = -ENODEV;
@@ -613,7 +592,7 @@ probe_fixed_link:
 		};
 
 		/* try to register a fixed link phy */
-		netdev->phydev = fixed_phy_register(PHY_POLL, &status, NULL);
+		netdev->phydev = fixed_phy_register(PHY_POLL, &status, -1, NULL);
 		if (!netdev->phydev || IS_ERR(netdev->phydev)) {
 			dev_err(dev, "error trying to register fixed PHY\n");
 			/* So we don't crash unregister_netdev() later on */
@@ -668,12 +647,10 @@ static int dpaa2_mac_remove(struct fsl_mc_device *mc_dev)
 	return 0;
 }
 
-static const struct fsl_mc_device_match_id dpaa2_mac_match_id_table[] = {
+static const struct fsl_mc_device_id dpaa2_mac_match_id_table[] = {
 	{
 		.vendor = FSL_MC_VENDOR_FREESCALE,
 		.obj_type = "dpmac",
-		.ver_major = DPMAC_VER_MAJOR,
-		.ver_minor = DPMAC_VER_MINOR,
 	},
 	{}
 };

@@ -124,6 +124,8 @@ static inline const char *phy_modes(phy_interface_t interface)
 		return "moca";
 	case PHY_INTERFACE_MODE_QSGMII:
 		return "qsgmii";
+	case PHY_INTERFACE_MODE_SGMII_2500:
+		return "sgmii-2500";
 	default:
 		return "unknown";
 	}

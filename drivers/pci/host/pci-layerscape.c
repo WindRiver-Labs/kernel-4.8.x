@@ -36,12 +36,21 @@
 #define LTSSM_PCIE_L0		0x11 /* L0 state */
 #define LTSSM_PCIE_L2_IDLE	0x15 /* L2 idle state */
 
+#define PCIE_SRIOV_OFFSET	0x178
+
+/* CS2 */
+#define PCIE_CS2_OFFSET		0x1000 /* For PCIe without SR-IOV */
+#define PCIE_ENABLE_CS2		0x80000000 /* For PCIe with SR-IOV */
+
 /* PEX Internal Configuration Registers */
 #define PCIE_STRFMR1		0x71c /* Symbol Timer & Filter Mask Register1 */
 #define PCIE_DBI_RO_WR_EN	0x8bc /* DBI Read-Only Write Enable Register */
+#define PCIE_ABSERR		0x8d0 /* Bridge Slave Error Response Register */
+#define PCIE_ABSERR_SETTING	0x9401 /* Forward error of non-posted request */
 
 /* PEX LUT registers */
 #define PCIE_LUT_DBG		0x7FC /* PEX LUT Debug Register */
+#define PCIE_LUT_CTRL0		0x7f8
 #define PCIE_LUT_UDR(n)		(0x800 + (n) * 8)
 #define PCIE_LUT_LDR(n)		(0x804 + (n) * 8)
 #define PCIE_LUT_MASK_ALL	0xffff
@@ -72,6 +81,8 @@
 #define CPLD_RST_PCIE_SLOT	0x14
 #define CPLD_RST_PCIESLOT	0x3
 
+#define PCIE_IATU_NUM		6
+
 struct ls_pcie;
 
 struct ls_pcie_pm_data {
@@ -90,6 +101,7 @@ struct ls_pcie_pm_ops {
 struct ls_pcie_drvdata {
 	u32 lut_offset;
 	u32 ltssm_shift;
+	u32 lut_dbg;
 	struct pcie_host_ops *ops;
 	struct ls_pcie_pm_ops *pm;
 };
@@ -110,6 +122,8 @@ struct ls_pcie {
 };
 
 #define to_ls_pcie(x)	container_of(x, struct ls_pcie, pp)
+
+static void ls_pcie_host_init(struct pcie_port *pp);
 
 u32 set_pcie_streamid_translation(struct pci_dev *pdev, u32 devid)
 {
@@ -161,6 +175,42 @@ static void ls_pcie_drop_msg_tlp(struct ls_pcie *pcie)
 	val = ioread32(pcie->dbi + PCIE_STRFMR1);
 	val &= 0xDFFFFFFF;
 	iowrite32(val, pcie->dbi + PCIE_STRFMR1);
+}
+
+static void ls_pcie_disable_outbound_atus(struct ls_pcie *pcie)
+{
+	int i;
+
+	for (i = 0; i < PCIE_IATU_NUM; i++)
+		dw_pcie_disable_outbound_atu(&pcie->pp, i);
+}
+
+/* Forward error response of outbound non-posted requests */
+static void ls_pcie_fix_error_response(struct ls_pcie *pcie)
+{
+	iowrite32(PCIE_ABSERR_SETTING, pcie->dbi + PCIE_ABSERR);
+}
+
+/* Disable all bars in RC mode */
+static void ls_pcie_disable_bars(struct ls_pcie *pcie)
+{
+	u32 header;
+
+	header = ioread32(pcie->dbi + PCIE_SRIOV_OFFSET);
+	if (PCI_EXT_CAP_ID(header) == PCI_EXT_CAP_ID_SRIOV) {
+		iowrite32(PCIE_ENABLE_CS2, pcie->lut + PCIE_LUT_CTRL0);
+		iowrite32(0, pcie->dbi + PCI_BASE_ADDRESS_0);
+		iowrite32(0, pcie->dbi + PCI_BASE_ADDRESS_1);
+		iowrite32(0, pcie->dbi + PCI_ROM_ADDRESS1);
+		iowrite32(0, pcie->lut + PCIE_LUT_CTRL0);
+	} else {
+		iowrite32(0,
+			  pcie->dbi + PCIE_CS2_OFFSET + PCI_BASE_ADDRESS_0);
+		iowrite32(0,
+			  pcie->dbi + PCIE_CS2_OFFSET + PCI_BASE_ADDRESS_1);
+		iowrite32(0,
+			  pcie->dbi + PCIE_CS2_OFFSET + PCI_ROM_ADDRESS1);
+	}
 }
 
 static int ls1021_pcie_link_up(struct pcie_port *pp)
@@ -272,9 +322,9 @@ static void ls1021_pcie_host_init(struct pcie_port *pp)
 	}
 	pcie->index = index[1];
 
-	dw_pcie_setup_rc(pp);
+	ls_pcie_host_init(pp);
 
-	ls_pcie_drop_msg_tlp(pcie);
+	dw_pcie_setup_rc(pp);
 }
 
 static int ls_pcie_link_up(struct pcie_port *pp)
@@ -282,7 +332,7 @@ static int ls_pcie_link_up(struct pcie_port *pp)
 	struct ls_pcie *pcie = to_ls_pcie(pp);
 	u32 state;
 
-	state = (ioread32(pcie->lut + PCIE_LUT_DBG) >>
+	state = (ioread32(pcie->lut + pcie->drvdata->lut_dbg) >>
 		 pcie->drvdata->ltssm_shift) &
 		 LTSSM_STATE_MASK;
 
@@ -294,7 +344,7 @@ static int ls_pcie_link_up(struct pcie_port *pp)
 
 static u32 ls_pcie_get_link_state(struct ls_pcie *pcie)
 {
-	return (ioread32(pcie->lut + PCIE_LUT_DBG) >>
+	return (ioread32(pcie->lut + pcie->drvdata->lut_dbg) >>
 		 pcie->drvdata->ltssm_shift) &
 		 LTSSM_STATE_MASK;
 }
@@ -308,6 +358,11 @@ static void ls_pcie_host_init(struct pcie_port *pp)
 	ls_pcie_clear_multifunction(pcie);
 	ls_pcie_drop_msg_tlp(pcie);
 	iowrite32(0, pcie->dbi + PCIE_DBI_RO_WR_EN);
+
+	ls_pcie_disable_bars(pcie);
+
+	ls_pcie_disable_outbound_atus(pcie);
+	ls_pcie_fix_error_response(pcie);
 }
 
 static int ls_pcie_msi_host_init(struct pcie_port *pp,
@@ -359,9 +414,26 @@ static struct ls_pcie_drvdata ls1021_drvdata = {
 	.pm = &ls1021_pcie_host_pm_ops,
 };
 
+static struct ls_pcie_drvdata ls1012_drvdata = {
+	.lut_offset = 0x80000,
+	.ltssm_shift = 24,
+	.lut_dbg = 0x407fc,
+	.ops = &ls_pcie_host_ops,
+	.pm = &ls_pcie_host_pm_ops,
+};
+
 static struct ls_pcie_drvdata ls1043_drvdata = {
 	.lut_offset = 0x10000,
 	.ltssm_shift = 24,
+	.lut_dbg = 0x7fc,
+	.ops = &ls_pcie_host_ops,
+	.pm = &ls_pcie_host_pm_ops,
+};
+
+static struct ls_pcie_drvdata ls1046_drvdata = {
+	.lut_offset = 0x80000,
+	.ltssm_shift = 24,
+	.lut_dbg = 0x407fc,
 	.ops = &ls_pcie_host_ops,
 	.pm = &ls_pcie_host_pm_ops,
 };
@@ -369,15 +441,27 @@ static struct ls_pcie_drvdata ls1043_drvdata = {
 static struct ls_pcie_drvdata ls2080_drvdata = {
 	.lut_offset = 0x80000,
 	.ltssm_shift = 0,
+	.lut_dbg = 0x7fc,
+	.ops = &ls_pcie_host_ops,
+	.pm = &ls_pcie_host_pm_ops,
+};
+
+static struct ls_pcie_drvdata ls2088_drvdata = {
+	.lut_offset = 0x80000,
+	.ltssm_shift = 0,
+	.lut_dbg = 0x407fc,
 	.ops = &ls_pcie_host_ops,
 	.pm = &ls_pcie_host_pm_ops,
 };
 
 static const struct of_device_id ls_pcie_of_match[] = {
+	{ .compatible = "fsl,ls1012a-pcie", .data = &ls1012_drvdata },
 	{ .compatible = "fsl,ls1021a-pcie", .data = &ls1021_drvdata },
 	{ .compatible = "fsl,ls1043a-pcie", .data = &ls1043_drvdata },
+	{ .compatible = "fsl,ls1046a-pcie", .data = &ls1046_drvdata },
 	{ .compatible = "fsl,ls2080a-pcie", .data = &ls2080_drvdata },
 	{ .compatible = "fsl,ls2085a-pcie", .data = &ls2080_drvdata },
+	{ .compatible = "fsl,ls2088a-pcie", .data = &ls2088_drvdata },
 	{ },
 };
 MODULE_DEVICE_TABLE(of, ls_pcie_of_match);
@@ -524,7 +608,8 @@ static int ls_pcie_probe(struct platform_device *pdev)
 		return -ENODEV;
 
 	if (of_device_is_compatible(pdev->dev.of_node, "fsl,ls2085a-pcie") ||
-	of_device_is_compatible(pdev->dev.of_node, "fsl,ls2080a-pcie")) {
+	of_device_is_compatible(pdev->dev.of_node, "fsl,ls2080a-pcie") ||
+	of_device_is_compatible(pdev->dev.of_node, "fsl,ls2088a-pcie")) {
 		int len;
 		const u32 *prop;
 		struct device_node *np;

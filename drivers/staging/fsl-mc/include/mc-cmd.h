@@ -34,6 +34,19 @@
 
 #define MC_CMD_NUM_OF_PARAMS	7
 
+#define MAKE_UMASK64(_width) \
+       ((u64)((_width) < 64 ? ((u64)1 << (_width)) - 1 : -1))
+
+static inline u64 mc_enc(int lsoffset, int width, u64 val)
+{
+       return (u64)(((u64)val & MAKE_UMASK64(width)) << lsoffset);
+}
+
+static inline u64 mc_dec(u64 val, int lsoffset, int width)
+{
+       return (u64)((val >> lsoffset) & MAKE_UMASK64(width));
+}
+
 struct mc_cmd_header {
 	u8 src_id;
 	u8 flags_hw;
@@ -72,10 +85,102 @@ enum mc_cmd_status {
 /* Command completion flag */
 #define MC_CMD_FLAG_INTR_DIS	0x01
 
+/*
+ * TODO Remove following two defines after completion of flib 8.0.0
+ * integration
+ */
+#define MC_CMD_PRI_LOW         0 	/*!< Low Priority command indication */
+#define MC_CMD_PRI_HIGH        1	/*!< High Priority command indication */
+
+#define MC_CMD_HDR_CMDID_O	48	/* Command ID field offset */
+#define MC_CMD_HDR_CMDID_S	16	/* Command ID field size */
+#define MC_CMD_HDR_TOKEN_O	32	/* Token field offset */
+#define MC_CMD_HDR_TOKEN_S	16	/* Token field size */
+#define MC_CMD_HDR_STATUS_O    16      /* Status field offset */
+#define MC_CMD_HDR_STATUS_S    8       /* Status field size*/
+#define MC_CMD_HDR_FLAGS_O     0       /* Flags field offset */
+#define MC_CMD_HDR_FLAGS_S     32      /* Flags field size*/
+#define MC_CMD_HDR_FLAGS_MASK  0xFF00FF00 /* Command flags mask */
+
+#define MC_CMD_OBJ_ID_O		0	/* Object id field offset */
+#define MC_CMD_OBJ_ID_S		32	/* Object id field size */
+
+#define MC_CMD_OBJ_VERSION_MAJ_O	0 	/* Object major version offset */
+#define MC_CMD_OBJ_VERSION_MIN_O	16 	/* Object minor version offset */
+#define MC_CMD_OBJ_VERSION_S		16 	/* Object version field size */
+
+#define MC_CMD_HDR_READ_STATUS(_hdr) \
+		((enum mc_cmd_status)mc_dec((_hdr), \
+			MC_CMD_HDR_STATUS_O, MC_CMD_HDR_STATUS_S))
+
+#define MC_CMD_HDR_READ_TOKEN(_hdr) \
+		((u16)mc_dec((_hdr), MC_CMD_HDR_TOKEN_O, MC_CMD_HDR_TOKEN_S))
+
+#define MC_CMD_HDR_READ_FLAGS(_hdr) \
+		((u32)mc_dec((_hdr), MC_CMD_HDR_FLAGS_O, MC_CMD_HDR_FLAGS_S))
+
+#define MC_PREP_OP(_ext, _param, _offset, _width, _type, _arg) \
+		((_ext)[_param] |= cpu_to_le64(mc_enc((_offset), (_width), _arg)))
+
+#define MC_EXT_OP(_ext, _param, _offset, _width, _type, _arg) \
+		(_arg = (_type)mc_dec(cpu_to_le64(_ext[_param]), (_offset), (_width)))
+
+#define MC_CMD_OP(_cmd, _param, _offset, _width, _type, _arg) \
+		((_cmd).params[_param] |= mc_enc((_offset), (_width), _arg))
+
+#define MC_RSP_OP(_cmd, _param, _offset, _width, _type, _arg) \
+		(_arg = (_type)mc_dec(_cmd.params[_param], (_offset), (_width)))
+
+/* cmd, param, offset, width, type, arg_name */
+#define CMD_CREATE_RSP_GET_OBJ_ID_PARAM0(cmd, object_id) \
+	MC_RSP_OP(cmd, 0, 0,  32, uint32_t, object_id)
+
+/* cmd, param, offset, width, type, arg_name */
+#define CMD_DESTROY_SET_OBJ_ID_PARAM0(cmd, object_id) \
+	MC_CMD_OP(cmd, 0, 0,  32,  uint32_t,  object_id)
+
 #define MC_CMD_HDR_CMDID_MASK		0xFFF0
 #define MC_CMD_HDR_CMDID_SHIFT		4
 #define MC_CMD_HDR_TOKEN_MASK		0xFFC0
 #define MC_CMD_HDR_TOKEN_SHIFT		6
+
+static inline void get_mc_cmd_object_api_ver(struct mc_command *mc_cmd,
+		uint16_t *major_ver, uint16_t *minor_ver)
+{
+	*major_ver = (uint16_t)mc_dec(mc_cmd->params[0],
+			MC_CMD_OBJ_VERSION_MAJ_O,
+			MC_CMD_OBJ_VERSION_S);
+	*minor_ver = (uint16_t)mc_dec(mc_cmd->params[0],
+			MC_CMD_OBJ_VERSION_MIN_O,
+			MC_CMD_OBJ_VERSION_S);
+}
+
+static inline uint32_t get_mc_cmd_create_object_id(struct mc_command *cmd)
+{
+	return (uint32_t) mc_dec(cmd->params[0],
+			MC_CMD_OBJ_ID_O, MC_CMD_OBJ_ID_S);
+}
+
+
+static inline void set_mc_cmd_destroy_object_id(struct mc_command *cmd,
+		uint32_t object_id)
+{
+	cmd->params[0] = mc_enc(MC_CMD_OBJ_ID_O, MC_CMD_OBJ_ID_S, object_id);
+}
+
+static inline uint16_t get_mc_cmd_hdr_token(uint64_t mcp_header)
+{
+	return ((uint16_t)mc_dec((mcp_header),
+			MC_CMD_HDR_TOKEN_O,
+			MC_CMD_HDR_TOKEN_S));
+}
+
+static inline uint16_t get_mc_cmd_hdr_cmdid(uint64_t mcp_header)
+{
+	return ((uint16_t)mc_dec((mcp_header),
+			MC_CMD_HDR_CMDID_O,
+			MC_CMD_HDR_CMDID_S));
+}
 
 static inline u64 mc_encode_cmd_header(u16 cmd_id,
 				       u32 cmd_flags,

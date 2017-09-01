@@ -125,8 +125,8 @@ config CRYPTO_DEV_FSL_CAAM_RNG_API
 	  will be called caamrng.
 
 config CRYPTO_DEV_FSL_CAAM_IMX
-	def_bool SOC_IMX6 || SOC_IMX7D
-	depends on CRYPTO_DEV_FSL_CAAM
+	bool "CAAM running on an i.MX6/7 platform"
+	depends on CRYPTO_DEV_FSL_CAAM && (SOC_IMX6 || SOC_IMX7D)
 
 config CRYPTO_DEV_FSL_CAAM_DEBUG
 	bool "Enable debug output in CAAM driver"

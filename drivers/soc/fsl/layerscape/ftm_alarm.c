@@ -78,11 +78,10 @@ static inline void ftm_counter_disable(void __iomem *base)
 
 static inline void ftm_irq_acknowledge(void __iomem *base)
 {
-	u32 val;
+	unsigned int timeout = 100;
 
-	val = ftm_readl(base + FTM_SC);
-	val &= ~FTM_SC_TOF;
-	ftm_writel(val, base + FTM_SC);
+	while ((FTM_SC_TOF & ftm_readl(base + FTM_SC)) && timeout--)
+		ftm_writel(ftm_readl(base + FTM_SC) & (~FTM_SC_TOF), base + FTM_SC);
 }
 
 static inline void ftm_irq_enable(void __iomem *base)
@@ -136,7 +135,7 @@ static void ftm_clean_alarm(void)
 	ftm_counter_disable(ftm1_base);
 
 	ftm_writel(0x00, ftm1_base + FTM_CNTIN);
-	ftm_writel(~0UL, ftm1_base + FTM_MOD);
+	ftm_writel((u32)(~0UL), ftm1_base + FTM_MOD);
 
 	ftm_reset_counter(ftm1_base);
 }

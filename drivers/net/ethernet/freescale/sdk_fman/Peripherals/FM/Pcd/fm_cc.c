@@ -145,6 +145,10 @@ static t_FmPcdStatsObj* GetStatsObj(t_FmPcdCcNode *p_CcNode)
     if (p_CcNode->maxNumOfKeys)
     {
         p_StatsObj = DequeueStatsObj(&p_CcNode->availableStatsLst);
+
+		/* Clean statistics counters & ADs */
+		MemSet8(p_StatsObj->h_StatsAd, 0, FM_PCD_CC_AD_ENTRY_SIZE);
+		MemSet8(p_StatsObj->h_StatsCounters, 0, p_CcNode->countersArraySize);
     }
     else
     {
@@ -195,8 +199,11 @@ static void PutStatsObj(t_FmPcdCcNode *p_CcNode, t_FmPcdStatsObj *p_StatsObj)
      upon node initialization and now will be enqueued back to the list */
     if (p_CcNode->maxNumOfKeys)
     {
-        /* Nullify counters */
-        MemSet8(p_StatsObj->h_StatsCounters, 0, p_CcNode->countersArraySize);
+		/* Clean statistics counters */
+		MemSet8(p_StatsObj->h_StatsCounters, 0, p_CcNode->countersArraySize);
+
+		/* Clean statistics ADs */
+		MemSet8(p_StatsObj->h_StatsAd, 0, FM_PCD_CC_AD_ENTRY_SIZE);
 
         EnqueueStatsObj(&p_CcNode->availableStatsLst, p_StatsObj);
     }
@@ -1299,6 +1306,7 @@ static void DeleteNode(t_FmPcdCcNode *p_CcNode)
 
     LIST_Del(&p_CcNode->availableStatsLst);
 
+	ReleaseLst(&p_CcNode->availableStatsLst);
     ReleaseLst(&p_CcNode->ccPrevNodesLst);
     ReleaseLst(&p_CcNode->ccTreeIdLst);
     ReleaseLst(&p_CcNode->ccTreesLst);
@@ -2175,6 +2183,7 @@ static void FillAdOfTypeResult(t_Handle h_Ad,
     uint32_t tmp = 0, tmpNia = 0;
     uint16_t profileId;
     t_Handle p_AdNewPtr = NULL;
+    t_Error err = E_OK;
 
     /* There are 3 cases handled in this routine of building a "result" type AD.
      * Case 1: No Manip. The action descriptor is built within the match table.
@@ -2287,12 +2296,18 @@ static void FillAdOfTypeResult(t_Handle h_Ad,
                     if (p_CcNextEngineParams->params.plcrParams.sharedProfile)
                     {
                         tmpNia |= NIA_PLCR_ABSOLUTE;
-                        FmPcdPlcrGetAbsoluteIdByProfileParams(
+                        err = FmPcdPlcrGetAbsoluteIdByProfileParams(
                                 (t_Handle)p_FmPcd,
                                 e_FM_PCD_PLCR_SHARED,
                                 NULL,
                                 p_CcNextEngineParams->params.plcrParams.newRelativeProfileId,
                                 &profileId);
+
+						if (err != E_OK) {
+							REPORT_ERROR(MAJOR, err, NO_MSG);
+							return;
+						}
+
                     }
                     else
                         profileId =
@@ -4114,6 +4129,9 @@ static t_Error ModifyNextEngineParamNode(
     if (p_CcNode->maxNumOfKeys)
         RELEASE_LOCK(p_FmPcd->shadowLock);
 
+	ReleaseLst(&h_OldPointersLst);
+	ReleaseLst(&h_NewPointersLst);
+
     return err;
 }
 
@@ -5329,6 +5347,9 @@ t_Error FmPcdCcModifyNextEngineParamTree(
     if (p_FmPcd->p_CcShadow)
         RELEASE_LOCK(p_FmPcd->shadowLock);
 
+	ReleaseLst(&h_OldPointersLst);
+	ReleaseLst(&h_NewPointersLst);
+
     return err;
 
 }
@@ -5402,6 +5423,9 @@ t_Error FmPcdCcRemoveKey(t_Handle h_FmPcd, t_Handle h_FmPcdCcNode,
 
     if (p_CcNode->maxNumOfKeys)
         RELEASE_LOCK(p_FmPcd->shadowLock);
+
+	ReleaseLst(&h_OldPointersLst);
+	ReleaseLst(&h_NewPointersLst);
 
     return err;
 }
@@ -5491,6 +5515,9 @@ t_Error FmPcdCcModifyKey(t_Handle h_FmPcd, t_Handle h_FmPcdCcNode,
     if (p_CcNode->maxNumOfKeys)
         RELEASE_LOCK(p_FmPcd->shadowLock);
 
+	ReleaseLst(&h_OldPointersLst);
+	ReleaseLst(&h_NewPointersLst);
+
     return err;
 }
 
@@ -5544,6 +5571,9 @@ t_Error FmPcdCcModifyMissNextEngineParamNode(
 
     if (p_CcNode->maxNumOfKeys)
         RELEASE_LOCK(p_FmPcd->shadowLock);
+
+	ReleaseLst(&h_OldPointersLst);
+	ReleaseLst(&h_NewPointersLst);
 
     return err;
 }
@@ -5650,6 +5680,9 @@ t_Error FmPcdCcAddKey(t_Handle h_FmPcd, t_Handle h_FmPcdCcNode,
     if (p_CcNode->maxNumOfKeys)
         RELEASE_LOCK(p_FmPcd->shadowLock);
 
+	ReleaseLst(&h_OldPointersLst);
+	ReleaseLst(&h_NewPointersLst);
+
     return err;
 }
 
@@ -5740,6 +5773,9 @@ t_Error FmPcdCcModifyKeyAndNextEngine(t_Handle h_FmPcd, t_Handle h_FmPcdCcNode,
 
     if (p_CcNode->maxNumOfKeys)
         RELEASE_LOCK(p_FmPcd->shadowLock);
+
+	ReleaseLst(&h_OldPointersLst);
+	ReleaseLst(&h_NewPointersLst);
 
     return err;
 }
@@ -7129,6 +7165,13 @@ t_Handle FM_PCD_HashTableSet(t_Handle h_FmPcd, t_FmPcdHashTableParams *p_Param)
     if (p_Param->hashResMask == 0)
     {
         REPORT_ERROR(MINOR, E_INVALID_VALUE, ("Hash result mask must differ from 0"));
+        return NULL;
+    }
+
+    /*Fix: QorIQ SDK / QSDK-2131*/
+    if (p_Param->ccNextEngineParamsForMiss.nextEngine == e_FM_PCD_INVALID)
+    {
+        REPORT_ERROR(MAJOR, E_INVALID_VALUE, ("Next PCD Engine for on-miss entry is invalid. On-miss entry is always required. You can use e_FM_PCD_DONE."));
         return NULL;
     }
 

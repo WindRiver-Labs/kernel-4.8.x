@@ -50,7 +50,7 @@
 #include "fm_common.h"
 #include "fm_ipc.h"
 #include "fm.h"
-#ifndef CONFIG_ARM64
+#ifndef CONFIG_FMAN_ARM
 #include <linux/fsl/svr.h>
 #endif
 #include <linux/fsl/guts.h>
@@ -3443,7 +3443,18 @@ t_Handle FM_Config(t_FmParams *p_FmParam)
             REPORT_ERROR(MAJOR, E_NO_MEMORY, ("FM firmware code"));
             return NULL;
         }
-        memcpy(p_Fm->firmware.p_Code, p_FmParam->firmware.p_Code ,p_Fm->firmware.size);
+	#ifdef CONFIG_FMAN_ARM
+	{ 	/* endianness adjustments: byteswap the ucode retrieved from the f/w blob */
+		int i;
+		int usz = p_FmParam->firmware.size;
+		void * p_Code = p_FmParam->firmware.p_Code;
+
+		for(i=0; i < usz / 4; ++i)
+			((u32 *)(p_Fm->firmware.p_Code))[i] = be32_to_cpu(((u32 *)p_Code)[i]);
+	}
+	#else
+	memcpy(p_Fm->firmware.p_Code, p_FmParam->firmware.p_Code ,p_Fm->firmware.size);
+	#endif
     }
 
     if (p_Fm->guestId != NCSW_MASTER_ID)
@@ -3590,11 +3601,13 @@ t_Error FM_Init(t_Handle h_Fm)
 			iowrite32be(0, &ccsr_guts_regs->devdisr2);
 		}
 	}
+#endif	/* CONFIG_FMAN_ARM */
 
 	WRITE_UINT32(p_Fm->p_FmFpmRegs->fm_rstc, FPM_RSTC_FM_RESET);
 	CORE_MemoryBarrier();
 	XX_UDelay(100);
 
+#ifndef CONFIG_FMAN_ARM
 #ifdef FM_SOFT_REST_IS_NOT_FINISHED_PROPERLY_A007273
 	if (disr2 && ccsr_guts_regs) {
 		/* Restore the value of devdisr2. */

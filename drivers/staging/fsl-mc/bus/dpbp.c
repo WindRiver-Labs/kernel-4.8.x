@@ -126,9 +126,10 @@ EXPORT_SYMBOL(dpbp_close);
  * Return:	'0' on Success; Error code otherwise.
  */
 int dpbp_create(struct fsl_mc_io *mc_io,
+		uint16_t dprc_token,
 		u32 cmd_flags,
 		const struct dpbp_cfg *cfg,
-		u16 *token)
+		uint32_t *object_id)
 {
 	struct mc_command cmd = { 0 };
 	int err;
@@ -137,7 +138,7 @@ int dpbp_create(struct fsl_mc_io *mc_io,
 
 	/* prepare command */
 	cmd.header = mc_encode_cmd_header(DPBP_CMDID_CREATE,
-					  cmd_flags, 0);
+					  cmd_flags, dprc_token);
 
 	/* send command to mc*/
 	err = mc_send_command(mc_io, &cmd);
@@ -145,7 +146,7 @@ int dpbp_create(struct fsl_mc_io *mc_io,
 		return err;
 
 	/* retrieve response parameters */
-	*token = mc_cmd_hdr_read_token(&cmd);
+	*object_id = get_mc_cmd_create_object_id(&cmd);
 
 	return 0;
 }
@@ -159,14 +160,18 @@ int dpbp_create(struct fsl_mc_io *mc_io,
  * Return:	'0' on Success; error code otherwise.
  */
 int dpbp_destroy(struct fsl_mc_io *mc_io,
-		 u32 cmd_flags,
-		 u16 token)
+		uint16_t dprc_token,
+		uint32_t cmd_flags,
+		uint32_t object_id)
 {
 	struct mc_command cmd = { 0 };
 
 	/* prepare command */
 	cmd.header = mc_encode_cmd_header(DPBP_CMDID_DESTROY,
-					  cmd_flags, token);
+					  cmd_flags, dprc_token);
+
+	/* set object id to destroy */
+	set_mc_cmd_destroy_object_id(&cmd, object_id);
 
 	/* send command to mc*/
 	return mc_send_command(mc_io, &cmd);
@@ -272,6 +277,7 @@ int dpbp_reset(struct fsl_mc_io *mc_io,
 	/* send command to mc*/
 	return mc_send_command(mc_io, &cmd);
 }
+EXPORT_SYMBOL(dpbp_reset);
 
 /**
  * dpbp_set_irq() - Set IRQ information for the DPBP to trigger an interrupt.
@@ -609,8 +615,6 @@ int dpbp_get_attributes(struct fsl_mc_io *mc_io,
 	rsp_params = (struct dpbp_rsp_get_attributes *)cmd.params;
 	attr->bpid = le16_to_cpu(rsp_params->bpid);
 	attr->id = le32_to_cpu(rsp_params->id);
-	attr->version.major = le16_to_cpu(rsp_params->version_major);
-	attr->version.minor = le16_to_cpu(rsp_params->version_minor);
 
 	return 0;
 }
@@ -686,6 +690,27 @@ int dpbp_get_notifications(struct fsl_mc_io *mc_io,
 	cfg->options = le16_to_cpu(rsp_params->options);
 	cfg->message_ctx = le64_to_cpu(rsp_params->message_ctx);
 	cfg->message_iova = le64_to_cpu(rsp_params->message_iova);
+
+	return 0;
+}
+
+int dpbp_get_api_version(struct fsl_mc_io *mc_io,
+			 uint32_t cmd_flags,
+			 uint16_t *major_ver,
+			 uint16_t *minor_ver)
+{
+	struct mc_command cmd = { 0 };
+	int err;
+
+	cmd.header = mc_encode_cmd_header(DPBP_CMDID_GET_API_VERSION,
+					cmd_flags,
+					0);
+
+	err = mc_send_command(mc_io, &cmd);
+	if (err)
+		return err;
+
+	get_mc_cmd_object_api_ver(&cmd, major_ver, minor_ver);
 
 	return 0;
 }

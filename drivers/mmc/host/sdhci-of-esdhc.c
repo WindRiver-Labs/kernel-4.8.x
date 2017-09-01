@@ -19,6 +19,7 @@
 #include <linux/delay.h>
 #include <linux/module.h>
 #include <linux/of_address.h>
+#include <linux/clk.h>
 #include <linux/fsl/svr.h>
 #include <linux/fsl/guts.h>
 #include <linux/mmc/host.h>
@@ -598,6 +599,14 @@ static void esdhc_of_set_clock(struct sdhci_host *host, unsigned int clock)
 	if (esdhc->vendor_ver < VENDOR_V_23)
 		pre_div = 2;
 
+	/*
+	 * Workaround to limit SD clock to 167MHz for ls1046a
+	 * according to ls1046a datasheet
+	 */
+	if (clock > 167000000 &&
+	    of_find_compatible_node(NULL, NULL, "fsl,ls1046a-esdhc"))
+		clock = 167000000;
+
 	/* Workaround to reduce the clock frequency for p1010 esdhc */
 	if (of_find_compatible_node(NULL, NULL, "fsl,p1010-esdhc")) {
 		if (clock > 20000000)
@@ -846,10 +855,13 @@ static void esdhc_set_uhs_signaling(struct sdhci_host *host, unsigned int uhs)
 
 static const struct of_device_id scfg_device_ids[] = {
 	{ .compatible = "fsl,t1040-scfg", },
+	{ .compatible = "fsl,ls1012a-scfg", },
+	{ .compatible = "fsl,ls1046a-scfg", },
 	{}
 };
 #define SCFG_SDHCIOVSELCR	0x408
 #define SDHCIOVSELCR_TGLEN	0x80000000
+#define SDHCIOVSELCR_VSELVAL	0x60000000
 #define SDHCIOVSELCR_SDHC_VS	0x00000001
 
 void esdhc_signal_voltage_switch(struct sdhci_host *host,
@@ -875,10 +887,20 @@ void esdhc_signal_voltage_switch(struct sdhci_host *host,
 		}
 		if (scfg_base) {
 			scfg_sdhciovselcr = SDHCIOVSELCR_TGLEN |
+					    SDHCIOVSELCR_VSELVAL;
+			iowrite32be(scfg_sdhciovselcr,
+				scfg_base + SCFG_SDHCIOVSELCR);
+
+			val |= ESDHC_VOLT_SEL;
+			sdhci_writel(host, val, ESDHC_PROCTL);
+			mdelay(5);
+
+			scfg_sdhciovselcr = SDHCIOVSELCR_TGLEN |
 					    SDHCIOVSELCR_SDHC_VS;
 			iowrite32be(scfg_sdhciovselcr,
 				scfg_base + SCFG_SDHCIOVSELCR);
 			iounmap(scfg_base);
+			break;
 		}
 		val |= ESDHC_VOLT_SEL;
 		sdhci_writel(host, val, ESDHC_PROCTL);
@@ -960,6 +982,7 @@ static void esdhc_init(struct platform_device *pdev, struct sdhci_host *host)
 	struct sdhci_pltfm_host *pltfm_host;
 	struct sdhci_esdhc *esdhc;
 	struct device_node *np;
+	struct clk *clk;
 	const __be32 *val;
 	int size;
 	u16 host_ver;
@@ -968,7 +991,7 @@ static void esdhc_init(struct platform_device *pdev, struct sdhci_host *host)
 	pltfm_host = sdhci_priv(host);
 	esdhc = sdhci_pltfm_priv(pltfm_host);
 
-	svr = guts_get_svr();
+	svr = fsl_guts_get_svr();
 	esdhc->soc_ver = SVR_SOC_VER(svr);
 	esdhc->soc_rev = SVR_REV(svr);
 
@@ -983,8 +1006,17 @@ static void esdhc_init(struct platform_device *pdev, struct sdhci_host *host)
 		esdhc->adapter_type = be32_to_cpup(val);
 
 	val = of_get_property(np, "peripheral-frequency", &size);
-	if (val && size == sizeof(*val) && *val)
+	if (val && size == sizeof(*val) && *val) {
 		esdhc->peripheral_clock = be32_to_cpup(val);
+	} else {
+		clk = of_clk_get(np, 0);
+		if (IS_ERR(clk))
+			return;
+		if (of_device_is_compatible(np, "fsl,ls1046a-esdhc"))
+			esdhc->peripheral_clock = clk_get_rate(clk) / 2;
+		else
+			esdhc->peripheral_clock = clk_get_rate(clk);
+	}
 }
 
 static int sdhci_esdhc_probe(struct platform_device *pdev)
@@ -1030,7 +1062,8 @@ static int sdhci_esdhc_probe(struct platform_device *pdev)
 	    of_device_is_compatible(np, "fsl,ls1021a-esdhc") ||
 	    of_device_is_compatible(np, "fsl,ls2080a-esdhc") ||
 	    of_device_is_compatible(np, "fsl,ls2085a-esdhc") ||
-	    of_device_is_compatible(np, "fsl,ls1043a-esdhc"))
+	    of_device_is_compatible(np, "fsl,ls1043a-esdhc") ||
+	    of_device_is_compatible(np, "fsl,ls1046a-esdhc"))
 		host->quirks &= ~SDHCI_QUIRK_BROKEN_CARD_DETECTION;
 
 	if (of_device_is_compatible(np, "fsl,ls1021a-esdhc"))

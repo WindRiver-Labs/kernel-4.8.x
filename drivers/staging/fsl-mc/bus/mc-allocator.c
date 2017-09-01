@@ -278,7 +278,12 @@ int __must_check fsl_mc_portal_allocate(struct fsl_mc_device *mc_dev,
 	struct fsl_mc_resource *resource = NULL;
 	struct fsl_mc_io *mc_io = NULL;
 
-	if (mc_dev->flags & FSL_MC_IS_DPRC) {
+	if (!mc_dev) {
+		if (WARN_ON(!fsl_mc_bus_type.dev_root))
+			return error;
+
+		mc_bus_dev = to_fsl_mc_device(fsl_mc_bus_type.dev_root);
+	} else if (mc_dev->flags & FSL_MC_IS_DPRC) {
 		mc_bus_dev = mc_dev;
 	} else {
 		if (WARN_ON(mc_dev->dev.parent->bus != &fsl_mc_bus_type))
@@ -295,7 +300,8 @@ int __must_check fsl_mc_portal_allocate(struct fsl_mc_device *mc_dev,
 
 	error = -EINVAL;
 	dpmcp_dev = resource->data;
-	if (WARN_ON(!dpmcp_dev))
+	if (WARN_ON(!dpmcp_dev ||
+			strcmp(dpmcp_dev->obj_desc.type, "dpmcp") != 0))
 		goto error_cleanup_resource;
 
 	if (dpmcp_dev->obj_desc.ver_major < DPMCP_MIN_VER_MAJOR ||
@@ -352,6 +358,10 @@ void fsl_mc_portal_free(struct fsl_mc_io *mc_io)
 	 */
 	dpmcp_dev = mc_io->dpmcp_dev;
 	if (WARN_ON(!dpmcp_dev))
+		return;
+	if (WARN_ON(strcmp(dpmcp_dev->obj_desc.type, "dpmcp") != 0))
+		return;
+	if (WARN_ON(dpmcp_dev->mc_io != mc_io))
 		return;
 
 	resource = dpmcp_dev->resource;
@@ -572,6 +582,10 @@ int __must_check fsl_mc_allocate_irqs(struct fsl_mc_device *mc_dev)
 	struct fsl_mc_device_irq **irqs = NULL;
 	struct fsl_mc_bus *mc_bus;
 	struct fsl_mc_resource_pool *res_pool;
+	struct fsl_mc *mc = dev_get_drvdata(fsl_mc_bus_type.dev_root->parent);
+
+	if (!mc->gic_supported)
+		return -ENOTSUPP;
 
 	if (WARN_ON(mc_dev->irqs))
 		return -EINVAL;
@@ -682,13 +696,25 @@ static int fsl_mc_allocator_probe(struct fsl_mc_device *mc_dev)
 		return -EINVAL;
 
 	mc_bus = to_fsl_mc_bus(mc_bus_dev);
-	error = object_type_to_pool_type(mc_dev->obj_desc.type, &pool_type);
-	if (error < 0)
-		return error;
+	/*
+	 * If mc_dev is the DPMCP object for the parent DPRC's built-in
+	 * portal, we don't add this DPMCP to the DPMCP object pool,
+	 * but instead allocate it directly to the parent DPRC (mc_bus_dev):
+	 */
+	if (strcmp(mc_dev->obj_desc.type, "dpmcp") == 0 &&
+		mc_dev->obj_desc.id == mc_bus->dprc_attr.portal_id) {
+		error = fsl_mc_io_set_dpmcp(mc_bus_dev->mc_io, mc_dev);
+		if (error < 0)
+			return error;
+	} else {
+		error = object_type_to_pool_type(mc_dev->obj_desc.type, &pool_type);
+		if (error < 0)
+			return error;
 
-	error = fsl_mc_resource_pool_add_device(mc_bus, pool_type, mc_dev);
-	if (error < 0)
-		return error;
+		error = fsl_mc_resource_pool_add_device(mc_bus, pool_type, mc_dev);
+		if (error < 0)
+			return error;
+	}
 
 	dev_dbg(&mc_dev->dev,
 		"Allocatable MC object device bound to fsl_mc_allocator driver");
