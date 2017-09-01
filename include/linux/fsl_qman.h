@@ -159,19 +159,23 @@ struct qm_fd {
 			u8 addr_hi;	/* high 8-bits of 40-bit address */
 			u32 addr_lo;	/* low 32-bits of 40-bit address */
 #else
-			u8 liodn_offset:6;
-			u8 dd:2;	/* dynamic debug */
-			u8 bpid:8;	/* Buffer Pool ID */
+			u32 addr_lo;    /* low 32-bits of 40-bit address */
+			u8 addr_hi;     /* high 8-bits of 40-bit address */
 			u8 __reserved:4;
 			u8 eliodn_offset:4;
-			u8 addr_hi;	/* high 8-bits of 40-bit address */
-			u32 addr_lo;	/* low 32-bits of 40-bit address */
+			u8 bpid:8;      /* Buffer Pool ID */
+			u8 liodn_offset:6;
+			u8 dd:2;        /* dynamic debug */
 #endif
 		};
 		struct {
+#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
 			u64 __notaddress:24;
-			/* More efficient address accessor */
 			u64 addr:40;
+#else
+			u64 addr:40;
+			u64 __notaddress:24;
+#endif
 		};
 		u64 opaque_addr;
 	};
@@ -324,13 +328,9 @@ union qm_sg_efl {
 	};
 	u32 efl;
 };
-static inline u64 qm_sg_entry_get64(const struct qm_sg_entry *sg)
-{
-	return be64_to_cpu(sg->opaque);
-}
 static inline dma_addr_t qm_sg_addr(const struct qm_sg_entry *sg)
 {
-	return (dma_addr_t)be64_to_cpu(sg->opaque);
+	return (dma_addr_t)be64_to_cpu(sg->opaque) & 0xffffffffffULL;
 }
 static inline u8 qm_sg_entry_get_ext(const struct qm_sg_entry *sg)
 {
@@ -733,11 +733,19 @@ struct qm_cgr_wr_parm {
 	union {
 		u32 word;
 		struct {
+#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
 			u32 MA:8;
 			u32 Mn:5;
 			u32 SA:7; /* must be between 64-127 */
 			u32 Sn:6;
 			u32 Pn:6;
+#else
+			u32 Pn:6;
+			u32 Sn:6;
+			u32 SA:7; /* must be between 64-127 */
+			u32 Mn:5;
+			u32 MA:8;
+#endif
 		} __packed;
 	};
 } __packed;
@@ -2985,7 +2993,7 @@ void qman_seed_ceetm1_lfqid_range(u32 lfqid, u32 count);
 	/* ----------------------------- */
 
 /**
- * qman_ceetm_claim_sp - Claims the given sub-portal, provided it is available
+ * qman_ceetm_sp_claim - Claims the given sub-portal, provided it is available
  * to us and configured for traffic-management.
  * @sp: the returned sub-portal object, if successful.
  * @dcp_id: specifies the desired Fman block (and thus the relevant CEETM
@@ -3775,7 +3783,7 @@ int qman_ceetm_cscn_swp_get(struct qm_ceetm_ccg *ccg,
 
 /** qman_ceetm_cscn_dcp_set - Add or remove a direct connect portal from the\
  * target mask.
- * qman_ceetm_cscn_swp_get - Query whether a given direct connect portal index
+ * qman_ceetm_cscn_dcp_get - Query whether a given direct connect portal index
  * is in the cscn target mask.
  * @ccg: the give CCG object.
  * @dcp_idx: the index of the direct connect portal.
@@ -3855,7 +3863,7 @@ int qman_ceetm_query_write_statistics(u16 cid, enum qm_dc_portal dcp_idx,
 int qman_set_wpm(int wpm_enable);
 
 /**
- * qman_get_swp - Query the waterfall power management setting
+ * qman_get_wpm - Query the waterfall power management setting
  *
  * @wpm_enable: boolean, 1 = enable wpm, 0 = disable wpm.
  *

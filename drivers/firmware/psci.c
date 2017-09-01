@@ -34,6 +34,15 @@
 #include <asm/smp_plat.h>
 #include <asm/suspend.h>
 
+#define PSCI_POWER_STATE_TYPE_STANDBY		0
+#define PSCI_POWER_STATE_TYPE_POWER_DOWN	1
+
+struct psci_power_state {
+	u16	id;
+	u8	type;
+	u8	affinity_level;
+};
+
 /*
  * While a 64-bit OS can make calls with SMC32 calling conventions, for some
  * calls it is necessary to use SMC64 to pass or return 64-bit values.
@@ -416,9 +425,29 @@ CPUIDLE_METHOD_OF_DECLARE(psci, "psci", &psci_cpuidle_ops);
 #endif
 #endif
 
+static u32 psci_power_state_pack(struct psci_power_state state)
+{
+	return ((state.id << PSCI_0_2_POWER_STATE_ID_SHIFT)
+			& PSCI_0_2_POWER_STATE_ID_MASK) |
+		((state.type << PSCI_0_2_POWER_STATE_TYPE_SHIFT)
+		 & PSCI_0_2_POWER_STATE_TYPE_MASK) |
+		((state.affinity_level << PSCI_0_2_POWER_STATE_AFFL_SHIFT)
+		 & PSCI_0_2_POWER_STATE_AFFL_MASK);
+}
+
 static int psci_system_suspend(unsigned long unused)
 {
-	return invoke_psci_fn(PSCI_FN_NATIVE(1_0, SYSTEM_SUSPEND),
+	if (of_machine_is_compatible("fsl,ls1046a")) {
+		u32 power_state;
+		struct psci_power_state state = {
+			.id = 0,
+			.type = PSCI_POWER_STATE_TYPE_POWER_DOWN,
+			.affinity_level = 2, /* system level */
+		};
+		power_state = psci_power_state_pack(state);
+		return psci_cpu_suspend(power_state, virt_to_phys(cpu_resume));
+	} else
+		return invoke_psci_fn(PSCI_FN_NATIVE(1_0, SYSTEM_SUSPEND),
 			      virt_to_phys(cpu_resume), 0, 0);
 }
 
@@ -439,10 +468,14 @@ static void __init psci_init_system_suspend(void)
 	if (!IS_ENABLED(CONFIG_SUSPEND))
 		return;
 
-	ret = psci_features(PSCI_FN_NATIVE(1_0, SYSTEM_SUSPEND));
-
-	if (ret != PSCI_RET_NOT_SUPPORTED)
+	if (of_machine_is_compatible("fsl,ls1046a"))
 		suspend_set_ops(&psci_suspend_ops);
+	else {
+		ret = psci_features(PSCI_FN_NATIVE(1_0, SYSTEM_SUSPEND));
+
+		if (ret != PSCI_RET_NOT_SUPPORTED)
+			suspend_set_ops(&psci_suspend_ops);
+	}
 }
 
 static void __init psci_init_cpu_suspend(void)
@@ -538,7 +571,8 @@ static int __init psci_probe(void)
 
 	psci_init_migrate();
 
-	if (PSCI_VERSION_MAJOR(ver) >= 1) {
+	if (PSCI_VERSION_MAJOR(ver) >= 1 ||
+			of_machine_is_compatible("fsl,ls1046a")) {
 		psci_init_cpu_suspend();
 		psci_init_system_suspend();
 	}

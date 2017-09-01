@@ -15,6 +15,7 @@
 #include <linux/mod_devicetable.h>
 #include <linux/list.h>
 #include <linux/interrupt.h>
+#include <linux/platform_device.h>
 #include "../include/dprc.h"
 
 #define FSL_MC_VENDOR_FREESCALE	0x1957
@@ -112,6 +113,15 @@ struct fsl_mc_device_irq {
 #define FSL_MC_IS_DPRC	0x0001
 
 /**
+  * root dprc's parent is a platform device
+  * that platform device's bus type is platform_bus_type.
+  */
+#define is_root_dprc(dev) \
+	((to_fsl_mc_device(dev)->flags & FSL_MC_IS_DPRC) && \
+	((dev)->bus == &fsl_mc_bus_type) && \
+	((dev)->parent->bus == &platform_bus_type))
+
+/**
  * Default DMA mask for devices on a fsl-mc bus
  */
 #define FSL_MC_DEFAULT_DMA_MASK	(~0ULL)
@@ -129,6 +139,7 @@ struct fsl_mc_device_irq {
  * @regions: pointer to array of MMIO region entries
  * @irqs: pointer to array of pointers to interrupts allocated to this device
  * @resource: generic resource associated with this MC object device, if any.
+ * @driver_override: Driver name to force a match
  *
  * Generic device object for MC object devices that are "attached" to a
  * MC bus.
@@ -161,6 +172,7 @@ struct fsl_mc_device {
 	struct resource *regions;
 	struct fsl_mc_device_irq **irqs;
 	struct fsl_mc_resource *resource;
+	const char *driver_override;
 };
 
 #define to_fsl_mc_device(_dev) \
@@ -186,6 +198,8 @@ int __must_check __fsl_mc_driver_register(struct fsl_mc_driver *fsl_mc_driver,
 					  struct module *owner);
 
 void fsl_mc_driver_unregister(struct fsl_mc_driver *driver);
+
+bool fsl_mc_interrupts_supported(void);
 
 bool fsl_mc_bus_exists(void);
 

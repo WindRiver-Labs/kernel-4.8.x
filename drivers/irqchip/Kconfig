@@ -264,3 +264,9 @@ config EZNPS_GIC
 	select IRQ_DOMAIN
 	help
 	  Support the EZchip NPS400 global interrupt controller
+
+config LS1_MSI
+	bool
+	depends on ARM_GIC
+	depends on PCI && PCI_MSI
+	select PCI_MSI_IRQ_DOMAIN

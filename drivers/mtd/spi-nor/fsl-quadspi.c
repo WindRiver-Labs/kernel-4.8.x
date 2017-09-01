@@ -213,6 +213,9 @@
 
 #define QUADSPI_MIN_IOMAP SZ_4M
 
+#define FLASH_VENDOR_SPANSION_FS	"s25fs"
+#define SPANSION_S25FS_FAMILY	(1 << 1)
+
 enum fsl_qspi_devtype {
 	FSL_QUADSPI_VYBRID,
 	FSL_QUADSPI_IMX6SX,
@@ -329,6 +332,18 @@ static inline int has_added_amba_base_internal(struct fsl_qspi *q)
 	return q->devtype_data->driver_data & QUADSPI_AMBA_BASE_INTERNAL;
 }
 
+static u32 fsl_get_nor_vendor(struct spi_nor *nor)
+{
+	u32 vendor_id;
+
+	if (nor->vendor) {
+		if (memcmp(nor->vendor, FLASH_VENDOR_SPANSION_FS,
+					sizeof(FLASH_VENDOR_SPANSION_FS) - 1))
+			vendor_id = SPANSION_S25FS_FAMILY;
+	}
+	return vendor_id;
+}
+
 /*
  * R/W functions for big- or little-endian registers:
  * The qSPI controller's endian is independent of the CPU core's endian.
@@ -349,6 +364,31 @@ static u32 qspi_readl(struct fsl_qspi *q, void __iomem *addr)
 		return ioread32be(addr);
 	else
 		return ioread32(addr);
+}
+
+static inline u32 *u8tou32(u32 *dest, const u8 *src, size_t n)
+{
+	size_t i;
+	*dest = 0;
+
+	n = n > 4 ? 4 : n;
+	for (i = 0; i < n; i++)
+		*dest |= *src++ << i * 8;
+
+	return dest;
+
+}
+
+static inline u8 *u32tou8(u8 *dest, const u32 *src, size_t n)
+{
+	size_t i;
+	u8 *xdest = dest;
+
+	n = n > 4 ? 4 : n;
+	for (i = 0; i < n; i++)
+		*xdest++ = *src >> i * 8;
+
+	return dest;
 }
 
 /*
@@ -394,12 +434,14 @@ static void fsl_qspi_init_lut(struct fsl_qspi *q)
 	int rxfifo = q->devtype_data->rxfifo;
 	u32 lut_base;
 	int i;
-	const struct fsl_qspi_devtype_data *devtype_data = q->devtype_data;
+	u32 vendor;
 
 	struct spi_nor *nor = &q->nor[0];
 	u8 addrlen = (nor->addr_width == 3) ? ADDR24BIT : ADDR32BIT;
 	u8 read_op = nor->read_opcode;
 	u8 read_dm = nor->read_dummy;
+
+	vendor = fsl_get_nor_vendor(nor);
 
 	fsl_qspi_unlock_lut(q);
 
@@ -418,12 +460,25 @@ static void fsl_qspi_init_lut(struct fsl_qspi *q)
 			    LUT1(FSL_READ, PAD1, rxfifo),
 				base + QUADSPI_LUT(lut_base + 1));
 	} else if (nor->flash_read == SPI_NOR_QUAD) {
-		qspi_writel(q, LUT0(CMD, PAD1, read_op) |
-			    LUT1(ADDR, PAD1, addrlen),
-				base + QUADSPI_LUT(lut_base));
-		qspi_writel(q, LUT0(DUMMY, PAD1, read_dm) |
-			    LUT1(FSL_READ, PAD4, rxfifo),
-				base + QUADSPI_LUT(lut_base + 1));
+		if (q->nor_size == 0x4000000) {
+			read_op = 0xEC;
+		qspi_writel(q,
+			LUT0(CMD, PAD1, read_op) | LUT1(ADDR, PAD4, addrlen),
+			base + QUADSPI_LUT(lut_base));
+		qspi_writel(q,
+			LUT0(MODE, PAD4, 0xff) | LUT1(DUMMY, PAD4, read_dm),
+			base + QUADSPI_LUT(lut_base + 1));
+		qspi_writel(q,
+			LUT0(FSL_READ, PAD4, rxfifo),
+			base + QUADSPI_LUT(lut_base + 2));
+		} else {
+			qspi_writel(q, LUT0(CMD, PAD1, read_op) |
+				    LUT1(ADDR, PAD1, addrlen),
+					base + QUADSPI_LUT(lut_base));
+			qspi_writel(q, LUT0(DUMMY, PAD1, read_dm) |
+				    LUT1(FSL_READ, PAD4, rxfifo),
+					base + QUADSPI_LUT(lut_base + 1));
+		}
 	} else if (nor->flash_read == SPI_NOR_DDR_QUAD) {
 		/* read mode : 1-4-4, such as Spansion s25fl128s. */
 		qspi_writel(q, LUT0(CMD, PAD1, read_op)
@@ -510,7 +565,8 @@ static void fsl_qspi_init_lut(struct fsl_qspi *q)
 	 * use the same value 0x65. But it indicates different meaning.
 	 */
 	lut_base = SEQID_RDAR_OR_RD_EVCR * 4;
-	if (devtype_data->devtype == FSL_QUADSPI_LS2080A) {
+
+	if (vendor == SPANSION_S25FS_FAMILY) {
 		/*
 		* Read any device register.
 		* Used for Spansion S25FS-S family flash only.
@@ -669,10 +725,10 @@ static void fsl_qspi_read_data(struct fsl_qspi *q, int len, u8 *rxbuf)
 				q->chip_base_addr, tmp);
 
 		if (len >= 4) {
-			*((u32 *)rxbuf) = tmp;
+			u32tou8(rxbuf, &tmp, 4);
 			rxbuf += 4;
 		} else {
-			memcpy(rxbuf, &tmp, len);
+			u32tou8(rxbuf, &tmp, len);
 			break;
 		}
 
@@ -706,7 +762,7 @@ static inline void fsl_qspi_invalid(struct fsl_qspi *q)
 }
 
 static ssize_t fsl_qspi_nor_write(struct fsl_qspi *q, struct spi_nor *nor,
-				u8 opcode, unsigned int to, u32 *txbuf,
+				u8 opcode, unsigned int to, u8 *txbuf,
 				unsigned count)
 {
 	int ret, i, j;
@@ -721,9 +777,10 @@ static ssize_t fsl_qspi_nor_write(struct fsl_qspi *q, struct spi_nor *nor,
 
 	/* fill the TX data to the FIFO */
 	for (j = 0, i = ((count + 3) / 4); j < i; j++) {
-		tmp = fsl_qspi_endian_xchg(q, *txbuf);
+		u8tou32(&tmp, txbuf, 4);
+		tmp = fsl_qspi_endian_xchg(q, tmp);
 		qspi_writel(q, tmp, q->iobase + QUADSPI_TBDR);
-		txbuf++;
+		txbuf += 4;
 	}
 
 	/* fill the TXFIFO upto 16 bytes for i.MX7d */
@@ -980,7 +1037,7 @@ static int fsl_qspi_read_reg(struct spi_nor *nor, u8 opcode, u8 *buf, int len)
 	u32 to = 0;
 
 	if (opcode == SPINOR_OP_SPANSION_RDAR)
-		memcpy(&to, nor->cmd_buf, 4);
+		u8tou32(&to, nor->cmd_buf, 4);
 
 	ret = fsl_qspi_runcmd(q, opcode, to, len);
 	if (ret)
@@ -997,7 +1054,7 @@ static int fsl_qspi_write_reg(struct spi_nor *nor, u8 opcode, u8 *buf, int len)
 	u32 to = 0;
 
 	if (opcode == SPINOR_OP_SPANSION_WRAR)
-		memcpy(&to, nor->cmd_buf, 4);
+		u8tou32(&to, nor->cmd_buf, 4);
 
 	if (!buf) {
 		ret = fsl_qspi_runcmd(q, opcode, to, 1);
@@ -1009,7 +1066,7 @@ static int fsl_qspi_write_reg(struct spi_nor *nor, u8 opcode, u8 *buf, int len)
 
 	} else if (len > 0) {
 		ret = fsl_qspi_nor_write(q, nor, opcode, 0,
-					(u32 *)buf, len);
+					buf, len);
 		if (ret > 0)
 			return 0;
 	} else {
@@ -1025,7 +1082,7 @@ static ssize_t fsl_qspi_write(struct spi_nor *nor, loff_t to,
 {
 	struct fsl_qspi *q = nor->priv;
 	ssize_t ret = fsl_qspi_nor_write(q, nor, nor->program_opcode, to,
-					 (u32 *)buf, len);
+					 (u8 *)buf, len);
 
 	/* invalid the data in the AHB buffer. */
 	fsl_qspi_invalid(q);
@@ -1072,7 +1129,7 @@ static ssize_t fsl_qspi_read(struct spi_nor *nor, loff_t from,
 		len);
 
 	/* Read out the data directly from the AHB buffer.*/
-	memcpy(buf, q->ahb_addr + q->chip_base_addr + from - q->memmap_offs,
+	memcpy_toio(buf, q->ahb_addr + q->chip_base_addr + from - q->memmap_offs,
 		len);
 
 	return len;
@@ -1130,6 +1187,7 @@ static int fsl_qspi_probe(struct platform_device *pdev)
 	struct spi_nor *nor;
 	struct mtd_info *mtd;
 	int ret, i = 0;
+	int find_node;
 	enum read_mode mode = SPI_NOR_QUAD;
 
 	q = devm_kzalloc(dev, sizeof(*q), GFP_KERNEL);
@@ -1207,6 +1265,7 @@ static int fsl_qspi_probe(struct platform_device *pdev)
 
 	mutex_init(&q->lock);
 
+	find_node = 0;
 	/* iterate the subnodes. */
 	for_each_available_child_of_node(dev->of_node, np) {
 		/* skip the holes */
@@ -1233,7 +1292,7 @@ static int fsl_qspi_probe(struct platform_device *pdev)
 		ret = of_property_read_u32(np, "spi-max-frequency",
 				&q->clk_rate);
 		if (ret < 0)
-			goto mutex_failed;
+			continue;
 
 		/* set the chip address for READID */
 		fsl_qspi_set_base_addr(q, nor);
@@ -1247,11 +1306,11 @@ static int fsl_qspi_probe(struct platform_device *pdev)
 
 		ret = spi_nor_scan(nor, NULL, mode);
 		if (ret)
-			goto mutex_failed;
+			continue;
 
 		ret = mtd_device_register(mtd, NULL, 0);
 		if (ret)
-			goto mutex_failed;
+			continue;
 
 		/* Set the correct NOR size now. */
 		if (q->nor_size == 0) {
@@ -1274,7 +1333,11 @@ static int fsl_qspi_probe(struct platform_device *pdev)
 			nor->page_size = q->devtype_data->txfifo;
 
 		i++;
+		find_node++;
 	}
+
+	if (find_node == 0)
+		goto mutex_failed;
 
 	/* finish the rest init. */
 	ret = fsl_qspi_nor_setup_last(q);

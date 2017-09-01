@@ -35,6 +35,7 @@
 #include <linux/etherdevice.h>
 #include <linux/rtnetlink.h>
 #include <linux/if_vlan.h>
+#include <linux/msi.h>
 
 #include <uapi/linux/if_bridge.h>
 #include <net/netlink.h>
@@ -44,7 +45,7 @@
 #include "dpsw-cmd.h"
 
 /* Minimal supported DPSE version */
-#define DPSW_MIN_VER_MAJOR	7
+#define DPSW_MIN_VER_MAJOR	8
 #define DPSW_MIN_VER_MINOR	0
 
 /* IRQ index */
@@ -54,6 +55,12 @@
 #define ETHSW_VLAN_UNTAGGED	2
 #define ETHSW_VLAN_PVID		4
 #define ETHSW_VLAN_GLOBAL	8
+
+
+/* Maximum Frame Length supported by HW (currently 10k) */
+#define DPAA2_MFL		(10 * 1024)
+#define ETHSW_MAX_FRAME_LENGTH	(DPAA2_MFL - VLAN_ETH_HLEN - ETH_FCS_LEN)
+#define ETHSW_L2_MAX_FRM(mtu)	(mtu + VLAN_ETH_HLEN + ETH_FCS_LEN)
 
 struct ethsw_port_priv {
 	struct net_device	*netdev;
@@ -1144,6 +1151,32 @@ error:
 	return storage;
 }
 
+static int ethsw_port_change_mtu(struct net_device *netdev, int mtu)
+{
+	struct ethsw_port_priv	*port_priv = netdev_priv(netdev);
+	int			err;
+
+	if (mtu < ETH_ZLEN || mtu > ETHSW_MAX_FRAME_LENGTH) {
+		netdev_err(netdev, "Invalid MTU %d. Valid range is: %d..%d\n",
+			   mtu, ETH_ZLEN, ETHSW_MAX_FRAME_LENGTH);
+		return -EINVAL;
+	}
+
+	err = dpsw_if_set_max_frame_length(port_priv->ethsw_priv->mc_io,
+					   0,
+					   port_priv->ethsw_priv->dpsw_handle,
+					   port_priv->port_index,
+					   (u16)ETHSW_L2_MAX_FRM(mtu));
+	if (err) {
+		netdev_err(netdev,
+			   "dpsw_if_set_max_frame_length() err %d\n", err);
+		return err;
+	}
+
+	netdev->mtu = mtu;
+	return 0;
+}
+
 static const struct net_device_ops ethsw_port_ops = {
 	.ndo_open		= &ethsw_port_open,
 	.ndo_stop		= &ethsw_port_stop,
@@ -1153,6 +1186,7 @@ static const struct net_device_ops ethsw_port_ops = {
 	.ndo_fdb_dump		= &ndo_dflt_fdb_dump,
 
 	.ndo_get_stats64	= &ethsw_port_get_stats,
+	.ndo_change_mtu		= &ethsw_port_change_mtu,
 
 	.ndo_start_xmit		= &ethsw_dropframe,
 };
@@ -1271,7 +1305,7 @@ static irqreturn_t _ethsw_irq0_handler_thread(int irq_num, void *arg)
 	/* Sanity check */
 	if (WARN_ON(!sw_dev || !sw_dev->irqs || !sw_dev->irqs[irq_index]))
 		goto out;
-	if (WARN_ON(sw_dev->irqs[irq_index]->irq_number != irq_num))
+	if (WARN_ON(sw_dev->irqs[irq_index]->msi_desc->irq != irq_num))
 		goto out;
 
 	err = dpsw_get_irq_status(io, 0, token, irq_index, &status);
@@ -1326,7 +1360,7 @@ static int ethsw_setup_irqs(struct fsl_mc_device *sw_dev)
 
 	irq = sw_dev->irqs[irq_index];
 
-	err = devm_request_threaded_irq(dev, irq->irq_number,
+	err = devm_request_threaded_irq(dev, irq->msi_desc->irq,
 					ethsw_irq0_handler,
 					_ethsw_irq0_handler_thread,
 					IRQF_NO_SUSPEND | IRQF_ONESHOT,
@@ -1353,7 +1387,7 @@ static int ethsw_setup_irqs(struct fsl_mc_device *sw_dev)
 	return 0;
 
 free_devm_irq:
-	devm_free_irq(dev, irq->irq_number, dev);
+	devm_free_irq(dev, irq->msi_desc->irq, dev);
 free_irq:
 	fsl_mc_free_irqs(sw_dev);
 	return err;
@@ -1368,7 +1402,7 @@ static void ethsw_teardown_irqs(struct fsl_mc_device *sw_dev)
 	dpsw_set_irq_enable(priv->mc_io, 0, priv->dpsw_handle,
 			      DPSW_IRQ_INDEX_IF, 0);
 	devm_free_irq(dev,
-		      sw_dev->irqs[DPSW_IRQ_INDEX_IF]->irq_number,
+		      sw_dev->irqs[DPSW_IRQ_INDEX_IF]->msi_desc->irq,
 		      dev);
 	fsl_mc_free_irqs(sw_dev);
 }
@@ -1381,6 +1415,7 @@ ethsw_init(struct fsl_mc_device *sw_dev)
 	struct net_device	*netdev;
 	int			err = 0;
 	u16			i;
+	u16			version_major, version_minor;
 	const struct dpsw_stp_cfg stp_cfg = {
 		.vlan_id = 1,
 		.state = DPSW_STP_STATE_FORWARDING,
@@ -1409,13 +1444,21 @@ ethsw_init(struct fsl_mc_device *sw_dev)
 		goto err_close;
 	}
 
+	err = dpsw_get_api_version(priv->mc_io, 0,
+				   &version_major,
+				   &version_minor);
+	if (err) {
+		dev_err(dev, "dpsw_get_api_version err %d\n", err);
+		goto err_close;
+	}
+
 	/* Minimum supported DPSW version check */
-	if (priv->sw_attr.version.major < DPSW_MIN_VER_MAJOR ||
-	    (priv->sw_attr.version.major == DPSW_MIN_VER_MAJOR &&
-	     priv->sw_attr.version.minor < DPSW_MIN_VER_MINOR)) {
+	if (version_major < DPSW_MIN_VER_MAJOR ||
+	    (version_major == DPSW_MIN_VER_MAJOR &&
+	     version_minor < DPSW_MIN_VER_MINOR)) {
 		dev_err(dev, "DPSW version %d:%d not supported. Use %d.%d or greater.\n",
-			priv->sw_attr.version.major,
-			priv->sw_attr.version.minor,
+			version_major,
+			version_minor,
 			DPSW_MIN_VER_MAJOR, DPSW_MIN_VER_MINOR);
 		err = -ENOTSUPP;
 		goto err_close;
@@ -1623,7 +1666,7 @@ ethsw_probe(struct fsl_mc_device *sw_dev)
 
 		rtnl_lock();
 
-		err = netdev_master_upper_dev_link(port_netdev, netdev);
+		err = netdev_master_upper_dev_link(port_netdev, netdev, NULL, NULL);
 		if (err) {
 			dev_err(dev, "netdev_master_upper_dev_link error %d\n",
 				err);
@@ -1683,12 +1726,10 @@ err_free_netdev:
 	return err;
 }
 
-static const struct fsl_mc_device_match_id ethsw_match_id_table[] = {
+static const struct fsl_mc_device_id ethsw_match_id_table[] = {
 	{
 		.vendor = FSL_MC_VENDOR_FREESCALE,
 		.obj_type = "dpsw",
-		.ver_major = DPSW_VER_MAJOR,
-		.ver_minor = DPSW_VER_MINOR,
 	},
 	{}
 };

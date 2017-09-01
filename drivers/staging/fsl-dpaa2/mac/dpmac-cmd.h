@@ -1,4 +1,4 @@
-/* Copyright 2013-2015 Freescale Semiconductor Inc.
+/* Copyright 2013-2016 Freescale Semiconductor Inc.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -33,36 +33,41 @@
 #define _FSL_DPMAC_CMD_H
 
 /* DPMAC Version */
-#define DPMAC_VER_MAJOR				3
+#define DPMAC_VER_MAJOR				4
 #define DPMAC_VER_MINOR				2
+#define DPMAC_CMD_BASE_VERSION			1
+#define DPMAC_CMD_ID_OFFSET			4
 
 /* Command IDs */
-#define DPMAC_CMDID_CLOSE			0x800
-#define DPMAC_CMDID_OPEN			0x80c
-#define DPMAC_CMDID_CREATE			0x90c
-#define DPMAC_CMDID_DESTROY			0x900
+#define DPMAC_CMDID_CLOSE                       ((0x800 << DPMAC_CMD_ID_OFFSET) | DPMAC_CMD_BASE_VERSION)
+#define DPMAC_CMDID_OPEN                        ((0x80c << DPMAC_CMD_ID_OFFSET) | DPMAC_CMD_BASE_VERSION)
+#define DPMAC_CMDID_CREATE                      ((0x90c << DPMAC_CMD_ID_OFFSET) | DPMAC_CMD_BASE_VERSION)
+#define DPMAC_CMDID_DESTROY                     ((0x98c << DPMAC_CMD_ID_OFFSET) | DPMAC_CMD_BASE_VERSION)
+#define DPMAC_CMDID_GET_API_VERSION             ((0xa0c << DPMAC_CMD_ID_OFFSET) | DPMAC_CMD_BASE_VERSION)
 
-#define DPMAC_CMDID_GET_ATTR			0x004
-#define DPMAC_CMDID_RESET			0x005
+#define DPMAC_CMDID_GET_ATTR                    ((0x004 << DPMAC_CMD_ID_OFFSET) | DPMAC_CMD_BASE_VERSION)
+#define DPMAC_CMDID_RESET                       ((0x005 << DPMAC_CMD_ID_OFFSET) | DPMAC_CMD_BASE_VERSION)
 
-#define DPMAC_CMDID_SET_IRQ			0x010
-#define DPMAC_CMDID_GET_IRQ			0x011
-#define DPMAC_CMDID_SET_IRQ_ENABLE		0x012
-#define DPMAC_CMDID_GET_IRQ_ENABLE		0x013
-#define DPMAC_CMDID_SET_IRQ_MASK		0x014
-#define DPMAC_CMDID_GET_IRQ_MASK		0x015
-#define DPMAC_CMDID_GET_IRQ_STATUS		0x016
-#define DPMAC_CMDID_CLEAR_IRQ_STATUS		0x017
+#define DPMAC_CMDID_SET_IRQ                     ((0x010 << DPMAC_CMD_ID_OFFSET) | DPMAC_CMD_BASE_VERSION)
+#define DPMAC_CMDID_GET_IRQ                     ((0x011 << DPMAC_CMD_ID_OFFSET) | DPMAC_CMD_BASE_VERSION)
+#define DPMAC_CMDID_SET_IRQ_ENABLE              ((0x012 << DPMAC_CMD_ID_OFFSET) | DPMAC_CMD_BASE_VERSION)
+#define DPMAC_CMDID_GET_IRQ_ENABLE              ((0x013 << DPMAC_CMD_ID_OFFSET) | DPMAC_CMD_BASE_VERSION)
+#define DPMAC_CMDID_SET_IRQ_MASK                ((0x014 << DPMAC_CMD_ID_OFFSET) | DPMAC_CMD_BASE_VERSION)
+#define DPMAC_CMDID_GET_IRQ_MASK                ((0x015 << DPMAC_CMD_ID_OFFSET) | DPMAC_CMD_BASE_VERSION)
+#define DPMAC_CMDID_GET_IRQ_STATUS              ((0x016 << DPMAC_CMD_ID_OFFSET) | DPMAC_CMD_BASE_VERSION)
+#define DPMAC_CMDID_CLEAR_IRQ_STATUS            ((0x017 << DPMAC_CMD_ID_OFFSET) | DPMAC_CMD_BASE_VERSION)
 
-#define DPMAC_CMDID_MDIO_READ			0x0c0
-#define DPMAC_CMDID_MDIO_WRITE			0x0c1
-#define DPMAC_CMDID_GET_LINK_CFG		0x0c2
-#define DPMAC_CMDID_SET_LINK_STATE		0x0c3
-#define DPMAC_CMDID_GET_COUNTER			0x0c4
+#define DPMAC_CMDID_MDIO_READ                   ((0x0c0 << DPMAC_CMD_ID_OFFSET) | DPMAC_CMD_BASE_VERSION)
+#define DPMAC_CMDID_MDIO_WRITE                  ((0x0c1 << DPMAC_CMD_ID_OFFSET) | DPMAC_CMD_BASE_VERSION)
+#define DPMAC_CMDID_GET_LINK_CFG                ((0x0c2 << DPMAC_CMD_ID_OFFSET) | DPMAC_CMD_BASE_VERSION)
+#define DPMAC_CMDID_SET_LINK_STATE              ((0x0c3 << DPMAC_CMD_ID_OFFSET) | DPMAC_CMD_BASE_VERSION)
+#define DPMAC_CMDID_GET_COUNTER                 ((0x0c4 << DPMAC_CMD_ID_OFFSET) | DPMAC_CMD_BASE_VERSION)
+
+#define DPMAC_CMDID_SET_PORT_MAC_ADDR           ((0x0c5 << DPMAC_CMD_ID_OFFSET) | DPMAC_CMD_BASE_VERSION)
 
 /*                cmd, param, offset, width, type, arg_name */
 #define DPMAC_CMD_CREATE(cmd, cfg) \
-	MC_CMD_OP(cmd, 0, 0,  32, int,      cfg->mac_id)
+	MC_CMD_OP(cmd, 0, 0,  16, uint16_t,      cfg->mac_id)
 
 /*                cmd, param, offset, width, type, arg_name */
 #define DPMAC_CMD_OPEN(cmd, dpmac_id) \
@@ -141,32 +146,10 @@ do { \
 /*                cmd, param, offset, width, type,	arg_name */
 #define DPMAC_RSP_GET_ATTRIBUTES(cmd, attr) \
 do { \
-	MC_RSP_OP(cmd, 0, 0,  32, int,			attr->phy_id);\
-	MC_RSP_OP(cmd, 0, 32, 32, int,			attr->id);\
-	MC_RSP_OP(cmd, 1, 0,  16, uint16_t,		attr->version.major);\
-	MC_RSP_OP(cmd, 1, 16, 16, uint16_t,		attr->version.minor);\
-	MC_RSP_OP(cmd, 1, 32,  8, enum dpmac_link_type,	attr->link_type);\
-	MC_RSP_OP(cmd, 1, 40,  8, enum dpmac_eth_if,	attr->eth_if);\
-	MC_RSP_OP(cmd, 2, 0,  32, uint32_t,		attr->max_rate);\
-} while (0)
-
-/*                cmd, param, offset, width, type, arg_name */
-#define DPMAC_CMD_MDIO_READ(cmd, cfg) \
-do { \
-	MC_CMD_OP(cmd, 0, 0,  8,  uint8_t,  cfg->phy_addr); \
-	MC_CMD_OP(cmd, 0, 8,  8,  uint8_t,  cfg->reg); \
-} while (0)
-
-/*                cmd, param, offset, width, type, arg_name */
-#define DPMAC_RSP_MDIO_READ(cmd, data) \
-	MC_RSP_OP(cmd, 0, 16, 16, uint16_t, data)
-
-/*                cmd, param, offset, width, type, arg_name */
-#define DPMAC_CMD_MDIO_WRITE(cmd, cfg) \
-do { \
-	MC_CMD_OP(cmd, 0, 0,  8,  uint8_t,  cfg->phy_addr); \
-	MC_CMD_OP(cmd, 0, 8,  8,  uint8_t,  cfg->reg); \
-	MC_CMD_OP(cmd, 0, 16, 16, uint16_t, cfg->data); \
+	MC_RSP_OP(cmd, 0, 0,  8,  uint8_t,		attr->eth_if);\
+	MC_RSP_OP(cmd, 0, 8,  8,  uint8_t,		attr->link_type);\
+	MC_RSP_OP(cmd, 0, 16, 16, uint16_t,		attr->id);\
+	MC_RSP_OP(cmd, 0, 32, 32, uint32_t,		attr->max_rate);\
 } while (0)
 
 /*                cmd, param, offset, width, type, arg_name */
@@ -191,5 +174,15 @@ do { \
 /*                cmd, param, offset, width, type, arg_name */
 #define DPMAC_RSP_GET_COUNTER(cmd, counter) \
 	MC_RSP_OP(cmd, 1, 0, 64, uint64_t, counter)
+
+#define DPMAC_CMD_SET_PORT_MAC_ADDR(cmd, addr) \
+do { \
+	MC_CMD_OP(cmd, 0, 16, 8,  uint8_t,  addr[5]); \
+	MC_CMD_OP(cmd, 0, 24, 8,  uint8_t,  addr[4]); \
+	MC_CMD_OP(cmd, 0, 32, 8,  uint8_t,  addr[3]); \
+	MC_CMD_OP(cmd, 0, 40, 8,  uint8_t,  addr[2]); \
+	MC_CMD_OP(cmd, 0, 48, 8,  uint8_t,  addr[1]); \
+	MC_CMD_OP(cmd, 0, 56, 8,  uint8_t,  addr[0]); \
+} while (0)
 
 #endif /* _FSL_DPMAC_CMD_H */

@@ -76,22 +76,38 @@ struct bman;
 union bman_ecir {
 	u32 ecir_raw;
 	struct {
+#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
 		u32 __reserved1:4;
 		u32 portal_num:4;
 		u32 __reserved2:12;
 		u32 numb:4;
 		u32 __reserved3:2;
 		u32 pid:6;
+#else
+		u32 pid:6;
+		u32 __reserved3:2;
+		u32 numb:4;
+		u32 __reserved2:12;
+		u32 portal_num:4;
+		u32 __reserved1:4;
+#endif
 	} __packed info;
 };
 
 union bman_eadr {
 	u32 eadr_raw;
 	struct {
+#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
 		u32 __reserved1:5;
 		u32 memid:3;
 		u32 __reserved2:14;
 		u32 eadr:10;
+#else
+		u32 eadr:10;
+		u32 __reserved2:14;
+		u32 memid:3;
+		u32 __reserved1:5;
+#endif
 	} __packed info;
 };
 
@@ -426,8 +442,8 @@ void bman_crash_shutdown(void)
 				dn->full_name);
 			continue;
 		}
-		base = range[0];
-		count = range[1];
+		base = be32_to_cpu(range[0]);
+		count = be32_to_cpu(range[1]);
 
 		for (i = 0; i < count; i++)
 			bman_drain_one_pool(base + i);
@@ -566,7 +582,7 @@ int bman_init_ccsr(struct device_node *node)
 		return -EINVAL;
 	/* FBPR memory */
 	bm_set_memory(bm, fbpr_a, 0, fbpr_sz);
-	pr_info("bman-fbpr addr 0x%llx size 0x%zx\n", fbpr_a, fbpr_sz);
+	pr_info("bman-fbpr addr %pad size 0x%zx\n", &fbpr_a, fbpr_sz);
 
 	ret = __bind_irq();
 	if (ret)

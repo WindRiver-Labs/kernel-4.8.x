@@ -126,13 +126,12 @@ struct qman_portal {
 	/* power management data */
 	u32 save_isdr;
 #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-	/* Keep a shadow copy of the DQRR on LE systems
-	   as the SW needs to do byteswaps of read only
-	   memory.  Must be aligned to the size of the
-	   ring to ensure easy index calcualtions based
-	   on address */
-	struct qm_dqrr_entry shadow_dqrr[QM_DQRR_SIZE]
-	            __attribute__((aligned(512)));
+	/* Keep a shadow copy of the DQRR on LE systems as the SW needs to
+	 * do byte swaps of DQRR read only memory.  First entry must be aligned
+	 * to 2 ** 10 to ensure DQRR index calculations based shadow copy
+	 * address (6 bits for address shift + 4 bits for the DQRR size).
+	 */
+	struct qm_dqrr_entry shadow_dqrr[QM_DQRR_SIZE] __aligned(1024);
 #endif
 };
 
@@ -399,16 +398,46 @@ static inline u64 be48_to_cpu(u64 in)
 }
 static inline void cpu_to_hw_fd(struct qm_fd *fd)
 {
-	fd->addr = cpu_to_be40(fd->addr);
+	fd->opaque_addr = cpu_to_be64(fd->opaque_addr);
 	fd->status = cpu_to_be32(fd->status);
 	fd->opaque = cpu_to_be32(fd->opaque);
 }
 
 static inline void hw_fd_to_cpu(struct qm_fd *fd)
 {
-	fd->addr = be40_to_cpu(fd->addr);
+	fd->opaque_addr = be64_to_cpu(fd->opaque_addr);
 	fd->status = be32_to_cpu(fd->status);
 	fd->opaque = be32_to_cpu(fd->opaque);
+}
+
+static inline void hw_cq_query_to_cpu(struct qm_mcr_ceetm_cq_query *cq_query)
+{
+	cq_query->ccgid = be16_to_cpu(cq_query->ccgid);
+	cq_query->state = be16_to_cpu(cq_query->state);
+	cq_query->pfdr_hptr = be24_to_cpu(cq_query->pfdr_hptr);
+	cq_query->pfdr_tptr = be24_to_cpu(cq_query->pfdr_tptr);
+	cq_query->od1_xsfdr = be16_to_cpu(cq_query->od1_xsfdr);
+	cq_query->od2_xsfdr = be16_to_cpu(cq_query->od2_xsfdr);
+	cq_query->od3_xsfdr = be16_to_cpu(cq_query->od3_xsfdr);
+	cq_query->od4_xsfdr = be16_to_cpu(cq_query->od4_xsfdr);
+	cq_query->od5_xsfdr = be16_to_cpu(cq_query->od5_xsfdr);
+	cq_query->od6_xsfdr = be16_to_cpu(cq_query->od6_xsfdr);
+	cq_query->ra1_xsfdr = be16_to_cpu(cq_query->ra1_xsfdr);
+	cq_query->ra2_xsfdr = be16_to_cpu(cq_query->ra2_xsfdr);
+	cq_query->frm_cnt = be24_to_cpu(cq_query->frm_cnt);
+}
+
+static inline void hw_ccgr_query_to_cpu(struct qm_mcr_ceetm_ccgr_query *ccgr_q)
+{
+	int i;
+
+	ccgr_q->cm_query.cscn_targ_dcp =
+		be16_to_cpu(ccgr_q->cm_query.cscn_targ_dcp);
+	ccgr_q->cm_query.i_cnt = be40_to_cpu(ccgr_q->cm_query.i_cnt);
+	ccgr_q->cm_query.a_cnt = be40_to_cpu(ccgr_q->cm_query.a_cnt);
+	for (i = 0; i < ARRAY_SIZE(ccgr_q->cm_query.cscn_targ_swp); i++)
+		ccgr_q->cm_query.cscn_targ_swp[i] =
+			be32_to_cpu(ccgr_q->cm_query.cscn_targ_swp[i]);
 }
 
 /* In the case that slow- and fast-path handling are both done by qman_poll()
@@ -457,7 +486,7 @@ static inline void qman_stop_dequeues_ex(struct qman_portal *p)
 	PORTAL_IRQ_UNLOCK(p, irqflags);
 }
 
-static int qm_drain_mr(struct qm_portal *p)
+static int qm_drain_mr_fqrni(struct qm_portal *p)
 {
 	const struct qm_mr_entry *msg;
 loop:
@@ -484,6 +513,11 @@ loop:
 		msg = qm_mr_current(p);
 		if (!msg)
 			return 0;
+	}
+	if ((msg->verb & QM_MR_VERB_TYPE_MASK) != QM_MR_VERB_FQRNI) {
+		/* We aren't draining anything but FQRNIs */
+		pr_err("QMan found verb 0x%x in MR\n", msg->verb);
+		return -1;
 	}
 	qm_mr_next(p);
 	qm_mr_cci_consume(p, 1);
@@ -567,10 +601,12 @@ struct qman_portal *qman_create_portal(
 
 	__p = &portal->p;
 
-#ifdef CONFIG_FSL_PAMU
+#if (defined CONFIG_PPC || defined CONFIG_PPC64) && defined CONFIG_FSL_PAMU
         /* PAMU is required for stashing */
         portal->use_eqcr_ci_stashing = ((qman_ip_rev >= QMAN_REV30) ?
-                                                                1 : 0);
+					1 : 0);
+#elif defined(CONFIG_ARM) || defined(CONFIG_ARM64)
+	portal->use_eqcr_ci_stashing = 1;
 #else
         portal->use_eqcr_ci_stashing = 0;
 #endif
@@ -659,6 +695,7 @@ struct qman_portal *qman_create_portal(
 	portal->pdev->dev.coherent_dma_mask = DMA_BIT_MASK(40);
 	portal->pdev->dev.dma_mask = &portal->pdev->dev.coherent_dma_mask;
 #else
+	arch_setup_dma_ops(&portal->pdev->dev, 0, 0, NULL, false);
 	if (dma_set_mask(&portal->pdev->dev, DMA_BIT_MASK(40))) {
 		pr_err("qman_portal - dma_set_mask() failed\n");
 		goto fail_devadd;
@@ -701,10 +738,23 @@ struct qman_portal *qman_create_portal(
 	}
 	isdr ^= (QM_PIRQ_DQRI | QM_PIRQ_MRI);
 	qm_isr_disable_write(__p, isdr);
-	while (qm_dqrr_current(__p) != NULL)
+	if (qm_dqrr_current(__p) != NULL) {
+		pr_err("Qman DQRR unclean\n");
 		qm_drain_dqrr(__p);
-	/* drain all mr message */
-	qm_drain_mr(__p);
+	}
+	if (qm_mr_current(__p) != NULL) {
+		/* special handling, drain just in case it's a few FQRNIs */
+		if (qm_drain_mr_fqrni(__p)) {
+			const struct qm_mr_entry *e = qm_mr_current(__p);
+			/*
+			 * Message ring cannot be empty no need to check
+			 * qm_mr_current returned successfully
+			 */
+			pr_err("Qman MR unclean, MR VERB 0x%x, rc 0x%x\n, addr 0x%x",
+				e->verb, e->ern.rc, e->ern.fd.addr_lo);
+			goto fail_dqrr_mr_empty;
+		}
+	}
 	/* Success */
 	portal->config = config;
 	qm_isr_disable_write(__p, 0);
@@ -712,6 +762,7 @@ struct qman_portal *qman_create_portal(
 	/* Write a sane SDQCR */
 	qm_dqrr_sdqcr_set(__p, portal->sdqcr);
 	return portal;
+fail_dqrr_mr_empty:
 fail_eqcr_empty:
 fail_affinity:
 	free_irq(config->public_cfg.irq, portal);
@@ -901,6 +952,7 @@ static inline void fq_state_change(struct qman_portal *p, struct qman_fq *fq,
 static u32 __poll_portal_slow(struct qman_portal *p, u32 is)
 {
 	const struct qm_mr_entry *msg;
+	struct qm_mr_entry swapped_msg;
 
 	if (is & QM_PIRQ_CSCI) {
 		struct qman_cgrs rr, c;
@@ -1017,6 +1069,8 @@ mr_loop:
 		msg = qm_mr_current(&p->p);
 		if (!msg)
 			goto mr_done;
+		swapped_msg = *msg;
+		hw_fd_to_cpu(&swapped_msg.ern.fd);
 		verb = msg->verb & QM_MR_VERB_TYPE_MASK;
 		/* The message is a software ERN iff the 0x20 bit is set */
 		if (verb & 0x20) {
@@ -1029,9 +1083,9 @@ mr_loop:
 				/* Lookup in the retirement table */
 				fq = table_find_fq(p, be32_to_cpu(msg->fq.fqid));
 				BUG_ON(!fq);
-				fq_state_change(p, fq, msg, verb);
+				fq_state_change(p, fq, &swapped_msg, verb);
 				if (fq->cb.fqs)
-					fq->cb.fqs(p, fq, msg);
+					fq->cb.fqs(p, fq, &swapped_msg);
 				break;
 			case QM_MR_VERB_FQPN:
 				/* Parked */
@@ -1044,7 +1098,7 @@ mr_loop:
 #endif
 				fq_state_change(p, fq, msg, verb);
 				if (fq->cb.fqs)
-					fq->cb.fqs(p, fq, msg);
+					fq->cb.fqs(p, fq, &swapped_msg);
 				break;
 			case QM_MR_VERB_DC_ERN:
 				/* DCP ERN */
@@ -1066,12 +1120,11 @@ mr_loop:
 		} else {
 			/* Its a software ERN */
 #ifdef CONFIG_FSL_QMAN_FQ_LOOKUP
-			pr_info("ROY\n");
 			fq = get_fq_table_entry(be32_to_cpu(msg->ern.tag));
 #else
 			fq = (void *)(uintptr_t)be32_to_cpu(msg->ern.tag);
 #endif
-			fq->cb.ern(p, fq, msg);
+			fq->cb.ern(p, fq, &swapped_msg);
 		}
 		num++;
 		qm_mr_next(&p->p);
@@ -1096,6 +1149,45 @@ static noinline void clear_vdqcr(struct qman_portal *p, struct qman_fq *fq)
 	fq_clear(fq, QMAN_FQ_STATE_VDQCR);
 	FQUNLOCK(fq);
 	wake_up(&affine_queue);
+}
+
+/* Copy a DQRR entry ensuring reads reach QBMan in order */
+static inline void safe_copy_dqrr(struct qm_dqrr_entry *dst,
+				  const struct qm_dqrr_entry *src)
+{
+	int i = 0;
+	const u64 *s64 = (u64*)src;
+	u64 *d64 = (u64*)dst;
+
+	/* DQRR only has 32 bytes of valid data so only need to
+	 * copy 4 - 64 bit values */
+	*d64 = *s64;
+#if defined(CONFIG_ARM) || defined(CONFIG_ARM64)
+	{
+		u32 res, zero = 0;
+		/* Create a dependancy after copying first bytes ensures no wrap
+		   transaction generated to QBMan */
+		/* Logical AND the value pointed to by s64 with 0x0 and
+		   store the result in res */
+		asm volatile("and %[result], %[in1], %[in2]"
+			     : [result] "=r" (res)
+			     : [in1] "r" (zero), [in2] "r" (*s64)
+			     : "memory");
+		/* Add res to s64 - this creates a dependancy on the result of
+		   reading the value of s64 before the next read. The side
+		   effect of this is that the core must stall until the first
+		   aligned read is complete therefore preventing a WRAP
+		   transaction to be seen by the QBMan */
+		asm volatile("add %[result], %[in1], %[in2]"
+			     : [result] "=r" (s64)
+			     : [in1] "r" (res), [in2] "r" (s64)
+			     : "memory");
+	}
+#endif
+	/* Copy the last 3 64 bit parts */
+	d64++; s64++;
+	for (;i<3; i++)
+		*d64++ = *s64++;
 }
 
 /* Look: no locks, no irq_save()s, no preempt_disable()s! :-) The only states
@@ -1134,6 +1226,7 @@ static inline unsigned int __poll_portal_fast(struct qman_portal *p,
 	unsigned int limit = 0;
 #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
 	struct qm_dqrr_entry *shadow;
+	const struct qm_dqrr_entry *orig_dq;
 #endif
 loop:
 	qm_dqrr_pvb_update(&p->p);
@@ -1146,7 +1239,9 @@ loop:
 	   QMan HW will ignore writes the DQRR entry is
 	   copied and the index stored within the copy */
 	shadow = &p->shadow_dqrr[DQRR_PTR2IDX(dq)];
-	*shadow = *dq;
+	/* Use safe copy here to avoid WRAP transaction */
+	safe_copy_dqrr(shadow, dq);
+	orig_dq = dq;
 	dq = shadow;
 	shadow->fqid = be32_to_cpu(shadow->fqid);
 	shadow->contextB = be32_to_cpu(shadow->contextB);
@@ -1193,9 +1288,15 @@ loop:
 	 * check for HELDACTIVE to cover both. */
 	DPA_ASSERT((dq->stat & QM_DQRR_STAT_FQ_HELDACTIVE) ||
 		(res != qman_cb_dqrr_park));
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+	if (res != qman_cb_dqrr_defer)
+		qm_dqrr_cdc_consume_1ptr(&p->p, orig_dq,
+					 (res == qman_cb_dqrr_park));
+#else
 	/* Defer just means "skip it, I'll consume it myself later on" */
 	if (res != qman_cb_dqrr_defer)
 		qm_dqrr_cdc_consume_1ptr(&p->p, dq, (res == qman_cb_dqrr_park));
+#endif
 	/* Move forward */
 	qm_dqrr_next(&p->p);
 	/* Entry processed and consumed, increment our counter. The callback can
@@ -1229,8 +1330,15 @@ int qman_p_irqsource_add(struct qman_portal *p, u32 bits __maybe_unused)
 	else
 #endif
 	{
+		bits = bits & QM_PIRQ_VISIBLE;
 		PORTAL_IRQ_LOCK(p, irqflags);
-		set_bits(bits & QM_PIRQ_VISIBLE, &p->irq_sources);
+
+		/* Clear any previously remaining interrupt conditions in
+		 * QCSP_ISR. This prevents raising a false interrupt when
+		 * interrupt conditions are enabled in QCSP_IER.
+		 */
+		qm_isr_status_clear(&p->p, bits);
+		set_bits(bits, &p->irq_sources);
 		qm_isr_enable_write(&p->p, p->irq_sources);
 		PORTAL_IRQ_UNLOCK(p, irqflags);
 	}
@@ -2022,7 +2130,7 @@ int qman_query_fq(struct qman_fq *fq, struct qm_fqd *fqd)
 	DPA_ASSERT((mcr->verb & QM_MCR_VERB_MASK) == QM_MCR_VERB_QUERYFQ);
 	res = mcr->result;
 	if (res == QM_MCR_RESULT_OK)
-		memcpy_fromio(fqd, &mcr->queryfq.fqd, sizeof(*fqd));
+		*fqd = mcr->queryfq.fqd;
 	hw_fqd_to_cpu(fqd);
 	PORTAL_IRQ_UNLOCK(p, irqflags);
 	put_affine_portal();
@@ -2049,7 +2157,7 @@ int qman_query_fq_np(struct qman_fq *fq, struct qm_mcr_queryfq_np *np)
 	DPA_ASSERT((mcr->verb & QM_MCR_VERB_MASK) == QM_MCR_VERB_QUERYFQ_NP);
 	res = mcr->result;
 	if (res == QM_MCR_RESULT_OK) {
-		memcpy_fromio(np, &mcr->queryfq_np, sizeof(*np));
+		*np = mcr->queryfq_np;
 		np->fqd_link = be24_to_cpu(np->fqd_link);
 		np->odp_seq = be16_to_cpu(np->odp_seq);
 		np->orp_nesn = be16_to_cpu(np->orp_nesn);
@@ -2067,10 +2175,7 @@ int qman_query_fq_np(struct qman_fq *fq, struct qm_mcr_queryfq_np *np)
 		np->od1_sfdr = be16_to_cpu(np->od1_sfdr);
 		np->od2_sfdr = be16_to_cpu(np->od2_sfdr);
 		np->od3_sfdr = be16_to_cpu(np->od3_sfdr);
-
-
 	}
-
 	PORTAL_IRQ_UNLOCK(p, irqflags);
 	put_affine_portal();
 	if (res == QM_MCR_RESULT_ERR_FQID)
@@ -2136,7 +2241,7 @@ int qman_testwrite_cgr(struct qman_cgr *cgr, u64 i_bcnt,
 	DPA_ASSERT((mcr->verb & QM_MCR_VERB_MASK) == QM_MCC_VERB_CGRTESTWRITE);
 	res = mcr->result;
 	if (res == QM_MCR_RESULT_OK)
-		memcpy_fromio(result,  &mcr->cgrtestwrite, sizeof(*result));
+		*result = mcr->cgrtestwrite;
 	PORTAL_IRQ_UNLOCK(p, irqflags);
 	put_affine_portal();
 	if (res != QM_MCR_RESULT_OK) {
@@ -2165,7 +2270,7 @@ int qman_query_cgr(struct qman_cgr *cgr, struct qm_mcr_querycgr *cgrd)
 	DPA_ASSERT((mcr->verb & QM_MCR_VERB_MASK) == QM_MCC_VERB_QUERYCGR);
 	res = mcr->result;
 	if (res == QM_MCR_RESULT_OK)
-		memcpy_fromio(cgrd, &mcr->querycgr, sizeof(*cgrd));
+		*cgrd = mcr->querycgr;
 	PORTAL_IRQ_UNLOCK(p, irqflags);
 	put_affine_portal();
 	if (res != QM_MCR_RESULT_OK) {
@@ -2908,6 +3013,10 @@ int qman_create_cgr_to_dcp(struct qman_cgr *cgr, u32 flags, u16 dcp_portal,
 	struct qm_mcr_querycgr cgr_state;
 	int ret;
 
+	if ((qman_ip_rev & 0xFF00) < QMAN_REV30) {
+		pr_warn("This QMan version doesn't support to send CSCN to DCP portal\n");
+		return -EINVAL;
+	}
 	/* We have to check that the provided CGRID is within the limits of the
 	 * data-structures, for obvious reasons. However we'll let h/w take
 	 * care of determining whether it's within the limits of what exists on
@@ -3160,13 +3269,17 @@ int qman_ceetm_query_cq(unsigned int cqid, unsigned int dcpid,
 	PORTAL_IRQ_LOCK(p, irqflags);
 
 	mcc = qm_mc_start(&p->p);
-	mcc->cq_query.cqid = cqid;
+	mcc->cq_query.cqid = cpu_to_be16(cqid);
 	mcc->cq_query.dcpid = dcpid;
 	qm_mc_commit(&p->p, QM_CEETM_VERB_CQ_QUERY);
 	while (!(mcr = qm_mc_result(&p->p)))
 		cpu_relax();
-	res = mcr->result;
 	DPA_ASSERT((mcr->verb & QM_MCR_VERB_MASK) == QM_CEETM_VERB_CQ_QUERY);
+	res = mcr->result;
+	if (res == QM_MCR_RESULT_OK) {
+		*cq_query = mcr->cq_query;
+		hw_cq_query_to_cpu(cq_query);
+	}
 
 	PORTAL_IRQ_UNLOCK(p, irqflags);
 	put_affine_portal();
@@ -3176,7 +3289,6 @@ int qman_ceetm_query_cq(unsigned int cqid, unsigned int dcpid,
 		return -EIO;
 	}
 
-	*cq_query = mcr->cq_query;
 	return 0;
 }
 EXPORT_SYMBOL(qman_ceetm_query_cq);
@@ -3285,7 +3397,7 @@ static int qman_ceetm_query_class_scheduler(struct qm_ceetm_channel *channel,
 	PORTAL_IRQ_LOCK(p, irqflags);
 
 	mcc = qm_mc_start(&p->p);
-	mcc->csch_query.cqcid = channel->idx;
+	mcc->csch_query.cqcid = cpu_to_be16(channel->idx);
 	mcc->csch_query.dcpid = channel->dcp_idx;
 	qm_mc_commit(&p->p, QM_CEETM_VERB_CLASS_SCHEDULER_QUERY);
 	while (!(mcr = qm_mc_result(&p->p)))
@@ -3413,22 +3525,25 @@ int qman_ceetm_query_ccgr(struct qm_mcc_ceetm_ccgr_query *ccgr_query,
 	PORTAL_IRQ_LOCK(p, irqflags);
 
 	mcc = qm_mc_start(&p->p);
-	mcc->ccgr_query = *ccgr_query;
+	mcc->ccgr_query.ccgrid = cpu_to_be16(ccgr_query->ccgrid);
+	mcc->ccgr_query.dcpid = ccgr_query->dcpid;
 	qm_mc_commit(&p->p, QM_CEETM_VERB_CCGR_QUERY);
 
 	while (!(mcr = qm_mc_result(&p->p)))
 		cpu_relax();
 	DPA_ASSERT((mcr->verb & QM_MCR_VERB_MASK) == QM_CEETM_VERB_CCGR_QUERY);
+	res = mcr->result;
+	if (res == QM_MCR_RESULT_OK) {
+		*response = mcr->ccgr_query;
+		hw_ccgr_query_to_cpu(response);
+	}
 
 	PORTAL_IRQ_UNLOCK(p, irqflags);
 	put_affine_portal();
-
-	res = mcr->result;
 	if (res != QM_MCR_RESULT_OK) {
 		pr_err("CEETM: QUERY CCGR failed\n");
 		return -EIO;
 	}
-	*response = mcr->ccgr_query;
 	return 0;
 }
 EXPORT_SYMBOL(qman_ceetm_query_ccgr);
@@ -3652,7 +3767,7 @@ int qman_ceetm_sp_claim(struct qm_ceetm_sp **sp, enum qm_dc_portal dcp_idx,
 			(dcp_idx == qm_dc_portal_fman1));
 
 	if ((sp_idx < qman_ceetms[dcp_idx].sp_range[0]) ||
-		(sp_idx > (qman_ceetms[dcp_idx].sp_range[0] +
+		(sp_idx >= (qman_ceetms[dcp_idx].sp_range[0] +
 		qman_ceetms[dcp_idx].sp_range[1]))) {
 		pr_err("Sub-portal index doesn't exist\n");
 		return -EINVAL;
@@ -3698,7 +3813,7 @@ int qman_ceetm_lni_claim(struct qm_ceetm_lni **lni, enum qm_dc_portal dcp_idx,
 	struct qm_ceetm_lni *p;
 
 	if ((lni_idx < qman_ceetms[dcp_idx].lni_range[0]) ||
-		(lni_idx > (qman_ceetms[dcp_idx].lni_range[0] +
+		(lni_idx >= (qman_ceetms[dcp_idx].lni_range[0] +
 		qman_ceetms[dcp_idx].lni_range[1]))) {
 		pr_err("The lni index is out of range\n");
 		return -EINVAL;
@@ -3744,7 +3859,7 @@ int qman_ceetm_lni_release(struct qm_ceetm_lni *lni)
 	config_opts.dcpid = lni->dcp_idx;
 	memset(&config_opts.shaper_config, 0,
 				sizeof(config_opts.shaper_config));
-	return	qman_ceetm_configure_mapping_shaper_tcfc(&config_opts);
+	return qman_ceetm_configure_mapping_shaper_tcfc(&config_opts);
 }
 EXPORT_SYMBOL(qman_ceetm_lni_release);
 
@@ -3787,6 +3902,10 @@ int qman_ceetm_lni_enable_shaper(struct qm_ceetm_lni *lni, int coupled,
 {
 	struct qm_mcc_ceetm_mapping_shaper_tcfc_config config_opts;
 
+	if (lni->shaper_enable) {
+		pr_err("The shaper has already been enabled\n");
+		return -EINVAL;
+	}
 	lni->shaper_enable = 1;
 	lni->shaper_couple = coupled;
 	lni->oal = oal;
@@ -3818,11 +3937,14 @@ int qman_ceetm_lni_disable_shaper(struct qm_ceetm_lni *lni)
 		return -EINVAL;
 	}
 
-	config_opts.cid = CEETM_COMMAND_LNI_SHAPER | lni->idx;
+	config_opts.cid = cpu_to_be16(CEETM_COMMAND_LNI_SHAPER | lni->idx);
 	config_opts.dcpid = lni->dcp_idx;
-	config_opts.shaper_config.cpl = (lni->shaper_couple << 7) | lni->oal;
-	config_opts.shaper_config.crtbl = lni->cr_token_bucket_limit;
-	config_opts.shaper_config.ertbl = lni->er_token_bucket_limit;
+	config_opts.shaper_config.cpl = lni->shaper_couple;
+	config_opts.shaper_config.oal = lni->oal;
+	config_opts.shaper_config.crtbl =
+					cpu_to_be16(lni->cr_token_bucket_limit);
+	config_opts.shaper_config.ertbl =
+					cpu_to_be16(lni->er_token_bucket_limit);
 	/* Set CR/ER rate with all 1's to configure an infinite rate, thus
 	 * disable the shaping.
 	 */
@@ -4126,6 +4248,7 @@ int qman_ceetm_channel_claim(struct qm_ceetm_channel **channel,
 		return -ENOMEM;
 	p->idx = channel_idx;
 	p->dcp_idx = lni->dcp_idx;
+	p->lni_idx = lni->idx;
 	list_add_tail(&p->node, &lni->channels);
 	INIT_LIST_HEAD(&p->class_queues);
 	INIT_LIST_HEAD(&p->ccgs);
@@ -4209,7 +4332,7 @@ int qman_ceetm_channel_enable_shaper(struct qm_ceetm_channel *channel,
 
 	query_opts.cid = cpu_to_be16(CEETM_COMMAND_CHANNEL_MAPPING |
 						channel->idx);
-	query_opts.dcpid = (u8)channel->dcp_idx;
+	query_opts.dcpid = channel->dcp_idx;
 
 	if (qman_ceetm_query_mapping_shaper_tcfc(&query_opts, &query_result)) {
 		pr_err("Can't query channel mapping\n");
@@ -4228,18 +4351,21 @@ int qman_ceetm_channel_enable_shaper(struct qm_ceetm_channel *channel,
 	}
 
 	config_opts.cid = cpu_to_be16(CEETM_COMMAND_CHANNEL_SHAPER |
-							channel->idx);
+						channel->idx);
 	config_opts.shaper_config.cpl = coupled;
-	config_opts.shaper_config.crtcr = cpu_to_be24((channel->cr_token_rate.
-					whole << 13) |
-					channel->cr_token_rate.fraction);
-	config_opts.shaper_config.ertcr = cpu_to_be24((channel->er_token_rate.
-					whole << 13) |
-					channel->er_token_rate.fraction);
+	config_opts.shaper_config.crtcr =
+				cpu_to_be24((channel->cr_token_rate.whole
+				<< 13) |
+				channel->cr_token_rate.fraction);
+	config_opts.shaper_config.ertcr =
+				cpu_to_be24(channel->er_token_rate.whole
+				<< 13 |
+				channel->er_token_rate.fraction);
 	config_opts.shaper_config.crtbl =
 				cpu_to_be16(channel->cr_token_bucket_limit);
 	config_opts.shaper_config.ertbl =
 				cpu_to_be16(channel->er_token_bucket_limit);
+
 	return qman_ceetm_configure_mapping_shaper_tcfc(&config_opts);
 }
 EXPORT_SYMBOL(qman_ceetm_channel_enable_shaper);
@@ -4276,7 +4402,8 @@ int qman_ceetm_channel_is_shaper_enabled(struct qm_ceetm_channel *channel)
 	struct qm_mcc_ceetm_mapping_shaper_tcfc_query query_opts;
 	struct qm_mcr_ceetm_mapping_shaper_tcfc_query query_result;
 
-	query_opts.cid = CEETM_COMMAND_CHANNEL_MAPPING | channel->idx;
+	query_opts.cid = cpu_to_be16(CEETM_COMMAND_CHANNEL_MAPPING |
+						channel->idx);
 	query_opts.dcpid = channel->dcp_idx;
 
 	if (qman_ceetm_query_mapping_shaper_tcfc(&query_opts, &query_result)) {
@@ -5046,7 +5173,7 @@ int qman_ceetm_get_queue_weight_in_ratio(struct qm_ceetm_cq *cq, u32 *ratio)
 		return -EINVAL;
 	}
 
-	*ratio = (n * (u32)100) / d;
+	*ratio = (n * 100) / d;
 	return 0;
 }
 EXPORT_SYMBOL(qman_ceetm_get_queue_weight_in_ratio);
@@ -5167,10 +5294,11 @@ int qman_ceetm_lfq_set_context(struct qm_ceetm_lfq *lfq, u64 context_a,
 	struct qm_mcc_ceetm_dct_config dct_config;
 	lfq->context_a = context_a;
 	lfq->context_b = context_b;
-	dct_config.dctidx = cpu_to_be16(lfq->dctidx);
+	dct_config.dctidx = cpu_to_be16((u16)lfq->dctidx);
 	dct_config.dcpid = lfq->parent->dcp_idx;
 	dct_config.context_b = cpu_to_be32(context_b);
 	dct_config.context_a = cpu_to_be64(context_a);
+
 	return qman_ceetm_configure_dct(&dct_config);
 }
 EXPORT_SYMBOL(qman_ceetm_lfq_set_context);
@@ -5208,6 +5336,7 @@ int qman_ceetm_create_fq(struct qm_ceetm_lfq *lfq, struct qman_fq *fq)
 }
 EXPORT_SYMBOL(qman_ceetm_create_fq);
 
+#define MAX_CCG_IDX 0x000F
 int qman_ceetm_ccg_claim(struct qm_ceetm_ccg **ccg,
 				struct qm_ceetm_channel *channel,
 				unsigned int idx,
@@ -5218,7 +5347,7 @@ int qman_ceetm_ccg_claim(struct qm_ceetm_ccg **ccg,
 {
 	struct qm_ceetm_ccg *p;
 
-	if (idx > 15) {
+	if (idx > MAX_CCG_IDX) {
 		pr_err("The given ccg index is out of range\n");
 		return -EINVAL;
 	}
@@ -5532,14 +5661,13 @@ int qman_ceetm_querycongestion(struct __qm_mcr_querycongestion *ccg_state,
 		if (res == QM_MCR_RESULT_OK) {
 			for (j = 0; j < 8; j++)
 				mcr->ccgr_query.congestion_state.state.
-				__state[j] =
-					be32_to_cpu(mcr->ccgr_query.
+				__state[j] = be32_to_cpu(mcr->ccgr_query.
 					congestion_state.state.__state[j]);
-
 			*(ccg_state + i) =
 				mcr->ccgr_query.congestion_state.state;
 		} else {
 			pr_err("QUERY CEETM CONGESTION STATE failed\n");
+			PORTAL_IRQ_UNLOCK(p, irqflags);
 			return -EIO;
 		}
 	}

@@ -124,9 +124,10 @@ int dpmcp_close(struct fsl_mc_io *mc_io,
  * Return:	'0' on Success; Error code otherwise.
  */
 int dpmcp_create(struct fsl_mc_io *mc_io,
+		 uint16_t dprc_token,
 		 u32 cmd_flags,
 		 const struct dpmcp_cfg *cfg,
-		 u16 *token)
+		 uint32_t *object_id)
 {
 	struct mc_command cmd = { 0 };
 	struct dpmcp_cmd_create *cmd_params;
@@ -135,7 +136,7 @@ int dpmcp_create(struct fsl_mc_io *mc_io,
 
 	/* prepare command */
 	cmd.header = mc_encode_cmd_header(DPMCP_CMDID_CREATE,
-					  cmd_flags, 0);
+					cmd_flags, dprc_token);
 	cmd_params = (struct dpmcp_cmd_create *)cmd.params;
 	cmd_params->portal_id = cpu_to_le32(cfg->portal_id);
 
@@ -145,7 +146,7 @@ int dpmcp_create(struct fsl_mc_io *mc_io,
 		return err;
 
 	/* retrieve response parameters */
-	*token = mc_cmd_hdr_read_token(&cmd);
+	*object_id = get_mc_cmd_create_object_id(&cmd);
 
 	return 0;
 }
@@ -159,14 +160,18 @@ int dpmcp_create(struct fsl_mc_io *mc_io,
  * Return:	'0' on Success; error code otherwise.
  */
 int dpmcp_destroy(struct fsl_mc_io *mc_io,
+		  uint16_t dprc_token,
 		  u32 cmd_flags,
-		  u16 token)
+		  uint32_t object_id)
 {
 	struct mc_command cmd = { 0 };
 
 	/* prepare command */
 	cmd.header = mc_encode_cmd_header(DPMCP_CMDID_DESTROY,
-					  cmd_flags, token);
+					cmd_flags,
+					dprc_token);
+	/* set object id to destroy */
+	set_mc_cmd_destroy_object_id(&cmd, object_id);
 
 	/* send command to mc*/
 	return mc_send_command(mc_io, &cmd);
@@ -220,7 +225,7 @@ int dpmcp_set_irq(struct fsl_mc_io *mc_io,
 	cmd_params->irq_index = irq_index;
 	cmd_params->irq_val = cpu_to_le32(irq_cfg->val);
 	cmd_params->irq_addr = cpu_to_le64(irq_cfg->paddr);
-	cmd_params->irq_num = cpu_to_le32(irq_cfg->irq_num);
+	cmd_params->irq_num = cpu_to_le32(irq_cfg->user_irq_id);
 
 	/* send command to mc*/
 	return mc_send_command(mc_io, &cmd);
@@ -265,7 +270,7 @@ int dpmcp_get_irq(struct fsl_mc_io *mc_io,
 	rsp_params = (struct dpmcp_rsp_get_irq *)cmd.params;
 	irq_cfg->val = le32_to_cpu(rsp_params->irq_val);
 	irq_cfg->paddr = le64_to_cpu(rsp_params->irq_paddr);
-	irq_cfg->irq_num = le32_to_cpu(rsp_params->irq_num);
+	irq_cfg->user_irq_id = le32_to_cpu(rsp_params->irq_num);
 	*type = le32_to_cpu(rsp_params->type);
 	return 0;
 }
@@ -497,8 +502,27 @@ int dpmcp_get_attributes(struct fsl_mc_io *mc_io,
 	/* retrieve response parameters */
 	rsp_params = (struct dpmcp_rsp_get_attributes *)cmd.params;
 	attr->id = le32_to_cpu(rsp_params->id);
-	attr->version.major = le16_to_cpu(rsp_params->version_major);
-	attr->version.minor = le16_to_cpu(rsp_params->version_minor);
+
+	return 0;
+}
+
+int dpmcp_get_api_version(struct fsl_mc_io *mc_io,
+			   uint32_t cmd_flags,
+			   uint16_t *major_ver,
+			   uint16_t *minor_ver)
+{
+	struct mc_command cmd = { 0 };
+	int err;
+
+	cmd.header = mc_encode_cmd_header(DPMCP_CMDID_GET_API_VERSION,
+					cmd_flags,
+					0);
+
+	err = mc_send_command(mc_io, &cmd);
+	if (err)
+		return err;
+
+	get_mc_cmd_object_api_ver(&cmd, major_ver, minor_ver);
 
 	return 0;
 }

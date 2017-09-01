@@ -16,6 +16,7 @@
 #include <linux/interrupt.h>
 #include <linux/msi.h>
 #include "dprc-cmd.h"
+#include "dpmcp.h"
 
 struct dprc_child_objs {
 	int child_count;
@@ -152,6 +153,8 @@ static void check_plugged_state_change(struct fsl_mc_device *mc_dev,
  * dprc_add_new_devices - Adds devices to the logical bus for a DPRC
  *
  * @mc_bus_dev: pointer to the fsl-mc device that represents a DPRC object
+ * @driver_override: driver override to apply to new objects found in the DPRC,
+ * or NULL, if none.
  * @obj_desc_array: array of device descriptors for child devices currently
  * present in the physical DPRC.
  * @num_child_objects_in_mc: number of entries in obj_desc_array
@@ -161,6 +164,7 @@ static void check_plugged_state_change(struct fsl_mc_device *mc_dev,
  * in the physical DPRC.
  */
 static void dprc_add_new_devices(struct fsl_mc_device *mc_bus_dev,
+				 const char *driver_override,
 				 struct dprc_obj_desc *obj_desc_array,
 				 int num_child_objects_in_mc)
 {
@@ -184,13 +188,13 @@ static void dprc_add_new_devices(struct fsl_mc_device *mc_bus_dev,
 		}
 
 		error = fsl_mc_device_add(obj_desc, NULL, &mc_bus_dev->dev,
-					  &child_dev);
+					  driver_override, &child_dev);
 		if (error < 0)
 			continue;
 	}
 }
 
-static void dprc_init_all_resource_pools(struct fsl_mc_device *mc_bus_dev)
+void dprc_init_all_resource_pools(struct fsl_mc_device *mc_bus_dev)
 {
 	int pool_type;
 	struct fsl_mc_bus *mc_bus = to_fsl_mc_bus(mc_bus_dev);
@@ -231,19 +235,29 @@ static void dprc_cleanup_resource_pool(struct fsl_mc_device *mc_bus_dev,
 	WARN_ON(free_count != res_pool->free_count);
 }
 
-static void dprc_cleanup_all_resource_pools(struct fsl_mc_device *mc_bus_dev)
+/*
+ * Clean up all resource pools other than the IRQ pool
+ */
+void dprc_cleanup_all_resource_pools(struct fsl_mc_device *mc_bus_dev)
 {
 	int pool_type;
 
-	for (pool_type = 0; pool_type < FSL_MC_NUM_POOL_TYPES; pool_type++)
-		dprc_cleanup_resource_pool(mc_bus_dev, pool_type);
+	for (pool_type = 0; pool_type < FSL_MC_NUM_POOL_TYPES; pool_type++) {
+		if (pool_type != FSL_MC_POOL_IRQ)
+			dprc_cleanup_resource_pool(mc_bus_dev, pool_type);
+	}
 }
 
 /**
  * dprc_scan_objects - Discover objects in a DPRC
  *
  * @mc_bus_dev: pointer to the fsl-mc device that represents a DPRC object
+ * @driver_override: driver override to apply to new objects found in the DPRC,
+ * or NULL, if none.
  * @total_irq_count: total number of IRQs needed by objects in the DPRC.
+ * @scan_options: options regarding object discovery. Current options include:
+ *  - FSL_MC_SCAN_DPRC_POPULATE_IRQ_POOL: initialize IRQ pool before adding
+ *  new objects; the option is ignored if the IRQ pool was already initialized.
  *
  * Detects objects added and removed from a DPRC and synchronizes the
  * state of the Linux bus driver, MC by adding and removing
@@ -258,13 +272,21 @@ static void dprc_cleanup_all_resource_pools(struct fsl_mc_device *mc_bus_dev)
  * of the device drivers for the non-allocatable devices.
  */
 int dprc_scan_objects(struct fsl_mc_device *mc_bus_dev,
-		      unsigned int *total_irq_count)
+		      const char *driver_override,
+		      unsigned int *total_irq_count,
+		      unsigned int scan_options)
 {
 	int num_child_objects;
 	int dprc_get_obj_failures;
 	int error;
 	unsigned int irq_count = mc_bus_dev->obj_desc.irq_count;
 	struct dprc_obj_desc *child_obj_desc_array = NULL;
+	struct fsl_mc_bus *mc_bus;
+
+	if (WARN_ON(!total_irq_count)) {
+		dev_err(&mc_bus_dev->dev, "invalid input parameter: irq count\n");
+		return -EINVAL;
+	}
 
 	error = dprc_get_obj_count(mc_bus_dev->mc_io,
 				   0,
@@ -298,6 +320,16 @@ int dprc_scan_objects(struct fsl_mc_device *mc_bus_dev,
 					     0,
 					     mc_bus_dev->mc_handle,
 					     i, obj_desc);
+
+			/*
+			 * -ENXIO means object index was invalid.
+			 *  This is caused when the DPRC was changed at
+			 *  the MC during the scan.  In this case,
+			 *  abort the current scan.
+			 */
+			if (error == -ENXIO)
+				goto error;
+
 			if (error < 0) {
 				dev_err(&mc_bus_dev->dev,
 					"dprc_get_obj(i=%d) failed: %d\n",
@@ -313,8 +345,9 @@ int dprc_scan_objects(struct fsl_mc_device *mc_bus_dev,
 			}
 
 			/*
-			 * add a quirk for all versions of dpsec < 4.0...none
-			 * are coherent regardless of what the MC reports.
+			 * for DPRC versions that do not support the
+			 * shareability attribute, make simplifying assumption
+			 * that only SEC is not shareable.
 			 */
 			if ((strcmp(obj_desc->type, "dpseci") == 0) &&
 			    (obj_desc->ver_major < 4))
@@ -337,14 +370,32 @@ int dprc_scan_objects(struct fsl_mc_device *mc_bus_dev,
 	*total_irq_count = irq_count;
 	dprc_remove_devices(mc_bus_dev, child_obj_desc_array,
 			    num_child_objects);
-
-	dprc_add_new_devices(mc_bus_dev, child_obj_desc_array,
+	/* populate the irq pool before adding new devices */
+	if ((scan_options & FSL_MC_SCAN_DPRC_POPULATE_IRQ_POOL) != 0 &&
+		fsl_mc_interrupts_supported()) {
+		mc_bus = to_fsl_mc_bus(mc_bus_dev);
+		/* check if the irq resources were not already initialized */
+		if (!mc_bus->irq_resources) {
+			error = fsl_mc_populate_irq_pool(mc_bus, irq_count);
+			if (error < 0) {
+				dev_err(&mc_bus_dev->dev,
+						"%s: Failed to populate irq-pool\n",
+						__func__);
+				goto error;
+			}
+		}
+	}
+	dprc_add_new_devices(mc_bus_dev, driver_override, child_obj_desc_array,
 			     num_child_objects);
 
 	if (child_obj_desc_array)
 		devm_kfree(&mc_bus_dev->dev, child_obj_desc_array);
 
 	return 0;
+error:
+	if (child_obj_desc_array)
+		devm_kfree(&mc_bus_dev->dev, child_obj_desc_array);
+	return error;
 }
 EXPORT_SYMBOL_GPL(dprc_scan_objects);
 
@@ -369,12 +420,12 @@ int dprc_scan_container(struct fsl_mc_device *mc_bus_dev)
 	 * Discover objects in the DPRC:
 	 */
 	mutex_lock(&mc_bus->scan_mutex);
-	error = dprc_scan_objects(mc_bus_dev, &irq_count);
+	error = dprc_scan_objects(mc_bus_dev, NULL, &irq_count, 0);
 	mutex_unlock(&mc_bus->scan_mutex);
 	if (error < 0)
 		goto error;
 
-	if (dev_get_msi_domain(&mc_bus_dev->dev) && !mc_bus->irq_resources) {
+	if (dev_get_msi_domain(&mc_bus_dev->dev) && fsl_mc_interrupts_supported() && !mc_bus->irq_resources) {
 		if (irq_count > FSL_MC_IRQ_POOL_MAX_TOTAL_IRQS) {
 			dev_warn(&mc_bus_dev->dev,
 				 "IRQs needed (%u) exceed IRQs preallocated (%u)\n",
@@ -390,6 +441,7 @@ int dprc_scan_container(struct fsl_mc_device *mc_bus_dev)
 
 	return 0;
 error:
+	device_for_each_child(&mc_bus_dev->dev, NULL, __fsl_mc_device_remove);
 	dprc_cleanup_all_resource_pools(mc_bus_dev);
 	return error;
 }
@@ -456,7 +508,7 @@ static irqreturn_t dprc_irq0_handler_thread(int irq_num, void *arg)
 		      DPRC_IRQ_EVENT_OBJ_CREATED)) {
 		unsigned int irq_count;
 
-		error = dprc_scan_objects(mc_dev, &irq_count);
+		error = dprc_scan_objects(mc_dev, NULL, &irq_count, 0);
 		if (error < 0) {
 			/*
 			 * If the error is -ENXIO, we ignore it, as it indicates
@@ -620,6 +672,99 @@ error_free_irqs:
 	return error;
 }
 
+/*
+ * Creates a DPMCP for a DPRC's built-in MC portal
+ */
+static int dprc_create_dpmcp(struct fsl_mc_device *dprc_dev)
+{
+	int error;
+	struct dpmcp_cfg dpmcp_cfg;
+	uint32_t dpmcp_obj_id;
+	struct dprc_res_req res_req;
+	struct fsl_mc_bus *mc_bus = to_fsl_mc_bus(dprc_dev);
+
+	dpmcp_cfg.portal_id = mc_bus->dprc_attr.portal_id;
+	error = dpmcp_create(dprc_dev->mc_io,
+				 dprc_dev->mc_handle,
+				 MC_CMD_FLAG_INTR_DIS,
+				 &dpmcp_cfg,
+				 &dpmcp_obj_id);
+	if (error < 0) {
+		dev_err(&dprc_dev->dev,
+				"dpmcp_create() failed, portal id: %u, error: %d\n",
+				dpmcp_cfg.portal_id,
+				error);
+		return error;
+	}
+
+	/*
+	 * Set the state of the newly created DPMCP object to be "plugged":
+	 */
+
+	if (WARN_ON(dpmcp_obj_id != mc_bus->dprc_attr.portal_id)) {
+		error = -EINVAL;
+		dev_warn(&dprc_dev->dev,
+				"dpmcp_create() failed, expected id: %u, actual id: %u\n",
+				mc_bus->dprc_attr.portal_id,
+				dpmcp_obj_id);
+		goto error_destroy_dpmcp;
+	}
+
+	strcpy(res_req.type, "dpmcp");
+	res_req.num = 1;
+	res_req.options =
+			(DPRC_RES_REQ_OPT_EXPLICIT | DPRC_RES_REQ_OPT_PLUGGED);
+	res_req.id_base_align = dpmcp_obj_id;
+
+	error = dprc_assign(dprc_dev->mc_io,
+				MC_CMD_FLAG_INTR_DIS,
+			    dprc_dev->mc_handle,
+			    dprc_dev->obj_desc.id,
+			    &res_req);
+
+	if (error < 0) {
+		dev_err(&dprc_dev->dev,
+			"dprc_assign() failed, dpmcp id: %u, container: %u, error: %d\n",
+			dpmcp_obj_id,
+			dprc_dev->obj_desc.id,
+			error);
+		goto error_destroy_dpmcp;
+	}
+
+	return 0;
+
+error_destroy_dpmcp:
+	(void)dpmcp_destroy(dprc_dev->mc_io,
+				dprc_dev->mc_handle,
+				MC_CMD_FLAG_INTR_DIS,
+				dpmcp_obj_id);
+	return error;
+}
+
+/*
+ * Destroys the DPMCP for a DPRC's built-in MC portal
+ */
+static void dprc_destroy_dpmcp(struct fsl_mc_device *dprc_dev)
+{
+	int error;
+	struct fsl_mc_bus *mc_bus = to_fsl_mc_bus(dprc_dev);
+
+	if (WARN_ON(!dprc_dev->mc_io || dprc_dev->mc_io->dpmcp_dev))
+		return;
+
+	error = dpmcp_destroy(dprc_dev->mc_io,
+			      dprc_dev->mc_handle,
+			      MC_CMD_FLAG_INTR_DIS,
+				mc_bus->dprc_attr.portal_id);
+	if (error < 0) {
+		dev_err(&dprc_dev->dev,
+				"dpmcp_destroy() failed, object id: %u, error: %d\n",
+				mc_bus->dprc_attr.portal_id,
+				error);
+		return;
+	}
+}
+
 /**
  * dprc_probe - callback invoked when a DPRC is being bound to this driver
  *
@@ -638,6 +783,9 @@ static int dprc_probe(struct fsl_mc_device *mc_dev)
 	struct fsl_mc_bus *mc_bus = to_fsl_mc_bus(mc_dev);
 	bool mc_io_created = false;
 	bool msi_domain_set = false;
+	bool dev_root_set = false;
+	uint16_t dprc_version_major;
+	uint16_t dprc_version_minor;
 
 	if (WARN_ON(strcmp(mc_dev->obj_desc.type, "dprc") != 0))
 		return -EINVAL;
@@ -653,6 +801,9 @@ static int dprc_probe(struct fsl_mc_device *mc_dev)
 			return -EINVAL;
 
 		if (WARN_ON(mc_dev->obj_desc.region_count == 0))
+			return -EINVAL;
+
+		if (WARN_ON(!fsl_mc_bus_type.dev_root))
 			return -EINVAL;
 
 		region_size = mc_dev->regions[0].end -
@@ -693,6 +844,12 @@ static int dprc_probe(struct fsl_mc_device *mc_dev)
 			dev_set_msi_domain(&mc_dev->dev, mc_msi_domain);
 			msi_domain_set = true;
 		}
+
+		if (WARN_ON(fsl_mc_bus_type.dev_root))
+			return -EINVAL;
+
+		fsl_mc_bus_type.dev_root = &mc_dev->dev;
+		dev_root_set = true;
 	}
 
 	error = dprc_open(mc_dev->mc_io, 0, mc_dev->obj_desc.id,
@@ -702,6 +859,27 @@ static int dprc_probe(struct fsl_mc_device *mc_dev)
 		goto error_cleanup_msi_domain;
 	}
 
+	/* check if MC supports compatible DPRC type version */
+	error = dprc_get_api_version(mc_dev->mc_io, 0,
+			&dprc_version_major, &dprc_version_minor);
+	if (error < 0) {
+		dev_err(&mc_dev->dev, "dprc_get_api_version() failed: %d\n",
+			error);
+		goto error_cleanup_open;
+	}
+
+	if (dprc_version_major < DPRC_MIN_VER_MAJOR ||
+	   (dprc_version_major == DPRC_MIN_VER_MAJOR &&
+		dprc_version_minor < DPRC_MIN_VER_MINOR)) {
+		dev_err(&mc_dev->dev,
+			"ERROR: DPRC version %d.%d not supported\n",
+			dprc_version_major,
+			dprc_version_minor);
+		error = -ENOTSUPP;
+		goto error_cleanup_open;
+	}
+
+	/* get container portal id */
 	error = dprc_get_attributes(mc_dev->mc_io, 0, mc_dev->mc_handle,
 				    &mc_bus->dprc_attr);
 	if (error < 0) {
@@ -710,15 +888,13 @@ static int dprc_probe(struct fsl_mc_device *mc_dev)
 		goto error_cleanup_open;
 	}
 
-	if (mc_bus->dprc_attr.version.major < DPRC_MIN_VER_MAJOR ||
-	   (mc_bus->dprc_attr.version.major == DPRC_MIN_VER_MAJOR &&
-	    mc_bus->dprc_attr.version.minor < DPRC_MIN_VER_MINOR)) {
-		dev_err(&mc_dev->dev,
-			"ERROR: DPRC version %d.%d not supported\n",
-			mc_bus->dprc_attr.version.major,
-			mc_bus->dprc_attr.version.minor);
-		error = -ENOTSUPP;
-		goto error_cleanup_open;
+	if (fsl_mc_interrupts_supported()) {
+		/*
+		 * Create DPMCP for the DPRC's built-in portal:
+		 */
+		error = dprc_create_dpmcp(mc_dev);
+		if (error < 0)
+			goto error_cleanup_open;
 	}
 
 	mutex_init(&mc_bus->scan_mutex);
@@ -728,17 +904,80 @@ static int dprc_probe(struct fsl_mc_device *mc_dev)
 	 */
 	error = dprc_scan_container(mc_dev);
 	if (error < 0)
-		goto error_cleanup_open;
+		goto  error_destroy_dpmcp;
 
-	/*
-	 * Configure interrupt for the DPRC object associated with this MC bus:
-	 */
-	error = dprc_setup_irq(mc_dev);
-	if (error < 0)
-		goto error_cleanup_open;
+	if (fsl_mc_interrupts_supported()) {
+		/*
+		 * The fsl_mc_device object associated with the DPMCP object created
+		 * above was created as part of the dprc_scan_container() call above:
+		 */
+		if (WARN_ON(!mc_dev->mc_io->dpmcp_dev)) {
+			error = -EINVAL;
+			goto error_cleanup_dprc_scan;
+		}
+
+		/*
+		 * Allocate MC portal to be used in atomic context
+		 * (e.g., to program MSIs from program_msi_at_mc())
+		 */
+		error = fsl_mc_portal_allocate(NULL,
+					       FSL_MC_IO_ATOMIC_CONTEXT_PORTAL,
+					       &mc_bus->atomic_mc_io);
+		if (error < 0)
+			goto error_cleanup_dprc_scan;
+
+		pr_info("fsl-mc: Allocated dpmcp.%d to dprc.%d for atomic MC I/O\n",
+			mc_bus->atomic_mc_io->dpmcp_dev->obj_desc.id,
+			mc_dev->obj_desc.id);
+
+		/*
+		 * Open DPRC handle to be used with mc_bus->atomic_mc_io:
+		 */
+		error = dprc_open(mc_bus->atomic_mc_io, 0, mc_dev->obj_desc.id,
+				  &mc_bus->atomic_dprc_handle);
+		if (error < 0) {
+			dev_err(&mc_dev->dev, "dprc_open() failed: %d\n",
+				error);
+			goto error_cleanup_atomic_mc_io;
+		}
+
+		/*
+		 * Configure interrupt for the DPMCP object associated with the
+		 * DPRC object's built-in portal:
+		 *
+		 * NOTE: We have to do this after calling dprc_scan_container(), since
+		 * dprc_scan_container() will populate the IRQ pool for this DPRC.
+		 */
+		error = fsl_mc_io_setup_dpmcp_irq(mc_dev->mc_io);
+		if (error < 0)
+			goto error_cleanup_atomic_dprc_handle;
+
+		/*
+		 * Configure interrupt for the DPRC object associated with this MC bus:
+		 */
+		error = dprc_setup_irq(mc_dev);
+		if (error < 0)
+			goto error_cleanup_atomic_dprc_handle;
+	}
 
 	dev_info(&mc_dev->dev, "DPRC device bound to driver");
 	return 0;
+
+error_cleanup_atomic_dprc_handle:
+	(void)dprc_close(mc_bus->atomic_mc_io, 0, mc_bus->atomic_dprc_handle);
+
+error_cleanup_atomic_mc_io:
+	fsl_mc_portal_free(mc_bus->atomic_mc_io);
+
+error_cleanup_dprc_scan:
+	fsl_mc_io_unset_dpmcp(mc_dev->mc_io);
+	device_for_each_child(&mc_dev->dev, NULL, __fsl_mc_device_remove);
+	dprc_cleanup_all_resource_pools(mc_dev);
+	if (fsl_mc_interrupts_supported())
+		fsl_mc_cleanup_irq_pool(mc_bus);
+
+error_destroy_dpmcp:
+	dprc_destroy_dpmcp(mc_dev);
 
 error_cleanup_open:
 	(void)dprc_close(mc_dev->mc_io, 0, mc_dev->mc_handle);
@@ -751,6 +990,9 @@ error_cleanup_msi_domain:
 		fsl_destroy_mc_io(mc_dev->mc_io);
 		mc_dev->mc_io = NULL;
 	}
+
+	if (dev_root_set)
+		fsl_mc_bus_type.dev_root = NULL;
 
 	return error;
 }
@@ -792,18 +1034,28 @@ static int dprc_remove(struct fsl_mc_device *mc_dev)
 	if (WARN_ON(!mc_bus->irq_resources))
 		return -EINVAL;
 
-	if (dev_get_msi_domain(&mc_dev->dev))
+	if (dev_get_msi_domain(&mc_dev->dev) && fsl_mc_interrupts_supported()) {
 		dprc_teardown_irq(mc_dev);
+		error = dprc_close(mc_bus->atomic_mc_io, 0,
+				   mc_bus->atomic_dprc_handle);
+		if (error < 0) {
+			dev_err(&mc_dev->dev, "dprc_close() failed: %d\n",
+				error);
+		}
 
+		fsl_mc_portal_free(mc_bus->atomic_mc_io);
+	}
+
+	fsl_mc_io_unset_dpmcp(mc_dev->mc_io);
 	device_for_each_child(&mc_dev->dev, NULL, __fsl_mc_device_remove);
 
-	if (dev_get_msi_domain(&mc_dev->dev)) {
+	if (dev_get_msi_domain(&mc_dev->dev) && fsl_mc_interrupts_supported()) {
 		fsl_mc_cleanup_irq_pool(mc_bus);
 		dev_set_msi_domain(&mc_dev->dev, NULL);
 	}
 
 	dprc_cleanup_all_resource_pools(mc_dev);
-
+	dprc_destroy_dpmcp(mc_dev);
 	error = dprc_close(mc_dev->mc_io, 0, mc_dev->mc_handle);
 	if (error < 0)
 		dev_err(&mc_dev->dev, "dprc_close() failed: %d\n", error);
@@ -812,6 +1064,9 @@ static int dprc_remove(struct fsl_mc_device *mc_dev)
 		fsl_destroy_mc_io(mc_dev->mc_io);
 		mc_dev->mc_io = NULL;
 	}
+
+	if (&mc_dev->dev == fsl_mc_bus_type.dev_root)
+		fsl_mc_bus_type.dev_root = NULL;
 
 	dev_info(&mc_dev->dev, "DPRC device unbound from driver");
 	return 0;

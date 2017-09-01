@@ -54,19 +54,16 @@ struct soc_data {
 
 static u32 get_bus_freq(void)
 {
-	struct device_node *soc;
-	u32 sysfreq;
+	struct clk *clk;
 
-	soc = of_find_node_by_type(NULL, "soc");
-	if (!soc)
-		return 0;
+	clk = clk_get(NULL, "cg-pll0-div1");
+	if (IS_ERR(clk)) {
+		pr_err("%s: can't get bus frequency %ld\n",
+			__func__, PTR_ERR(clk));
+		return PTR_ERR(clk);
+	}
 
-	if (of_property_read_u32(soc, "bus-frequency", &sysfreq))
-		sysfreq = 0;
-
-	of_node_put(soc);
-
-	return sysfreq;
+	return clk_get_rate(clk);
 }
 
 static struct clk *cpu_to_clk(int cpu)
@@ -314,6 +311,8 @@ static const struct of_device_id node_matches[] __initconst = {
 	{ .compatible = "fsl,qoriq-clockgen-2.0", },
 	{ .compatible = "fsl,ls2080a-clockgen", },
 	{ .compatible = "fsl,ls1043a-clockgen", },
+	{ .compatible = "fsl,ls1046a-clockgen", },
+	{ .compatible = "fsl,ls1012a-clockgen", },
 	{}
 };
 

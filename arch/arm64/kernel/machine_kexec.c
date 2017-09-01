@@ -29,6 +29,78 @@ extern const unsigned long arm64_relocate_new_kernel_size;
 static bool in_crash_kexec;
 static unsigned long kimage_start;
 
+#define CRASH_HANDLER_MAX 3
+/* List of shutdown handles */
+static crash_shutdown_t crash_shutdown_handles[CRASH_HANDLER_MAX];
+static DEFINE_SPINLOCK(crash_handlers_lock);
+
+/*
+ * Register a function to be called on shutdown.  Only use this if you
+ * can't reset your device in the second kernel.
+ */
+int crash_shutdown_register(crash_shutdown_t handler)
+{
+	unsigned int i, rc;
+
+	spin_lock(&crash_handlers_lock);
+	for (i = 0 ; i < CRASH_HANDLER_MAX; i++)
+		if (!crash_shutdown_handles[i]) {
+			/* Insert handle at first empty entry */
+			crash_shutdown_handles[i] = handler;
+			rc = 0;
+			break;
+		}
+
+	if (i == CRASH_HANDLER_MAX) {
+		printk(KERN_ERR "Crash shutdown handles full, "
+		       "not registered.\n");
+		rc = 1;
+	}
+
+	spin_unlock(&crash_handlers_lock);
+	return rc;
+}
+EXPORT_SYMBOL(crash_shutdown_register);
+
+int crash_shutdown_unregister(crash_shutdown_t handler)
+{
+	unsigned int i, rc;
+
+	spin_lock(&crash_handlers_lock);
+	for (i = 0 ; i < CRASH_HANDLER_MAX; i++)
+		if (crash_shutdown_handles[i] == handler)
+			break;
+
+	if (i == CRASH_HANDLER_MAX) {
+		printk(KERN_ERR "Crash shutdown handle not found\n");
+		rc = 1;
+	} else {
+		/* Shift handles down */
+		for (; i < (CRASH_HANDLER_MAX - 1); i++)
+			crash_shutdown_handles[i] =
+				crash_shutdown_handles[i+1];
+		/*
+		 * Reset last entry to NULL now that it has been shifted down,
+		 * this will allow new handles to be added here.
+		 */
+		crash_shutdown_handles[i] = NULL;
+		rc = 0;
+	}
+
+	spin_unlock(&crash_handlers_lock);
+	return rc;
+}
+EXPORT_SYMBOL(crash_shutdown_unregister);
+
+static void crash_shutdown_execute(void)
+{
+	int i;
+
+	for (i = 0; i < CRASH_HANDLER_MAX && crash_shutdown_handles[i]; i++) {
+			crash_shutdown_handles[i]();
+	}
+}
+
 /**
  * kexec_image_info - For debugging output.
  */
@@ -258,6 +330,8 @@ void machine_crash_shutdown(struct pt_regs *regs)
 	/* for crashing cpu */
 	crash_save_cpu(regs, smp_processor_id());
 	machine_kexec_mask_interrupts();
+
+	crash_shutdown_execute();
 
 	pr_info("Starting crashdump kernel...\n");
 }

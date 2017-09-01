@@ -57,6 +57,7 @@
 #include <linux/percpu.h>
 #include <linux/dma-mapping.h>
 #include <linux/fsl_bman.h>
+#include <linux/sys_soc.h>      /* soc_device_match */
 
 #include "fsl_fman.h"
 #include "fm_ext.h"
@@ -101,6 +102,11 @@ static const char rtx[][3] = {
 	[RX] = "RX",
 	[TX] = "TX"
 };
+
+#ifndef CONFIG_PPC
+bool dpaa_errata_a010022;
+EXPORT_SYMBOL(dpaa_errata_a010022);
+#endif
 
 /* BM */
 
@@ -960,7 +966,10 @@ dpaa_eth_priv_probe(struct platform_device *_of_dev)
 	/* We only want to use jumbo frame optimization if we actually have
 	 * L2 MAX FRM set for jumbo frames as well.
 	 */
-	if (fm_get_max_frm() < 9600)
+#ifndef CONFIG_PPC
+	if (likely(!dpaa_errata_a010022))
+#endif
+	if(fm_get_max_frm() < 9600)
 		dev_warn(dev,
 			"Invalid configuration: if jumbo frames support is on, FSL_FM_MAX_FRAME_SIZE should be set to 9600\n");
 #endif
@@ -1134,6 +1143,22 @@ static struct platform_driver dpa_driver = {
 	.remove		= dpa_remove
 };
 
+#ifndef CONFIG_PPC
+static bool __init __cold soc_has_errata_a010022(void)
+{
+	const struct soc_device_attribute soc_msi_matches[] = {
+		{ .family = "QorIQ LS1043A",
+		  .data = NULL },
+		{ },
+	};
+
+	if (soc_device_match(soc_msi_matches))
+		return true;
+
+	return false;
+}
+#endif
+
 static int __init __cold dpa_load(void)
 {
 	int	 _errno;
@@ -1148,6 +1173,11 @@ static int __init __cold dpa_load(void)
 	dpa_rx_extra_headroom = fm_get_rx_extra_headroom();
 	dpa_max_frm = fm_get_max_frm();
 	dpa_num_cpus = num_possible_cpus();
+
+#ifndef CONFIG_PPC
+	/* Detect if the current SoC requires the 4K alignment workaround */
+	dpaa_errata_a010022 = soc_has_errata_a010022();
+#endif
 
 #ifdef CONFIG_FSL_DPAA_DBG_LOOP
 	memset(dpa_loop_netdevs, 0, sizeof(dpa_loop_netdevs));
