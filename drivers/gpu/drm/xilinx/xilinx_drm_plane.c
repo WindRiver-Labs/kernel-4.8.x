@@ -1,10 +1,9 @@
 /*
  * Xilinx DRM plane driver for Xilinx
  *
- *  Copyright (C) 2013,2016,2017 Xilinx, Inc.
+ *  Copyright (C) 2013 Xilinx, Inc.
  *
  *  Author: Hyun Woo Kwon <hyunk@xilinx.com>
- *          Jeffrey Mouroux <jmouroux@xilinx.com>
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -16,10 +15,10 @@
  * GNU General Public License for more details.
  */
 
+#include <drm/drmP.h>
 #include <drm/drm_crtc.h>
 #include <drm/drm_fb_cma_helper.h>
 #include <drm/drm_gem_cma_helper.h>
-#include <drm/drmP.h>
 
 #include <linux/device.h>
 #include <linux/dmaengine.h>
@@ -28,17 +27,103 @@
 #include <linux/of_dma.h>
 #include <linux/platform_device.h>
 
-/* drm component libs */
 #include "xilinx_drm_dp_sub.h"
 #include "xilinx_drm_drv.h"
 #include "xilinx_drm_fb.h"
 #include "xilinx_drm_plane.h"
 
-/* hardware layer libs */
-#include "crtc/mixer/drm/xilinx_drm_mixer.h"
 #include "xilinx_cresample.h"
 #include "xilinx_osd.h"
 #include "xilinx_rgb2yuv.h"
+
+#define MAX_NUM_SUB_PLANES	4
+
+/**
+ * struct xilinx_drm_plane_dma - Xilinx drm plane VDMA object
+ *
+ * @chan: dma channel
+ * @xt: dma interleaved configuration template
+ * @sgl: data chunk for dma_interleaved_template
+ * @is_active: flag if the DMA is active
+ */
+struct xilinx_drm_plane_dma {
+	struct dma_chan *chan;
+	struct dma_interleaved_template xt;
+	struct data_chunk sgl[1];
+	bool is_active;
+};
+
+/**
+ * struct xilinx_drm_plane - Xilinx drm plane object
+ *
+ * @base: base drm plane object
+ * @id: plane id
+ * @dpms: current dpms level
+ * @zpos: user requested z-position value
+ * @prio: actual layer priority
+ * @alpha: alpha value
+ * @alpha_enable: alpha enable value
+ * @primary: flag for primary plane
+ * @format: pixel format
+ * @dma: dma object
+ * @rgb2yuv: rgb2yuv instance
+ * @cresample: cresample instance
+ * @osd_layer: osd layer
+ * @dp_layer: DisplayPort subsystem layer
+ * @manager: plane manager
+ */
+struct xilinx_drm_plane {
+	struct drm_plane base;
+	int id;
+	int dpms;
+	unsigned int zpos;
+	unsigned int prio;
+	unsigned int alpha;
+	unsigned int alpha_enable;
+	bool primary;
+	u32 format;
+	struct xilinx_drm_plane_dma dma[MAX_NUM_SUB_PLANES];
+	struct xilinx_rgb2yuv *rgb2yuv;
+	struct xilinx_cresample *cresample;
+	struct xilinx_osd_layer *osd_layer;
+	struct xilinx_drm_dp_sub_layer *dp_layer;
+	struct xilinx_drm_plane_manager *manager;
+};
+
+#define MAX_PLANES 8
+
+/**
+ * struct xilinx_drm_plane_manager - Xilinx drm plane manager object
+ *
+ * @drm: drm device
+ * @node: plane device node
+ * @osd: osd instance
+ * @dp_sub: DisplayPort subsystem instance
+ * @num_planes: number of available planes
+ * @format: video format
+ * @max_width: maximum width
+ * @zpos_prop: z-position(priority) property
+ * @alpha_prop: alpha value property
+ * @alpha_enable_prop: alpha enable property
+ * @default_alpha: default alpha value
+ * @planes: xilinx drm planes
+ */
+struct xilinx_drm_plane_manager {
+	struct drm_device *drm;
+	struct device_node *node;
+	struct xilinx_osd *osd;
+	struct xilinx_drm_dp_sub *dp_sub;
+	int num_planes;
+	u32 format;
+	int max_width;
+	struct drm_property *zpos_prop;
+	struct drm_property *alpha_prop;
+	struct drm_property *alpha_enable_prop;
+	unsigned int default_alpha;
+	struct xilinx_drm_plane *planes[MAX_PLANES];
+};
+
+#define to_xilinx_plane(x)	container_of(x, struct xilinx_drm_plane, base)
 
 void xilinx_drm_plane_commit(struct drm_plane *base_plane)
 {
@@ -133,8 +218,6 @@ void xilinx_drm_plane_dpms(struct drm_plane *base_plane, int dpms)
 
 			xilinx_osd_enable_rue(manager->osd);
 		}
-		if (manager->mixer)
-			xilinx_drm_mixer_plane_dpms(plane, dpms);
 
 		if (plane->cresample) {
 			xilinx_cresample_disable(plane->cresample);
@@ -170,9 +253,8 @@ int xilinx_drm_plane_mode_set(struct drm_plane *base_plane,
 {
 	struct xilinx_drm_plane *plane = to_xilinx_plane(base_plane);
 	struct drm_gem_cma_object *obj;
-	size_t offset = 0;
+	size_t offset;
 	unsigned int hsub, vsub, i;
-	int ret;
 
 	DRM_DEBUG_KMS("plane->id: %d\n", plane->id);
 
@@ -232,14 +314,9 @@ int xilinx_drm_plane_mode_set(struct drm_plane *base_plane,
 		xilinx_osd_enable_rue(plane->manager->osd);
 	}
 
-	if (plane->manager->mixer) {
-		ret = xilinx_drm_mixer_set_plane(plane, fb, crtc_x, crtc_y,
-						 src_x, src_y, src_w, src_h);
-		if (ret)
-			return ret;
-	}
-
 	if (plane->manager->dp_sub) {
+		int ret;
+
 		ret = xilinx_drm_dp_sub_layer_check_size(plane->manager->dp_sub,
 							 plane->dp_layer,
 							 src_w, src_h);
@@ -317,9 +394,6 @@ static void xilinx_drm_plane_destroy(struct drm_plane *base_plane)
 		xilinx_osd_layer_put(plane->osd_layer);
 	}
 
-	if (plane->manager->mixer)
-		xilinx_drm_mixer_layer_disable(plane);
-
 	if (plane->manager->dp_sub) {
 		xilinx_drm_dp_sub_layer_disable(plane->manager->dp_sub,
 						plane->dp_layer);
@@ -379,9 +453,6 @@ static void xilinx_drm_plane_set_zpos(struct drm_plane *base_plane,
 	bool update = false;
 	int i;
 
-	if (plane->zpos == zpos)
-		return;
-
 	for (i = 0; i < manager->num_planes; i++) {
 		if (manager->planes[i] != plane &&
 		    manager->planes[i]->prio == zpos) {
@@ -406,9 +477,6 @@ static void xilinx_drm_plane_set_alpha(struct drm_plane *base_plane,
 	struct xilinx_drm_plane *plane = to_xilinx_plane(base_plane);
 	struct xilinx_drm_plane_manager *manager = plane->manager;
 
-	if (plane->alpha == alpha)
-		return;
-
 	plane->alpha = alpha;
 
 	if (plane->osd_layer)
@@ -422,9 +490,6 @@ static void xilinx_drm_plane_enable_alpha(struct drm_plane *base_plane,
 {
 	struct xilinx_drm_plane *plane = to_xilinx_plane(base_plane);
 	struct xilinx_drm_plane_manager *manager = plane->manager;
-
-	if (plane->alpha_enable == enable)
-		return;
 
 	plane->alpha_enable = enable;
 
@@ -442,25 +507,14 @@ static int xilinx_drm_plane_set_property(struct drm_plane *base_plane,
 	struct xilinx_drm_plane *plane = to_xilinx_plane(base_plane);
 	struct xilinx_drm_plane_manager *manager = plane->manager;
 
-	if (property == manager->zpos_prop) {
+	if (property == manager->zpos_prop)
 		xilinx_drm_plane_set_zpos(base_plane, val);
-
-	} else if (property == manager->alpha_prop) {
+	else if (property == manager->alpha_prop)
 		xilinx_drm_plane_set_alpha(base_plane, val);
-
-	} else if (property == manager->alpha_enable_prop) {
+	else if (property == manager->alpha_enable_prop)
 		xilinx_drm_plane_enable_alpha(base_plane, val);
-
-	} else if (manager->mixer) {
-		int ret;
-
-		ret = xilinx_drm_mixer_set_plane_property(plane,
-							  property, val);
-		if (ret)
-			return ret;
-	} else {
+	else
 		return -EINVAL;
-	}
 
 	drm_object_property_set_value(&base_plane->base, property, val);
 
@@ -480,30 +534,6 @@ int xilinx_drm_plane_get_max_width(struct drm_plane *base_plane)
 	struct xilinx_drm_plane *plane = to_xilinx_plane(base_plane);
 
 	return plane->manager->max_width;
-}
-
-/* get a plane max height */
-int xilinx_drm_plane_get_max_height(struct drm_plane *base_plane)
-{
-	struct xilinx_drm_plane *plane = to_xilinx_plane(base_plane);
-
-	return plane->manager->max_height;
-}
-
-/* get a plane max width */
-int xilinx_drm_plane_get_max_cursor_width(struct drm_plane *base_plane)
-{
-	struct xilinx_drm_plane *plane = to_xilinx_plane(base_plane);
-
-	return plane->manager->max_cursor_width;
-}
-
-/* get a plane max height */
-int xilinx_drm_plane_get_max_cursor_height(struct drm_plane *base_plane)
-{
-	struct xilinx_drm_plane *plane = to_xilinx_plane(base_plane);
-
-	return plane->manager->max_cursor_height;
 }
 
 /* check if format is supported */
@@ -540,8 +570,6 @@ void xilinx_drm_plane_restore(struct xilinx_drm_plane_manager *manager)
 	struct xilinx_drm_plane *plane;
 	unsigned int i;
 
-	if (!manager)
-		return;
 	/*
 	 * Reinitialize property default values as they get reset by DPMS OFF
 	 * operation. User will read the correct default values later, and
@@ -550,32 +578,23 @@ void xilinx_drm_plane_restore(struct xilinx_drm_plane_manager *manager)
 	for (i = 0; i < manager->num_planes; i++) {
 		plane = manager->planes[i];
 
-		if (!plane)
-			continue;
-
-		if (manager->mixer)
-			xilinx_drm_mixer_plane_dpms(plane, DRM_MODE_DPMS_OFF);
-
 		plane->prio = plane->id;
 		plane->zpos = plane->id;
-
 		if (manager->zpos_prop)
 			drm_object_property_set_value(&plane->base.base,
 						      manager->zpos_prop,
 						      plane->prio);
 
 		plane->alpha = manager->default_alpha;
-
 		if (manager->alpha_prop)
 			drm_object_property_set_value(&plane->base.base,
 						      manager->alpha_prop,
 						      plane->alpha);
 
 		plane->alpha_enable = true;
-
 		if (manager->alpha_enable_prop)
 			drm_object_property_set_value(&plane->base.base,
-							manager->alpha_enable_prop, true);
+						      manager->alpha_enable_prop, true);
 	}
 }
 
@@ -598,14 +617,6 @@ u32 xilinx_drm_plane_get_format(struct drm_plane *base_plane)
 unsigned int xilinx_drm_plane_get_align(struct drm_plane *base_plane)
 {
 	struct xilinx_drm_plane *plane = to_xilinx_plane(base_plane);
-
-	if (!plane->dma[0].chan) {
-		if (plane->manager->mixer) {
-			struct xilinx_drm_mixer *m = plane->manager->mixer;
-
-			return 1 << get_xilinx_mixer_mem_align(m);
-		}
-	}
 
 	return 1 << plane->dma[0].chan->device->copy_align;
 }
@@ -646,13 +657,10 @@ static void xilinx_drm_plane_attach_property(struct drm_plane *base_plane)
 					   manager->alpha_prop,
 					   manager->default_alpha);
 		drm_object_attach_property(&base_plane->base,
-			       manager->alpha_enable_prop, false);
-
-		plane->alpha_enable = true;
+					   manager->alpha_enable_prop, false);
 	}
 
-	if (manager->mixer)
-		xilinx_drm_mixer_attach_plane_prop(plane);
+	plane->alpha_enable = true;
 }
 
 /**
@@ -680,17 +688,10 @@ void xilinx_drm_plane_manager_dpms(struct xilinx_drm_plane_manager *manager,
 			xilinx_osd_enable_rue(manager->osd);
 		}
 
-		if (manager->mixer)
-			xilinx_drm_mixer_dpms(manager->mixer, dpms);
-
 		break;
-
 	default:
 		if (manager->osd)
 			xilinx_osd_reset(manager->osd);
-
-		if (manager->mixer)
-			xilinx_drm_mixer_dpms(manager->mixer, dpms);
 
 		if (manager->dp_sub)
 			xilinx_drm_dp_sub_disable(manager->dp_sub);
@@ -727,7 +728,6 @@ xilinx_drm_plane_create(struct xilinx_drm_plane_manager *manager,
 	struct device_node *sub_node;
 	struct property *prop;
 	const char *dma_name;
-	struct device_node *layer_node;
 	enum drm_plane_type type;
 	u32 fmt_in = 0;
 	u32 fmt_out = 0;
@@ -766,9 +766,6 @@ xilinx_drm_plane_create(struct xilinx_drm_plane_manager *manager,
 	plane->alpha = manager->default_alpha;
 	plane->dpms = DRM_MODE_DPMS_OFF;
 	plane->format = 0;
-
-	type = primary ? DRM_PLANE_TYPE_PRIMARY : DRM_PLANE_TYPE_OVERLAY;
-
 	DRM_DEBUG_KMS("plane->id: %d\n", plane->id);
 
 	i = 0;
@@ -778,12 +775,9 @@ xilinx_drm_plane_create(struct xilinx_drm_plane_manager *manager,
 				 of_node_full_name(plane_node),
 				 MAX_NUM_SUB_PLANES);
 			break;
-
 		}
-
 		plane->dma[i].chan = of_dma_request_slave_channel(plane_node,
 								  dma_name);
-
 		if (IS_ERR(plane->dma[i].chan)) {
 			ret = PTR_ERR(plane->dma[i].chan);
 			DRM_ERROR("failed to request dma channel \"%s\" for plane %s (err:%d)\n",
@@ -799,7 +793,6 @@ xilinx_drm_plane_create(struct xilinx_drm_plane_manager *manager,
 			  of_node_full_name(plane_node));
 		ret = -EINVAL;
 		goto err_out;
-
 	}
 
 	/* probe color space converter */
@@ -876,25 +869,6 @@ xilinx_drm_plane_create(struct xilinx_drm_plane_manager *manager,
 			plane->format = manager->format;
 	}
 
-	if (manager->mixer) {
-		type = DRM_PLANE_TYPE_OVERLAY;
-
-		layer_node =
-			of_parse_phandle(plane_node, "xlnx,mixer-layer", 0);
-
-		ret = xilinx_drm_create_mixer_layer_plane(manager, plane,
-							  layer_node);
-
-		if (ret)
-			goto err_init;
-
-		if (plane->mixer_layer == manager->mixer->hw_logo_layer)
-			type = DRM_PLANE_TYPE_CURSOR;
-
-		if (plane->mixer_layer == manager->mixer->drm_primary_layer)
-			type = DRM_PLANE_TYPE_PRIMARY;
-	}
-
 	if (manager->dp_sub) {
 		plane->dp_layer = xilinx_drm_dp_sub_layer_get(manager->dp_sub,
 							      primary);
@@ -928,6 +902,7 @@ xilinx_drm_plane_create(struct xilinx_drm_plane_manager *manager,
 		plane->format = manager->format;
 
 	/* initialize drm plane */
+	type = primary ? DRM_PLANE_TYPE_PRIMARY : DRM_PLANE_TYPE_OVERLAY;
 	ret = drm_universal_plane_init(manager->drm, &plane->base,
 				       possible_crtcs, &xilinx_drm_plane_funcs,
 				       fmts ? fmts : &plane->format,
@@ -956,10 +931,6 @@ err_init:
 		xilinx_osd_layer_disable(plane->osd_layer);
 		xilinx_osd_layer_put(plane->osd_layer);
 	}
-
-	if (manager->mixer)
-		xilinx_drm_mixer_layer_disable(plane);
-
 err_dma:
 	for (i = 0; i < MAX_NUM_SUB_PLANES; i++)
 		if (plane->dma[i].chan)
@@ -1013,40 +984,11 @@ int xilinx_drm_plane_create_planes(struct xilinx_drm_plane_manager *manager,
 static int
 xilinx_drm_plane_init_manager(struct xilinx_drm_plane_manager *manager)
 {
-	uint32_t format;
+	unsigned int format;
 	u32 drm_format;
 	int ret = 0;
 
-	if (manager->mixer) {
-		struct xilinx_drm_mixer *mixer = manager->mixer;
-
-		manager->num_planes = get_num_mixer_planes(mixer);
-		manager->max_width = get_mixer_max_width(mixer);
-		manager->max_height = get_mixer_max_height(mixer);
-
-		format = get_mixer_vid_out_fmt(mixer);
-
-		ret = xilinx_drm_mixer_fmt_to_drm_fmt(format, &drm_format);
-
-		/* JPM TODO We comply with manager device tree format but
-		 * we'll want to just clobber that device tree setting with the
-		 * mixer setting if a mixer is the central crtc object,
-		 * eventually
-		 */
-		if (ret || (drm_format != manager->format)) {
-			dev_err(manager->drm->dev,
-				"Plane mgr vid format != mixer vid format\n");
-			return -EINVAL;
-		}
-
-		if (mixer->hw_logo_layer) {
-			manager->max_cursor_width =
-				get_mixer_max_logo_width(mixer);
-			manager->max_cursor_height =
-				get_mixer_max_logo_height(mixer);
-		}
-
-	} else if (manager->osd) {
+	if (manager->osd) {
 		manager->num_planes = xilinx_osd_get_num_layers(manager->osd);
 		manager->max_width = xilinx_osd_get_max_width(manager->osd);
 
@@ -1101,17 +1043,6 @@ xilinx_drm_plane_probe_manager(struct drm_device *drm)
 	}
 
 	manager->drm = drm;
-
-	/* Mixer addition */
-	sub_node = of_parse_phandle(dev->of_node, "xlnx,mixer", 0);
-	if (sub_node) {
-		manager->mixer = xilinx_drm_mixer_probe(dev, sub_node, manager);
-		of_node_put(sub_node);
-		if (IS_ERR(manager->mixer)) {
-			of_node_put(manager->node);
-			return ERR_CAST(manager->mixer);
-		}
-	}
 
 	/* probe an OSD. proceed even if there's no OSD */
 	sub_node = of_parse_phandle(dev->of_node, "xlnx,osd", 0);
