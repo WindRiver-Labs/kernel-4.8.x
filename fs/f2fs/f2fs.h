@@ -113,6 +113,7 @@ static inline bool time_to_inject(int type)
 #define F2FS_MOUNT_FAULT_INJECTION	0x00010000
 #define F2FS_MOUNT_ADAPTIVE		0x00020000
 #define F2FS_MOUNT_LFS			0x00040000
+#define F2FS_MOUNT_INLINE_XATTR_SIZE	0x00800000
 
 #define clear_opt(sbi, option)	(sbi->mount_opt.opt &= ~F2FS_MOUNT_##option)
 #define set_opt(sbi, option)	(sbi->mount_opt.opt |= F2FS_MOUNT_##option)
@@ -136,6 +137,7 @@ struct f2fs_mount_info {
 #define F2FS_FEATURE_BLKZONED		0x0002
 #define F2FS_FEATURE_ATOMIC_WRITE	0x0004
 #define F2FS_FEATURE_EXTRA_ATTR		0x0008
+#define F2FS_FEATURE_FLEXIBLE_INLINE_XATTR	0x0040
 
 #define F2FS_HAS_FEATURE(sb, mask)					\
 	((F2FS_SB(sb)->raw_super->feature & cpu_to_le32(mask)) != 0)
@@ -310,11 +312,14 @@ struct f2fs_move_range {
 
 /* for inline stuff */
 #define DEF_INLINE_RESERVED_SIZE	1
+#define DEF_MIN_INLINE_SIZE		1
 static inline int get_extra_isize(struct inode *inode);
-#define MAX_INLINE_DATA(inode)	(sizeof(__le32) * \
-				(CUR_ADDRS_PER_INODE(inode) - \
-				DEF_INLINE_RESERVED_SIZE - \
-				F2FS_INLINE_XATTR_ADDRS))
+static inline int get_inline_xattr_addrs(struct inode *inode);
+#define F2FS_INLINE_XATTR_ADDRS(inode)	get_inline_xattr_addrs(inode)
+#define MAX_INLINE_DATA(inode)	(sizeof(__le32) *			\
+				(CUR_ADDRS_PER_INODE(inode) -		\
+				F2FS_INLINE_XATTR_ADDRS(inode) -	\
+				DEF_INLINE_RESERVED_SIZE))
 
 /* for inline dir */
 #define NR_INLINE_DENTRY(inode)	(MAX_INLINE_DATA(inode) * BITS_PER_BYTE / \
@@ -495,6 +500,7 @@ struct f2fs_inode_info {
 	struct rw_semaphore dio_rwsem[2];/* avoid racing between dio and gc */
 
 	int i_extra_isize;		/* size of extra space located in i_addr */
+	int i_inline_xattr_size;	/* inline xattr size */
 };
 
 static inline void get_extent_info(struct extent_info *ext,
@@ -861,6 +867,7 @@ struct f2fs_sb_info {
 	loff_t max_file_blocks;			/* max block index of file */
 	int active_logs;			/* # of active logs */
 	int dir_level;				/* directory level */
+	int inline_xattr_size;			/* inline xattr size */
 
 	block_t user_block_count;		/* # of user blocks */
 	block_t total_valid_block_count;	/* # of valid blocks */
@@ -1770,24 +1777,19 @@ static inline int f2fs_has_inline_xattr(struct inode *inode)
 
 static inline unsigned int addrs_per_inode(struct inode *inode)
 {
-	if (f2fs_has_inline_xattr(inode))
-		return CUR_ADDRS_PER_INODE(inode) - F2FS_INLINE_XATTR_ADDRS;
-	return CUR_ADDRS_PER_INODE(inode);
+	return CUR_ADDRS_PER_INODE(inode) - F2FS_INLINE_XATTR_ADDRS(inode);
 }
 
-static inline void *inline_xattr_addr(struct page *page)
+static inline void *inline_xattr_addr(struct inode *inode, struct page *page)
 {
 	struct f2fs_inode *ri = F2FS_INODE(page);
 	return (void *)&(ri->i_addr[DEF_ADDRS_PER_INODE -
-					F2FS_INLINE_XATTR_ADDRS]);
+					F2FS_INLINE_XATTR_ADDRS(inode)]);
 }
 
 static inline int inline_xattr_size(struct inode *inode)
 {
-	if (f2fs_has_inline_xattr(inode))
-		return F2FS_INLINE_XATTR_ADDRS << 2;
-	else
-		return 0;
+	return get_inline_xattr_addrs(inode) * sizeof(__le32);
 }
 
 static inline int f2fs_has_inline_data(struct inode *inode)
@@ -1922,6 +1924,12 @@ static inline void *f2fs_kvzalloc(size_t size, gfp_t flags)
 static inline int get_extra_isize(struct inode *inode)
 {
 	return F2FS_I(inode)->i_extra_isize / sizeof(__le32);
+}
+
+static inline int f2fs_sb_has_flexible_inline_xattr(struct super_block *sb);
+static inline int get_inline_xattr_addrs(struct inode *inode)
+{
+	return F2FS_I(inode)->i_inline_xattr_size;
 }
 
 #define get_inode_mode(i) \
@@ -2433,6 +2441,11 @@ static inline int f2fs_sb_mounted_blkzoned(struct super_block *sb)
 static inline int f2fs_sb_has_extra_attr(struct super_block *sb)
 {
 	return F2FS_HAS_FEATURE(sb, F2FS_FEATURE_EXTRA_ATTR);
+}
+
+static inline int f2fs_sb_has_flexible_inline_xattr(struct super_block *sb)
+{
+	return F2FS_HAS_FEATURE(sb, F2FS_FEATURE_FLEXIBLE_INLINE_XATTR);
 }
 
 static inline void set_opt_mode(struct f2fs_sb_info *sbi, unsigned int mt)

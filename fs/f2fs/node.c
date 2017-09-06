@@ -1997,8 +1997,8 @@ void recover_inline_xattr(struct inode *inode, struct page *page)
 		goto update_inode;
 	}
 
-	dst_addr = inline_xattr_addr(ipage);
-	src_addr = inline_xattr_addr(page);
+	dst_addr = inline_xattr_addr(inode, ipage);
+	src_addr = inline_xattr_addr(inode, page);
 	inline_size = inline_xattr_size(inode);
 
 	f2fs_wait_on_page_writeback(ipage, NODE, true);
