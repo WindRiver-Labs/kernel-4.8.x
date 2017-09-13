@@ -1591,7 +1591,7 @@ static struct i2c_client *of_i2c_register_device(struct i2c_adapter *adap,
 
 static void of_i2c_register_devices(struct i2c_adapter *adap)
 {
-	struct device_node *node;
+	struct device_node *bus, *node;
 	struct i2c_client *client;
 
 	/* Only register child devices if the adapter has a node pointer set */
@@ -1600,7 +1600,11 @@ static void of_i2c_register_devices(struct i2c_adapter *adap)
 
 	dev_dbg(&adap->dev, "of_i2c: walking child nodes\n");
 
-	for_each_available_child_of_node(adap->dev.of_node, node) {
+	bus = of_get_child_by_name(adap->dev.of_node, "i2c-bus");
+	if (!bus)
+		bus = of_node_get(adap->dev.of_node);
+
+	for_each_available_child_of_node(bus, node) {
 		if (of_node_test_and_set_flag(node, OF_POPULATED))
 			continue;
 
@@ -1612,6 +1616,8 @@ static void of_i2c_register_devices(struct i2c_adapter *adap)
 			of_node_clear_flag(node, OF_POPULATED);
 		}
 	}
+
+	of_node_put(bus);
 }
 
 static int of_dev_node_match(struct device *dev, void *data)
