@@ -295,6 +295,7 @@ void drm_minor_release(struct drm_minor *minor)
 	drm_dev_unref(minor->dev);
 }
 
+int drm_dev_set_unique(struct drm_device *dev, const char *name);
 /**
  * DOC: driver instance overview
  *
