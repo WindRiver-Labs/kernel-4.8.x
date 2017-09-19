@@ -3653,11 +3653,6 @@ static int macb_probe(struct platform_device *pdev)
 
 	of_property_read_u32(pdev->dev.of_node, "tsu-clk", &bp->tsu_clk);
 
-#ifdef CONFIG_ARCH_DMA_ADDR_T_64BIT
-	if (GEM_BFEXT(DBWDEF, gem_readl(bp, DCFG1)) > GEM_DBW32)
-		dma_set_mask(&pdev->dev, DMA_BIT_MASK(44));
-#endif
-
 	bp->wol = 0;
 	if (of_get_property(np, "magic-packet", NULL))
 		bp->wol |= MACB_WOL_HAS_MAGIC_PACKET;
@@ -3726,7 +3721,7 @@ static int macb_probe(struct platform_device *pdev)
 	netif_carrier_off(dev);
 
 	tasklet_init(&bp->hresp_err_tasklet, macb_hresp_error_task,
-		     (unsigned long) bp);
+		     (unsigned long)bp);
 
 	err = register_netdev(dev);
 	if (err) {
