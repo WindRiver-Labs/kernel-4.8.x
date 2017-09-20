@@ -14,7 +14,6 @@
 #include "desc.h"
 #include "intern.h"
 #include "desc_constr.h"
-#include "sg_sw_qm.h"
 
 #define PRE_HDR_LEN		2	/* Length in u32 words */
 #define PREHDR_RSLS_SHIFT	31
@@ -108,8 +107,6 @@ int caam_qi_enqueue(struct device *qidev, struct caam_drv_req *req)
 	fd.format = qm_fd_compound;
 	fd.cong_weight = req->fd_sgt[1].length;
 
-	cpu_to_hw_sg(&req->fd_sgt[0]);
-	cpu_to_hw_sg(&req->fd_sgt[1]);
 	fd.addr = dma_map_single(qidev, req->fd_sgt, size,
 				 DMA_BIDIRECTIONAL);
 	if (dma_mapping_error(qidev, fd.addr)) {
@@ -368,8 +365,7 @@ int caam_drv_ctx_update(struct caam_drv_ctx *drv_ctx, u32 *sh_desc)
 	 * Now update the shared descriptor for driver context.
 	 * Re-initialise pre-header. Set RSLS and SDLEN
 	 */
-	drv_ctx->prehdr[0] = cpu_to_caam32((1 << PREHDR_RSLS_SHIFT) |
-					   num_words);
+	drv_ctx->prehdr[0] = (1 << PREHDR_RSLS_SHIFT) | num_words;
 
 	/* Copy the new shared descriptor now */
 	memcpy(drv_ctx->sh_desc, sh_desc, desc_bytes(sh_desc));
@@ -434,8 +430,7 @@ struct caam_drv_ctx *caam_drv_ctx_init(struct device *qidev,
 	}
 
 	/* Initialise pre-header. Set RSLS and SDLEN */
-	drv_ctx->prehdr[0] = cpu_to_caam32((1 << PREHDR_RSLS_SHIFT) |
-					   num_words);
+	drv_ctx->prehdr[0] = (1 << PREHDR_RSLS_SHIFT) | num_words;
 
 	/* Copy the shared descriptor now */
 	memcpy(drv_ctx->sh_desc, sh_desc, desc_bytes(sh_desc));
