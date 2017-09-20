@@ -20,7 +20,7 @@
 #define PREHDR_RSLS_SHIFT	31
 #ifndef CONFIG_FSL_DPAA_ETH_MAX_BUF_COUNT
 /* If DPA_ETH is not available, then use a reasonably backlog per CPU */
-#define MAX_RSP_FQ_BACKLOG_PER_CPU	128
+#define MAX_RSP_FQ_BACKLOG_PER_CPU	64
 #endif
 #define CAAM_QI_MEMCACHE_SIZE	256	/* Length of a single buffer in
 					   the QI driver memory cache. */
@@ -199,13 +199,11 @@ static struct qman_fq *create_caam_req_fq(struct device *qidev,
 
 	flags = fq_sched_flag;
 	opts.we_mask = QM_INITFQ_WE_FQCTRL | QM_INITFQ_WE_DESTWQ |
-			QM_INITFQ_WE_CONTEXTB | QM_INITFQ_WE_CONTEXTA |
-			QM_INITFQ_WE_CGID;
+			QM_INITFQ_WE_CONTEXTB | QM_INITFQ_WE_CONTEXTA;
 
-	opts.fqd.fq_ctrl = QM_FQCTRL_CPCSTASH | QM_FQCTRL_CGE;
+	opts.fqd.fq_ctrl = QM_FQCTRL_CPCSTASH;
 	opts.fqd.dest.channel = qm_channel_caam;
 	opts.fqd.dest.wq = 2;
-	opts.fqd.cgid = qipriv.rsp_cgr.cgrid;
 	opts.fqd.context_b = qman_fq_fqid(rsp_fq);
 	opts.fqd.context_a.hi = upper_32_bits(hwdesc);
 	opts.fqd.context_a.lo = lower_32_bits(hwdesc);
@@ -740,7 +738,7 @@ static int alloc_cgrs(struct device *qidev)
 	 *       using the dpa_eth buffers (which can be >1 if f.i. PME/DCE are
 	 *       also used.
 	 */
-	val = num_cpus * CONFIG_FSL_DPAA_ETH_MAX_BUF_COUNT;
+	val = num_cpus * CONFIG_FSL_DPAA_ETH_MAX_BUF_COUNT / 2;
 #else
 	val = num_cpus * MAX_RSP_FQ_BACKLOG_PER_CPU;
 #endif
