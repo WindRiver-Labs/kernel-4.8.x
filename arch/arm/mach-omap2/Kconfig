@@ -58,6 +58,7 @@ config SOC_AM33XX
 	depends on ARCH_MULTI_V7
 	select ARCH_OMAP2PLUS
 	select ARM_CPU_SUSPEND if PM
+	select OMAP_GPMC
 
 config SOC_AM43XX
 	bool "TI AM43x"
