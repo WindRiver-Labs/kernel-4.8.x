@@ -4,6 +4,9 @@
  * Copyright 2008-2012 Freescale Semiconductor, Inc.
  */
 
+#ifndef DESC_CONSTR_H
+#define DESC_CONSTR_H
+
 #include "desc.h"
 #include "regs.h"
 
@@ -426,3 +429,66 @@ do { \
 	APPEND_MATH_IMM_u64(LSHIFT, desc, dest, src0, src1, data)
 #define append_math_rshift_imm_u64(desc, dest, src0, src1, data) \
 	APPEND_MATH_IMM_u64(RSHIFT, desc, dest, src0, src1, data)
+
+/**
+ * struct alginfo - Container for algorithm details
+ * @algtype: algorithm selector; for valid values, see documentation of the
+ *           functions where it is used.
+ * @keylen: length of the provided algorithm key, in bytes
+ * @keylen_pad: padded length of the provided algorithm key, in bytes
+ * @key: address where algorithm key resides; virtual address if key_inline
+ *       is true, dma (bus) address if key_inline is false.
+ * @key_inline: true - key can be inlined in the descriptor; false - key is
+ *              referenced by the descriptor
+ */
+struct alginfo {
+	u32 algtype;
+	unsigned int keylen;
+	unsigned int keylen_pad;
+	union {
+		dma_addr_t key_dma;
+		void *key_virt;
+	};
+	bool key_inline;
+};
+
+/**
+ * desc_inline_query() - Provide indications on which data items can be inlined
+ *                       and which shall be referenced in a shared descriptor.
+ * @sd_base_len: Shared descriptor base length - bytes consumed by the commands,
+ *               excluding the data items to be inlined (or corresponding
+ *               pointer if an item is not inlined). Each cnstr_* function that
+ *               generates descriptors should have a define mentioning
+ *               corresponding length.
+ * @jd_len: Maximum length of the job descriptor(s) that will be used
+ *          together with the shared descriptor.
+ * @data_len: Array of lengths of the data items trying to be inlined
+ * @inl_mask: 32bit mask with bit x = 1 if data item x can be inlined, 0
+ *            otherwise.
+ * @count: Number of data items (size of @data_len array); must be <= 32
+ *
+ * Return: 0 if data can be inlined / referenced, negative value if not. If 0,
+ *         check @inl_mask for details.
+ */
+static inline int desc_inline_query(unsigned int sd_base_len,
+				    unsigned int jd_len, unsigned int *data_len,
+				    u32 *inl_mask, unsigned int count)
+{
+	int rem_bytes = (int)(CAAM_DESC_BYTES_MAX - sd_base_len - jd_len);
+	unsigned int i;
+
+	*inl_mask = 0;
+	for (i = 0; (i < count) && (rem_bytes > 0); i++) {
+		if (rem_bytes - (int)(data_len[i] +
+			(count - i - 1) * CAAM_PTR_SZ) >= 0) {
+			rem_bytes -= data_len[i];
+			*inl_mask |= (1 << i);
+		} else {
+			rem_bytes -= CAAM_PTR_SZ;
+		}
+	}
+
+	return (rem_bytes >= 0) ? 0 : -1;
+}
+
+#endif /* DESC_CONSTR_H */
