@@ -2263,18 +2263,13 @@ static int gpmc_gpio_init(struct gpmc_device *gpmc)
 	gpmc->gpio_chip.get = gpmc_gpio_get;
 	gpmc->gpio_chip.base = -1;
 
-	ret = gpiochip_add(&gpmc->gpio_chip);
+	ret = devm_gpiochip_add_data(gpmc->dev, &gpmc->gpio_chip, NULL);
 	if (ret < 0) {
 		dev_err(gpmc->dev, "could not register gpio chip: %d\n", ret);
 		return ret;
 	}
 
 	return 0;
-}
-
-static void gpmc_gpio_exit(struct gpmc_device *gpmc)
-{
-	gpiochip_remove(&gpmc->gpio_chip);
 }
 
 static int gpmc_probe(struct platform_device *pdev)
@@ -2363,15 +2358,13 @@ static int gpmc_probe(struct platform_device *pdev)
 	rc = gpmc_setup_irq(gpmc);
 	if (rc) {
 		dev_err(gpmc->dev, "gpmc_setup_irq failed\n");
-		goto setup_irq_failed;
+		goto gpio_init_failed;
 	}
 
 	gpmc_probe_dt_children(pdev);
 
 	return 0;
 
-setup_irq_failed:
-	gpmc_gpio_exit(gpmc);
 gpio_init_failed:
 	gpmc_mem_exit();
 	pm_runtime_put_sync(&pdev->dev);
@@ -2385,7 +2378,6 @@ static int gpmc_remove(struct platform_device *pdev)
 	struct gpmc_device *gpmc = platform_get_drvdata(pdev);
 
 	gpmc_free_irq(gpmc);
-	gpmc_gpio_exit(gpmc);
 	gpmc_mem_exit();
 	pm_runtime_put_sync(&pdev->dev);
 	pm_runtime_disable(&pdev->dev);
