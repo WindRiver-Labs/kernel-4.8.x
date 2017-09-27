@@ -432,6 +432,7 @@ retry:
 
 	/* allocate storage for new one and retry */
 	new_congested = kzalloc(sizeof(*new_congested), gfp);
+	kmemleak_ignore(new_congested);
 	if (!new_congested)
 		return NULL;
 
