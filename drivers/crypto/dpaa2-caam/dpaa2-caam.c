@@ -4985,8 +4985,7 @@ static int dpaa2_dpseci_poll(struct napi_struct *napi, int budget)
 		napi_complete_done(napi, cleaned);
 		err = dpaa2_io_service_rearm(NULL, &ppriv->nctx);
 		if (unlikely(err))
-			dev_err(priv->dev, "Notification rearm failed: %d\n",
-				err);
+			dev_err(priv->dev, "Notification rearm failed\n");
 
 	return cleaned;
 }
@@ -5007,7 +5006,7 @@ static int __cold dpaa2_dpseci_setup(struct fsl_mc_device *ls_dev)
 	/* Get a handle for the DPSECI this interface is associate with */
 	err = dpseci_open(priv->mc_io, 0, priv->dpsec_id, &ls_dev->mc_handle);
 	if (err) {
-		dev_err(dev, "dpsec_open() failed: %d\n", err);
+		dev_err(dev, "dpsec_open() failed\n");
 		goto err_open;
 	}
 
@@ -5210,8 +5209,8 @@ static int dpaa2_caam_probe(struct fsl_mc_device *dpseci_dev)
 
 		err = crypto_register_alg(&t_alg->crypto_alg);
 		if (err) {
-			dev_warn(dev, "%s alg registration failed: %d\n",
-				 t_alg->crypto_alg.cra_driver_name, err);
+			dev_warn(dev, "%s alg registration failed\n",
+				 t_alg->crypto_alg.cra_driver_name);
 			kfree(t_alg);
 		} else {
 			list_add_tail(&t_alg->entry, &alg_list);
@@ -5236,9 +5235,8 @@ static int dpaa2_caam_probe(struct fsl_mc_device *dpseci_dev)
 
 		err = crypto_register_ahash(&t_hash_alg->ahash_alg);
 		if (err) {
-			dev_warn(dev, "%s alg registration failed: %d\n",
-				 t_hash_alg->ahash_alg.halg.base.cra_driver_name,
-				 err);
+			dev_warn(dev, "%s alg registration failed\n",
+				 t_hash_alg->ahash_alg.halg.base.cra_driver_name);
 			kfree(t_hash_alg);
 		} else {
 			list_add_tail(&t_hash_alg->entry, &hash_list);
@@ -5255,9 +5253,8 @@ static int dpaa2_caam_probe(struct fsl_mc_device *dpseci_dev)
 
 		err = crypto_register_ahash(&t_hash_alg->ahash_alg);
 		if (err) {
-			dev_warn(dev, "%s alg registration failed: %d\n",
-				 t_hash_alg->ahash_alg.halg.base.cra_driver_name,
-				 err);
+			dev_warn(dev, "%s alg registration failed\n",
+				 t_hash_alg->ahash_alg.halg.base.cra_driver_name);
 			kfree(t_hash_alg);
 		} else {
 			list_add_tail(&t_hash_alg->entry, &hash_list);
@@ -5360,7 +5357,7 @@ int dpaa2_caam_enqueue(struct device *dev, struct caam_request *req)
 	preempt_enable();
 
 	if (unlikely(err < 0)) {
-		dev_err(dev, "Error enqueuing frame: %d\n", err);
+		dev_err(dev, "Error enqueuing frame\n");
 		goto err_out;
 	}
 
