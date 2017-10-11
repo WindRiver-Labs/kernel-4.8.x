@@ -16,6 +16,9 @@
 #define DESC_QI_AEAD_DEC_LEN		(DESC_AEAD_DEC_LEN + 3 * CAAM_CMD_SZ)
 #define DESC_QI_AEAD_GIVENC_LEN		(DESC_AEAD_GIVENC_LEN + 3 * CAAM_CMD_SZ)
 
+#define DESC_TLS_BASE			(4 * CAAM_CMD_SZ)
+#define DESC_TLS10_ENC_LEN		(DESC_TLS_BASE + 29 * CAAM_CMD_SZ)
+
 /* Note: Nonce is counted in cdata.keylen */
 #define DESC_AEAD_CTR_RFC3686_LEN	(4 * CAAM_CMD_SZ)
 
@@ -26,14 +29,20 @@
 #define DESC_GCM_BASE			(3 * CAAM_CMD_SZ)
 #define DESC_GCM_ENC_LEN		(DESC_GCM_BASE + 16 * CAAM_CMD_SZ)
 #define DESC_GCM_DEC_LEN		(DESC_GCM_BASE + 12 * CAAM_CMD_SZ)
+#define DESC_QI_GCM_ENC_LEN		(DESC_GCM_ENC_LEN + 6 * CAAM_CMD_SZ)
+#define DESC_QI_GCM_DEC_LEN		(DESC_GCM_DEC_LEN + 3 * CAAM_CMD_SZ)
 
 #define DESC_RFC4106_BASE		(3 * CAAM_CMD_SZ)
 #define DESC_RFC4106_ENC_LEN		(DESC_RFC4106_BASE + 13 * CAAM_CMD_SZ)
 #define DESC_RFC4106_DEC_LEN		(DESC_RFC4106_BASE + 13 * CAAM_CMD_SZ)
+#define DESC_QI_RFC4106_ENC_LEN		(DESC_RFC4106_ENC_LEN + 5 * CAAM_CMD_SZ)
+#define DESC_QI_RFC4106_DEC_LEN		(DESC_RFC4106_DEC_LEN + 5 * CAAM_CMD_SZ)
 
 #define DESC_RFC4543_BASE		(3 * CAAM_CMD_SZ)
 #define DESC_RFC4543_ENC_LEN		(DESC_RFC4543_BASE + 11 * CAAM_CMD_SZ)
 #define DESC_RFC4543_DEC_LEN		(DESC_RFC4543_BASE + 12 * CAAM_CMD_SZ)
+#define DESC_QI_RFC4543_ENC_LEN		(DESC_RFC4543_ENC_LEN + 5 * CAAM_CMD_SZ)
+#define DESC_QI_RFC4543_DEC_LEN		(DESC_RFC4543_DEC_LEN + 5 * CAAM_CMD_SZ)
 
 #define DESC_ABLKCIPHER_BASE		(3 * CAAM_CMD_SZ)
 #define DESC_ABLKCIPHER_ENC_LEN		(DESC_ABLKCIPHER_BASE + \
@@ -65,23 +74,39 @@ void cnstr_shdsc_aead_givencap(u32 * const desc, struct alginfo *cdata,
 			       u32 *nonce, const u32 ctx1_iv_off,
 			       const bool is_qi);
 
+void cnstr_shdsc_tls_encap(u32 *const desc, struct alginfo *cdata,
+			   struct alginfo *adata, unsigned int assoclen,
+			   unsigned int ivsize, unsigned int authsize,
+			   unsigned int blocksize);
+
+void cnstr_shdsc_tls_decap(u32 *const desc, struct alginfo *cdata,
+			   struct alginfo *adata, unsigned int assoclen,
+			   unsigned int ivsize, unsigned int authsize,
+			   unsigned int blocksize);
+
 void cnstr_shdsc_gcm_encap(u32 * const desc, struct alginfo *cdata,
-			   unsigned int icvsize);
+			   unsigned int ivsize, unsigned int icvsize,
+			   const bool is_qi);
 
 void cnstr_shdsc_gcm_decap(u32 * const desc, struct alginfo *cdata,
-			   unsigned int icvsize);
+			   unsigned int ivsize, unsigned int icvsize,
+			   const bool is_qi);
 
 void cnstr_shdsc_rfc4106_encap(u32 * const desc, struct alginfo *cdata,
-			       unsigned int icvsize);
+			       unsigned int ivsize, unsigned int icvsize,
+			       const bool is_qi);
 
 void cnstr_shdsc_rfc4106_decap(u32 * const desc, struct alginfo *cdata,
-			       unsigned int icvsize);
+			       unsigned int ivsize, unsigned int icvsize,
+			       const bool is_qi);
 
 void cnstr_shdsc_rfc4543_encap(u32 * const desc, struct alginfo *cdata,
-			       unsigned int icvsize);
+			       unsigned int ivsize, unsigned int icvsize,
+			       const bool is_qi);
 
 void cnstr_shdsc_rfc4543_decap(u32 * const desc, struct alginfo *cdata,
-			       unsigned int icvsize);
+			       unsigned int ivsize, unsigned int icvsize,
+			       const bool is_qi);
 
 void cnstr_shdsc_ablkcipher_encap(u32 * const desc, struct alginfo *cdata,
 				  unsigned int ivsize, const bool is_rfc3686,
