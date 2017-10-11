@@ -4730,8 +4730,16 @@ static struct caam_hash_alg *caam_hash_alloc(struct dpaa2_caam_priv *priv,
 static void dpaa2_caam_fqdan_cb(struct dpaa2_io_notification_ctx *nctx)
 {
 	struct dpaa2_caam_priv_per_cpu *ppriv;
+	int err;
 
 	ppriv = container_of(nctx, struct dpaa2_caam_priv_per_cpu, nctx);
+
+	do {
+		err = dpaa2_io_service_pull_fq(NULL, ppriv->rsp_fqid,
+					       ppriv->store);
+	} while (err);
+
+	ppriv->has_frames = true;
 	napi_schedule_irqoff(&ppriv->napi);
 }
 
@@ -4759,8 +4767,7 @@ static int __cold dpaa2_dpseci_dpio_setup(struct dpaa2_caam_priv *priv)
 			goto err;
 		}
 
-		ppriv->store = dpaa2_io_store_create(DPAA2_CAAM_STORE_SIZE,
-						     dev);
+		ppriv->store = dpaa2_io_store_create(16, dev);
 		if (unlikely(!ppriv->store)) {
 			dev_err(dev, "dpaa2_io_store_create() failed\n");
 			goto err;
@@ -4878,83 +4885,47 @@ static void dpaa2_caam_process_fd(struct dpaa2_caam_priv *priv,
 	req->cbk(req->ctx, err);
 }
 
-static int dpaa2_caam_pull_fq(struct dpaa2_caam_priv_per_cpu *ppriv)
-{
-	int err;
-
-	/* Retry while portal is busy */
-	do {
-		err = dpaa2_io_service_pull_fq(NULL, ppriv->rsp_fqid,
-					       ppriv->store);
-	} while (err == -EBUSY);
-
-	if (unlikely(err))
-		dev_err(ppriv->priv->dev, "dpaa2_io_service_pull err %d", err);
-
-	return err;
-}
-
-static int dpaa2_caam_store_consume(struct dpaa2_caam_priv_per_cpu *ppriv)
-{
-	struct dpaa2_dq *dq;
-	int cleaned = 0, is_last;
-
-	do {
-		dq = dpaa2_io_store_next(ppriv->store, &is_last);
-		if (unlikely(!dq)) {
-			if (unlikely(!is_last)) {
-				dev_dbg(ppriv->priv->dev,
-					"FQ %d returned no valid frames\n",
-					ppriv->rsp_fqid);
-				/*
-				 * MUST retry until we get some sort of
-				 * valid response token (be it "empty dequeue"
-				 * or a valid frame).
-				 */
-				continue;
-			}
-			break;
-		}
-
-		/* Process FD */
-		dpaa2_caam_process_fd(ppriv->priv, dpaa2_dq_fd(dq));
-		cleaned++;
-	} while (!is_last);
-
-	return cleaned;
-}
-
 static int dpaa2_dpseci_poll(struct napi_struct *napi, int budget)
 {
 	struct dpaa2_caam_priv_per_cpu *ppriv;
 	struct dpaa2_caam_priv *priv;
-	int err, cleaned = 0, store_cleaned;
+	struct dpaa2_dq *dq;
+	int err, cleaned = 0, is_last = 0;
 
 	ppriv = container_of(napi, struct dpaa2_caam_priv_per_cpu, napi);
-	priv = ppriv->priv;
 
-	if (unlikely(dpaa2_caam_pull_fq(ppriv)))
-		return 0;
-
-	do {
-		store_cleaned = dpaa2_caam_store_consume(ppriv);
-		cleaned += store_cleaned;
-
-		if (store_cleaned == 0 ||
-		    cleaned > budget - DPAA2_CAAM_STORE_SIZE)
-			break;
-
-		/* Try to dequeue some more */
-		err = dpaa2_caam_pull_fq(ppriv);
-		if (unlikely(err))
-			break;
-	} while (1);
-
-	if (cleaned < budget)
+	if (!ppriv->has_frames) {
 		napi_complete_done(napi, cleaned);
+		return 0;
+	}
+
+	priv = ppriv->priv;
+	while (!is_last && cleaned < budget) {
+		do {
+			dq = dpaa2_io_store_next(ppriv->store, &is_last);
+		} while (!is_last && !dq);
+
+		if (unlikely(!dq)) {
+			dev_err(priv->dev, "FQID %d returned no valid frames!\n",
+				ppriv->rsp_fqid);
+			break;
+		}
+
+		/* Process FD */
+		dpaa2_caam_process_fd(priv, dpaa2_dq_fd(dq));
+		cleaned++;
+	}
+
+	/* Rearm if there are no more frames dequeued in store */
+	if (is_last) {
+		ppriv->has_frames = false;
 		err = dpaa2_io_service_rearm(NULL, &ppriv->nctx);
 		if (unlikely(err))
 			dev_err(priv->dev, "Notification rearm failed\n");
+	}
+
+	if (cleaned < budget)
+		napi_complete_done(napi, cleaned);
 
 	return cleaned;
 }
