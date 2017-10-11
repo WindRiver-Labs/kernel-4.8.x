@@ -137,6 +137,31 @@ struct caam_export_state {
 	int (*finup)(struct ahash_request *req);
 };
 
+static inline void switch_buf(struct caam_hash_state *state)
+{
+	state->current_buf ^= 1;
+}
+
+static inline u8 *current_buf(struct caam_hash_state *state)
+{
+	return state->current_buf ? state->buf_1 : state->buf_0;
+}
+
+static inline u8 *alt_buf(struct caam_hash_state *state)
+{
+	return state->current_buf ? state->buf_0 : state->buf_1;
+}
+
+static inline int *current_buflen(struct caam_hash_state *state)
+{
+	return state->current_buf ? &state->buflen_1 : &state->buflen_0;
+}
+
+static inline int *alt_buflen(struct caam_hash_state *state)
+{
+	return state->current_buf ? &state->buflen_0 : &state->buflen_1;
+}
+
 /* Common job descriptor seq in/out ptr routines */
 
 /* Map state->caam_ctx, and append seq_out_ptr command that points to it */
@@ -148,6 +173,7 @@ static inline int map_seq_out_ptr_ctx(u32 *desc, struct device *jrdev,
 					ctx_len, DMA_FROM_DEVICE);
 	if (dma_mapping_error(jrdev, state->ctx_dma)) {
 		dev_err(jrdev, "unable to map ctx\n");
+		state->ctx_dma = 0;
 		return -ENOMEM;
 	}
 
@@ -168,36 +194,27 @@ static inline dma_addr_t map_seq_out_ptr_result(u32 *desc, struct device *jrdev,
 	return dst_dma;
 }
 
-/* Map current buffer in state and put it in link table */
-static inline dma_addr_t buf_map_to_sec4_sg(struct device *jrdev,
-					    struct sec4_sg_entry *sec4_sg,
-					    u8 *buf, int buflen)
+/* Map current buffer in state (if length > 0) and put it in link table */
+static inline int buf_map_to_sec4_sg(struct device *jrdev,
+				     struct sec4_sg_entry *sec4_sg,
+				     struct caam_hash_state *state)
 {
-	dma_addr_t buf_dma;
+	int buflen = *current_buflen(state);
 
-	buf_dma = dma_map_single(jrdev, buf, buflen, DMA_TO_DEVICE);
-	dma_to_sec4_sg_one(sec4_sg, buf_dma, buflen, 0);
+	if (!buflen)
+		return 0;
 
-	return buf_dma;
-}
+	state->buf_dma = dma_map_single(jrdev, current_buf(state), buflen,
+					DMA_TO_DEVICE);
+	if (dma_mapping_error(jrdev, state->buf_dma)) {
+		dev_err(jrdev, "unable to map buf\n");
+		state->buf_dma = 0;
+		return -ENOMEM;
+	}
 
-/*
- * Only put buffer in link table if it contains data, which is possible,
- * since a buffer has previously been used, and needs to be unmapped,
- */
-static inline dma_addr_t
-try_buf_map_to_sec4_sg(struct device *jrdev, struct sec4_sg_entry *sec4_sg,
-		       u8 *buf, dma_addr_t buf_dma, int buflen,
-		       int last_buflen)
-{
-	if (buf_dma && !dma_mapping_error(jrdev, buf_dma))
-		dma_unmap_single(jrdev, buf_dma, last_buflen, DMA_TO_DEVICE);
-	if (buflen)
-		buf_dma = buf_map_to_sec4_sg(jrdev, sec4_sg, buf, buflen);
-	else
-		buf_dma = 0;
+	dma_to_sec4_sg_one(sec4_sg, state->buf_dma, buflen, 0);
 
-	return buf_dma;
+	return 0;
 }
 
 /* Map state->caam_ctx, and add it to link table */
@@ -208,6 +225,7 @@ static inline int ctx_map_to_sec4_sg(u32 *desc, struct device *jrdev,
 	state->ctx_dma = dma_map_single(jrdev, state->caam_ctx, ctx_len, flag);
 	if (dma_mapping_error(jrdev, state->ctx_dma)) {
 		dev_err(jrdev, "unable to map ctx\n");
+		state->ctx_dma = 0;
 		return -ENOMEM;
 	}
 
@@ -464,6 +482,8 @@ static inline void ahash_unmap(struct device *dev,
 			struct ahash_edesc *edesc,
 			struct ahash_request *req, int dst_len)
 {
+	struct caam_hash_state *state = ahash_request_ctx(req);
+
 	if (edesc->src_nents)
 		dma_unmap_sg(dev, req->src, edesc->src_nents, DMA_TO_DEVICE);
 	if (edesc->dst_dma)
@@ -472,6 +492,12 @@ static inline void ahash_unmap(struct device *dev,
 	if (edesc->sec4_sg_bytes)
 		dma_unmap_single(dev, edesc->sec4_sg_dma,
 				 edesc->sec4_sg_bytes, DMA_TO_DEVICE);
+
+	if (state->buf_dma) {
+		dma_unmap_single(dev, state->buf_dma, *current_buflen(state),
+				 DMA_TO_DEVICE);
+		state->buf_dma = 0;
+	}
 }
 
 static inline void ahash_unmap_ctx(struct device *dev,
@@ -482,8 +508,10 @@ static inline void ahash_unmap_ctx(struct device *dev,
 	struct caam_hash_ctx *ctx = crypto_ahash_ctx(ahash);
 	struct caam_hash_state *state = ahash_request_ctx(req);
 
-	if (state->ctx_dma)
+	if (state->ctx_dma) {
 		dma_unmap_single(dev, state->ctx_dma, ctx->ctx_len, flag);
+		state->ctx_dma = 0;
+	}
 	ahash_unmap(dev, edesc, req, dst_len);
 }
 
@@ -528,8 +556,8 @@ static void ahash_done_bi(struct device *jrdev, u32 *desc, u32 err,
 	struct ahash_edesc *edesc;
 	struct crypto_ahash *ahash = crypto_ahash_reqtfm(req);
 	struct caam_hash_ctx *ctx = crypto_ahash_ctx(ahash);
-#ifdef DEBUG
 	struct caam_hash_state *state = ahash_request_ctx(req);
+#ifdef DEBUG
 	int digestsize = crypto_ahash_digestsize(ahash);
 
 	dev_err(jrdev, "%s %d: err 0x%x\n", __func__, __LINE__, err);
@@ -540,6 +568,7 @@ static void ahash_done_bi(struct device *jrdev, u32 *desc, u32 err,
 		caam_jr_strstatus(jrdev, err);
 
 	ahash_unmap_ctx(jrdev, edesc, req, ctx->ctx_len, DMA_BIDIRECTIONAL);
+	switch_buf(state);
 	kfree(edesc);
 
 #ifdef DEBUG
@@ -596,8 +625,8 @@ static void ahash_done_ctx_dst(struct device *jrdev, u32 *desc, u32 err,
 	struct ahash_edesc *edesc;
 	struct crypto_ahash *ahash = crypto_ahash_reqtfm(req);
 	struct caam_hash_ctx *ctx = crypto_ahash_ctx(ahash);
-#ifdef DEBUG
 	struct caam_hash_state *state = ahash_request_ctx(req);
+#ifdef DEBUG
 	int digestsize = crypto_ahash_digestsize(ahash);
 
 	dev_err(jrdev, "%s %d: err 0x%x\n", __func__, __LINE__, err);
@@ -608,6 +637,7 @@ static void ahash_done_ctx_dst(struct device *jrdev, u32 *desc, u32 err,
 		caam_jr_strstatus(jrdev, err);
 
 	ahash_unmap_ctx(jrdev, edesc, req, ctx->ctx_len, DMA_FROM_DEVICE);
+	switch_buf(state);
 	kfree(edesc);
 
 #ifdef DEBUG
@@ -691,11 +721,10 @@ static int ahash_update_ctx(struct ahash_request *req)
 	struct device *jrdev = ctx->jrdev;
 	gfp_t flags = (req->base.flags & (CRYPTO_TFM_REQ_MAY_BACKLOG |
 		       CRYPTO_TFM_REQ_MAY_SLEEP)) ? GFP_KERNEL : GFP_ATOMIC;
-	u8 *buf = state->current_buf ? state->buf_1 : state->buf_0;
-	int *buflen = state->current_buf ? &state->buflen_1 : &state->buflen_0;
-	u8 *next_buf = state->current_buf ? state->buf_0 : state->buf_1;
-	int *next_buflen = state->current_buf ? &state->buflen_0 :
-			   &state->buflen_1, last_buflen;
+	u8 *buf = current_buf(state);
+	int *buflen = current_buflen(state);
+	u8 *next_buf = alt_buf(state);
+	int *next_buflen = alt_buflen(state), last_buflen;
 	int in_len = *buflen + req->nbytes, to_hash;
 	u32 *desc;
 	int src_nents, mapped_nents, sec4_sg_bytes, sec4_sg_src_index;
@@ -749,10 +778,9 @@ static int ahash_update_ctx(struct ahash_request *req)
 		if (ret)
 			goto unmap_ctx;
 
-		state->buf_dma = try_buf_map_to_sec4_sg(jrdev,
-							edesc->sec4_sg + 1,
-							buf, state->buf_dma,
-							*buflen, last_buflen);
+		ret = buf_map_to_sec4_sg(jrdev, edesc->sec4_sg + 1, state);
+		if (ret)
+			goto unmap_ctx;
 
 		if (mapped_nents) {
 			sg_to_sec4_sg_last(req->src, mapped_nents,
@@ -763,11 +791,9 @@ static int ahash_update_ctx(struct ahash_request *req)
 							 to_hash - *buflen,
 							 *next_buflen, 0);
 		} else {
-			(edesc->sec4_sg + sec4_sg_src_index - 1)->len |=
-				cpu_to_caam32(SEC4_SG_LEN_FIN);
+			sg_to_sec4_set_last(edesc->sec4_sg + sec4_sg_src_index -
+					    1);
 		}
-
-		state->current_buf = !state->current_buf;
 
 		desc = edesc->hw_desc;
 
@@ -825,10 +851,7 @@ static int ahash_final_ctx(struct ahash_request *req)
 	struct device *jrdev = ctx->jrdev;
 	gfp_t flags = (req->base.flags & (CRYPTO_TFM_REQ_MAY_BACKLOG |
 		       CRYPTO_TFM_REQ_MAY_SLEEP)) ? GFP_KERNEL : GFP_ATOMIC;
-	u8 *buf = state->current_buf ? state->buf_1 : state->buf_0;
-	int buflen = state->current_buf ? state->buflen_1 : state->buflen_0;
-	int last_buflen = state->current_buf ? state->buflen_0 :
-			  state->buflen_1;
+	int buflen = *current_buflen(state);
 	u32 *desc;
 	int sec4_sg_bytes, sec4_sg_src_index;
 	int digestsize = crypto_ahash_digestsize(ahash);
@@ -855,11 +878,11 @@ static int ahash_final_ctx(struct ahash_request *req)
 	if (ret)
 		goto unmap_ctx;
 
-	state->buf_dma = try_buf_map_to_sec4_sg(jrdev, edesc->sec4_sg + 1,
-						buf, state->buf_dma, buflen,
-						last_buflen);
-	(edesc->sec4_sg + sec4_sg_src_index - 1)->len |=
-		cpu_to_caam32(SEC4_SG_LEN_FIN);
+	ret = buf_map_to_sec4_sg(jrdev, edesc->sec4_sg + 1, state);
+	if (ret)
+		goto unmap_ctx;
+
+	sg_to_sec4_set_last(edesc->sec4_sg + sec4_sg_src_index - 1);
 
 	edesc->sec4_sg_dma = dma_map_single(jrdev, edesc->sec4_sg,
 					    sec4_sg_bytes, DMA_TO_DEVICE);
@@ -904,10 +927,7 @@ static int ahash_finup_ctx(struct ahash_request *req)
 	struct device *jrdev = ctx->jrdev;
 	gfp_t flags = (req->base.flags & (CRYPTO_TFM_REQ_MAY_BACKLOG |
 		       CRYPTO_TFM_REQ_MAY_SLEEP)) ? GFP_KERNEL : GFP_ATOMIC;
-	u8 *buf = state->current_buf ? state->buf_1 : state->buf_0;
-	int buflen = state->current_buf ? state->buflen_1 : state->buflen_0;
-	int last_buflen = state->current_buf ? state->buflen_0 :
-			  state->buflen_1;
+	int buflen = *current_buflen(state);
 	u32 *desc;
 	int sec4_sg_src_index;
 	int src_nents, mapped_nents;
@@ -952,9 +972,9 @@ static int ahash_finup_ctx(struct ahash_request *req)
 	if (ret)
 		goto unmap_ctx;
 
-	state->buf_dma = try_buf_map_to_sec4_sg(jrdev, edesc->sec4_sg + 1,
-						buf, state->buf_dma, buflen,
-						last_buflen);
+	ret = buf_map_to_sec4_sg(jrdev, edesc->sec4_sg + 1, state);
+	if (ret)
+		goto unmap_ctx;
 
 	ret = ahash_edesc_add_src(ctx, edesc, req, mapped_nents,
 				  sec4_sg_src_index, ctx->ctx_len + buflen,
@@ -990,6 +1010,7 @@ static int ahash_digest(struct ahash_request *req)
 {
 	struct crypto_ahash *ahash = crypto_ahash_reqtfm(req);
 	struct caam_hash_ctx *ctx = crypto_ahash_ctx(ahash);
+	struct caam_hash_state *state = ahash_request_ctx(req);
 	struct device *jrdev = ctx->jrdev;
 	gfp_t flags = (req->base.flags & (CRYPTO_TFM_REQ_MAY_BACKLOG |
 		       CRYPTO_TFM_REQ_MAY_SLEEP)) ? GFP_KERNEL : GFP_ATOMIC;
@@ -998,6 +1019,8 @@ static int ahash_digest(struct ahash_request *req)
 	int src_nents, mapped_nents;
 	struct ahash_edesc *edesc;
 	int ret;
+
+	state->buf_dma = 0;
 
 	src_nents = sg_nents_for_len(req->src, req->nbytes);
 	if (src_nents < 0) {
@@ -1071,8 +1094,8 @@ static int ahash_final_no_ctx(struct ahash_request *req)
 	struct device *jrdev = ctx->jrdev;
 	gfp_t flags = (req->base.flags & (CRYPTO_TFM_REQ_MAY_BACKLOG |
 		       CRYPTO_TFM_REQ_MAY_SLEEP)) ? GFP_KERNEL : GFP_ATOMIC;
-	u8 *buf = state->current_buf ? state->buf_1 : state->buf_0;
-	int buflen = state->current_buf ? state->buflen_1 : state->buflen_0;
+	u8 *buf = current_buf(state);
+	int buflen = *current_buflen(state);
 	u32 *desc;
 	int digestsize = crypto_ahash_digestsize(ahash);
 	struct ahash_edesc *edesc;
@@ -1132,11 +1155,10 @@ static int ahash_update_no_ctx(struct ahash_request *req)
 	struct device *jrdev = ctx->jrdev;
 	gfp_t flags = (req->base.flags & (CRYPTO_TFM_REQ_MAY_BACKLOG |
 		       CRYPTO_TFM_REQ_MAY_SLEEP)) ? GFP_KERNEL : GFP_ATOMIC;
-	u8 *buf = state->current_buf ? state->buf_1 : state->buf_0;
-	int *buflen = state->current_buf ? &state->buflen_1 : &state->buflen_0;
-	u8 *next_buf = state->current_buf ? state->buf_0 : state->buf_1;
-	int *next_buflen = state->current_buf ? &state->buflen_0 :
-			   &state->buflen_1;
+	u8 *buf = current_buf(state);
+	int *buflen = current_buflen(state);
+	u8 *next_buf = alt_buf(state);
+	int *next_buflen = alt_buflen(state);
 	int in_len = *buflen + req->nbytes, to_hash;
 	int sec4_sg_bytes, src_nents, mapped_nents;
 	struct ahash_edesc *edesc;
@@ -1185,8 +1207,10 @@ static int ahash_update_no_ctx(struct ahash_request *req)
 		edesc->sec4_sg_bytes = sec4_sg_bytes;
 		edesc->dst_dma = 0;
 
-		state->buf_dma = buf_map_to_sec4_sg(jrdev, edesc->sec4_sg,
-						    buf, *buflen);
+		ret = buf_map_to_sec4_sg(jrdev, edesc->sec4_sg, state);
+		if (ret)
+			goto unmap_ctx;
+
 		sg_to_sec4_sg_last(req->src, mapped_nents,
 				   edesc->sec4_sg + 1, 0);
 
@@ -1195,8 +1219,6 @@ static int ahash_update_no_ctx(struct ahash_request *req)
 						 to_hash - *buflen,
 						 *next_buflen, 0);
 		}
-
-		state->current_buf = !state->current_buf;
 
 		desc = edesc->hw_desc;
 
@@ -1259,10 +1281,7 @@ static int ahash_finup_no_ctx(struct ahash_request *req)
 	struct device *jrdev = ctx->jrdev;
 	gfp_t flags = (req->base.flags & (CRYPTO_TFM_REQ_MAY_BACKLOG |
 		       CRYPTO_TFM_REQ_MAY_SLEEP)) ? GFP_KERNEL : GFP_ATOMIC;
-	u8 *buf = state->current_buf ? state->buf_1 : state->buf_0;
-	int buflen = state->current_buf ? state->buflen_1 : state->buflen_0;
-	int last_buflen = state->current_buf ? state->buflen_0 :
-			  state->buflen_1;
+	int buflen = *current_buflen(state);
 	u32 *desc;
 	int sec4_sg_bytes, sec4_sg_src_index, src_nents, mapped_nents;
 	int digestsize = crypto_ahash_digestsize(ahash);
@@ -1304,9 +1323,9 @@ static int ahash_finup_no_ctx(struct ahash_request *req)
 	edesc->src_nents = src_nents;
 	edesc->sec4_sg_bytes = sec4_sg_bytes;
 
-	state->buf_dma = try_buf_map_to_sec4_sg(jrdev, edesc->sec4_sg, buf,
-						state->buf_dma, buflen,
-						last_buflen);
+	ret = buf_map_to_sec4_sg(jrdev, edesc->sec4_sg, state);
+	if (ret)
+		goto unmap;
 
 	ret = ahash_edesc_add_src(ctx, edesc, req, mapped_nents, 1, buflen,
 				  req->nbytes);
@@ -1352,9 +1371,8 @@ static int ahash_update_first(struct ahash_request *req)
 	struct device *jrdev = ctx->jrdev;
 	gfp_t flags = (req->base.flags & (CRYPTO_TFM_REQ_MAY_BACKLOG |
 		       CRYPTO_TFM_REQ_MAY_SLEEP)) ? GFP_KERNEL : GFP_ATOMIC;
-	u8 *next_buf = state->current_buf ? state->buf_1 : state->buf_0;
-	int *next_buflen = state->current_buf ?
-		&state->buflen_1 : &state->buflen_0;
+	u8 *next_buf = alt_buf(state);
+	int *next_buflen = alt_buflen(state);
 	int to_hash;
 	u32 *desc;
 	int src_nents, mapped_nents;
@@ -1436,6 +1454,7 @@ static int ahash_update_first(struct ahash_request *req)
 		state->final = ahash_final_no_ctx;
 		scatterwalk_map_and_copy(next_buf, req->src, 0,
 					 req->nbytes, 0);
+		switch_buf(state);
 	}
 #ifdef DEBUG
 	print_hex_dump(KERN_ERR, "next buf@"__stringify(__LINE__)": ",
@@ -1463,6 +1482,7 @@ static int ahash_init(struct ahash_request *req)
 	state->finup = ahash_finup_first;
 	state->final = ahash_final_no_ctx;
 
+	state->ctx_dma = 0;
 	state->current_buf = 0;
 	state->buf_dma = 0;
 	state->buflen_0 = 0;

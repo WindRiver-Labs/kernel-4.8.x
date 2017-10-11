@@ -2,11 +2,13 @@
  * Controller-level driver, kernel property detection, initialization
  *
  * Copyright 2008-2012 Freescale Semiconductor, Inc.
+ * Copyright 2017 NXP
  */
 
 #include <linux/device.h>
 #include <linux/of_address.h>
 #include <linux/of_irq.h>
+#include <linux/sys_soc.h>
 
 #include "compat.h"
 #include "regs.h"
@@ -17,6 +19,10 @@
 
 bool caam_little_end;
 EXPORT_SYMBOL(caam_little_end);
+bool caam_imx;
+EXPORT_SYMBOL(caam_imx);
+bool caam_dpaa2;
+EXPORT_SYMBOL(caam_dpaa2);
 
 #ifdef CONFIG_CAAM_QI
 #include "qi.h"
@@ -26,19 +32,11 @@ EXPORT_SYMBOL(caam_little_end);
  * i.MX targets tend to have clock control subsystems that can
  * enable/disable clocking to our device.
  */
-#ifdef CONFIG_CRYPTO_DEV_FSL_CAAM_IMX
 static inline struct clk *caam_drv_identify_clk(struct device *dev,
 						char *clk_name)
 {
-	return devm_clk_get(dev, clk_name);
+	return caam_imx ? devm_clk_get(dev, clk_name) : NULL;
 }
-#else
-static inline struct clk *caam_drv_identify_clk(struct device *dev,
-						char *clk_name)
-{
-	return NULL;
-}
-#endif
 
 /*
  * Descriptor to instantiate RNG State Handle 0 in normal mode and
@@ -305,23 +303,24 @@ static int caam_remove(struct platform_device *pdev)
 	struct device *ctrldev;
 	struct caam_drv_private *ctrlpriv;
 	struct caam_ctrl __iomem *ctrl;
-	int ring;
 
 	ctrldev = &pdev->dev;
 	ctrlpriv = dev_get_drvdata(ctrldev);
 	ctrl = (struct caam_ctrl __iomem *)ctrlpriv->ctrl;
 
-	/* Remove platform devices for JobRs */
-	for (ring = 0; ring < ctrlpriv->total_jobrs; ring++)
-		of_device_unregister(ctrlpriv->jrpdev[ring]);
+	/* Remove platform devices under the crypto node */
+	of_platform_depopulate(ctrldev);
 
 #ifdef CONFIG_CAAM_QI
 	if (ctrlpriv->qidev)
 		caam_qi_shutdown(ctrlpriv->qidev);
 #endif
 
-	/* De-initialize RNG state handles initialized by this driver. */
-	if (ctrlpriv->rng4_sh_init)
+	/*
+	 * De-initialize RNG state handles initialized by this driver.
+	 * In case of DPAA 2.x, RNG is managed by MC firmware.
+	 */
+	if (!caam_dpaa2 && ctrlpriv->rng4_sh_init)
 		deinstantiate_rng(ctrldev, ctrlpriv->rng4_sh_init);
 
 	/* Shut down debug views */
@@ -410,11 +409,26 @@ int caam_get_era(void)
 }
 EXPORT_SYMBOL(caam_get_era);
 
+static const struct of_device_id caam_match[] = {
+	{
+		.compatible = "fsl,sec-v4.0",
+	},
+	{
+		.compatible = "fsl,sec4.0",
+	},
+	{},
+};
+MODULE_DEVICE_TABLE(of, caam_match);
+
 /* Probe routine for CAAM top (controller) level */
 static int caam_probe(struct platform_device *pdev)
 {
-	int ret, ring, ridx, rspec, gen_sk, ent_delay = RTSDCTL_ENT_DLY_MIN;
+	int ret, ring, gen_sk, ent_delay = RTSDCTL_ENT_DLY_MIN;
 	u64 caam_id;
+	static const struct soc_device_attribute imx_soc[] = {
+		{.family = "Freescale i.MX"},
+		{},
+	};
 	struct device *dev;
 	struct device_node *nprop, *np;
 	struct caam_ctrl __iomem *ctrl;
@@ -436,6 +450,8 @@ static int caam_probe(struct platform_device *pdev)
 	dev_set_drvdata(dev, ctrlpriv);
 	ctrlpriv->pdev = pdev;
 	nprop = pdev->dev.of_node;
+
+	caam_imx = (bool)soc_device_match(imx_soc);
 
 	/* Enable clocking */
 	clk = caam_drv_identify_clk(&pdev->dev, "ipg");
@@ -543,12 +559,17 @@ static int caam_probe(struct platform_device *pdev)
 
 	/*
 	 * Enable DECO watchdogs and, if this is a PHYS_ADDR_T_64BIT kernel,
-	 * long pointers in master configuration register
+	 * long pointers in master configuration register.
+	 * In case of DPAA 2.x, Management Complex firmware performs
+	 * the configuration.
 	 */
-	clrsetbits_32(&ctrl->mcr, MCFGR_AWCACHE_MASK | MCFGR_LONG_PTR,
-		      MCFGR_AWCACHE_CACH | MCFGR_AWCACHE_BUFF |
-		      MCFGR_WDENABLE | MCFGR_LARGE_BURST |
-		      (sizeof(dma_addr_t) == sizeof(u64) ? MCFGR_LONG_PTR : 0));
+	caam_dpaa2 = !!(comp_params & CTPR_MS_DPAA2);
+	if (!caam_dpaa2)
+		clrsetbits_32(&ctrl->mcr, MCFGR_AWCACHE_MASK | MCFGR_LONG_PTR,
+			      MCFGR_AWCACHE_CACH | MCFGR_AWCACHE_BUFF |
+			      MCFGR_WDENABLE | MCFGR_LARGE_BURST |
+			      (sizeof(dma_addr_t) == sizeof(u64) ?
+			       MCFGR_LONG_PTR : 0));
 
 	/*
 	 *  Read the Compile Time paramters and SCFGR to determine
@@ -577,7 +598,9 @@ static int caam_probe(struct platform_device *pdev)
 			      JRSTART_JR3_START);
 
 	if (sizeof(dma_addr_t) == sizeof(u64)) {
-		if (of_device_is_compatible(nprop, "fsl,sec-v5.0"))
+		if (caam_dpaa2)
+			ret = dma_set_mask_and_coherent(dev, DMA_BIT_MASK(49));
+		else if (of_device_is_compatible(nprop, "fsl,sec-v5.0"))
 			ret = dma_set_mask_and_coherent(dev, DMA_BIT_MASK(40));
 		else
 			ret = dma_set_mask_and_coherent(dev, DMA_BIT_MASK(36));
@@ -589,21 +612,9 @@ static int caam_probe(struct platform_device *pdev)
 		goto iounmap_ctrl;
 	}
 
-	/*
-	 * Detect and enable JobRs
-	 * First, find out how many ring spec'ed, allocate references
-	 * for all, then go probe each one.
-	 */
-	rspec = 0;
-	for_each_available_child_of_node(nprop, np)
-		if (of_device_is_compatible(np, "fsl,sec-v4.0-job-ring") ||
-		    of_device_is_compatible(np, "fsl,sec4.0-job-ring"))
-			rspec++;
-
-	ctrlpriv->jrpdev = devm_kcalloc(&pdev->dev, rspec,
-					sizeof(*ctrlpriv->jrpdev), GFP_KERNEL);
-	if (ctrlpriv->jrpdev == NULL) {
-		ret = -ENOMEM;
+	ret = of_platform_populate(nprop, caam_match, NULL, dev);
+	if (ret) {
+		dev_err(dev, "JR platform devices creation error\n");
 		goto iounmap_ctrl;
 	}
 
@@ -619,34 +630,21 @@ static int caam_probe(struct platform_device *pdev)
 	ctrlpriv->ctl = debugfs_create_dir("ctl", ctrlpriv->dfs_root);
 #endif
 	ring = 0;
-	ridx = 0;
-	ctrlpriv->total_jobrs = 0;
 	for_each_available_child_of_node(nprop, np)
 		if (of_device_is_compatible(np, "fsl,sec-v4.0-job-ring") ||
 		    of_device_is_compatible(np, "fsl,sec4.0-job-ring")) {
-			ctrlpriv->jrpdev[ring] =
-				of_platform_device_create(np, NULL, dev);
-			if (!ctrlpriv->jrpdev[ring]) {
-				pr_warn("JR physical index %d: Platform device creation error\n",
-					ridx);
-				ridx++;
-				continue;
-			}
 			ctrlpriv->jr[ring] = (struct caam_job_ring __iomem __force *)
 					     ((__force uint8_t *)ctrl +
-					     (ridx + JR_BLOCK_NUMBER) *
+					     (ring + JR_BLOCK_NUMBER) *
 					      BLOCK_OFFSET
 					     );
 			ctrlpriv->total_jobrs++;
 			ring++;
-			ridx++;
-	}
+		}
 
-	/* Check to see if QI present. If so, enable */
-	ctrlpriv->qi_present =
-			!!(rd_reg32(&ctrl->perfmon.comp_parms_ms) &
-			   CTPR_MS_QI_MASK);
-	if (ctrlpriv->qi_present) {
+	/* Check to see if (DPAA 1.x) QI present. If so, enable */
+	ctrlpriv->qi_present = !!(comp_params & CTPR_MS_QI_MASK);
+	if (ctrlpriv->qi_present && !caam_dpaa2) {
 		ctrlpriv->qi = (struct caam_queue_if __iomem __force *)
 			       ((__force uint8_t *)ctrl +
 				 BLOCK_OFFSET * QI_BLOCK_NUMBER
@@ -674,8 +672,10 @@ static int caam_probe(struct platform_device *pdev)
 	/*
 	 * If SEC has RNG version >= 4 and RNG state handle has not been
 	 * already instantiated, do RNG instantiation
+	 * In case of DPAA 2.x, RNG is managed by MC firmware.
 	 */
-	if ((cha_vid_ls & CHA_ID_LS_RNG_MASK) >> CHA_ID_LS_RNG_SHIFT >= 4) {
+	if (!caam_dpaa2 &&
+	    (cha_vid_ls & CHA_ID_LS_RNG_MASK) >> CHA_ID_LS_RNG_SHIFT >= 4) {
 		ctrlpriv->rng4_sh_init =
 			rd_reg32(&ctrl->r4tst[0].rdsta);
 		/*
@@ -743,8 +743,9 @@ static int caam_probe(struct platform_device *pdev)
 	/* Report "alive" for developer to see */
 	dev_info(dev, "device ID = 0x%016llx (Era %d)\n", caam_id,
 		 caam_get_era());
-	dev_info(dev, "job rings = %d, qi = %d\n",
-		 ctrlpriv->total_jobrs, ctrlpriv->qi_present);
+	dev_info(dev, "job rings = %d, qi = %d, dpaa2 = %s\n",
+		 ctrlpriv->total_jobrs, ctrlpriv->qi_present,
+		 caam_dpaa2 ? "yes" : "no");
 
 #ifdef CONFIG_DEBUG_FS
 
@@ -848,17 +849,6 @@ disable_caam_ipg:
 	clk_disable_unprepare(ctrlpriv->caam_ipg);
 	return ret;
 }
-
-static struct of_device_id caam_match[] = {
-	{
-		.compatible = "fsl,sec-v4.0",
-	},
-	{
-		.compatible = "fsl,sec4.0",
-	},
-	{},
-};
-MODULE_DEVICE_TABLE(of, caam_match);
 
 static struct platform_driver caam_driver = {
 	.driver = {

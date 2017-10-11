@@ -61,6 +61,15 @@ struct mc_command {
 	u64 params[MC_CMD_NUM_OF_PARAMS];
 };
 
+struct mc_rsp_create {
+	__le32 object_id;
+};
+
+struct mc_rsp_api_ver {
+	__le16 major_ver;
+	__le16 minor_ver;
+};
+
 enum mc_cmd_status {
 	MC_CMD_STATUS_OK = 0x0, /* Completed successfully */
 	MC_CMD_STATUS_READY = 0x1, /* Ready to be processed */
@@ -208,6 +217,25 @@ static inline u16 mc_cmd_hdr_read_token(struct mc_command *cmd)
 	u16 token = le16_to_cpu(hdr->token);
 
 	return (token & MC_CMD_HDR_TOKEN_MASK) >> MC_CMD_HDR_TOKEN_SHIFT;
+}
+
+static inline u32 mc_cmd_read_object_id(struct mc_command *cmd)
+{
+	struct mc_rsp_create *rsp_params;
+
+	rsp_params = (struct mc_rsp_create *)cmd->params;
+	return le32_to_cpu(rsp_params->object_id);
+}
+
+static inline void mc_cmd_read_api_version(struct mc_command *cmd,
+					   u16 *major_ver,
+					   u16 *minor_ver)
+{
+	struct mc_rsp_api_ver *rsp_params;
+
+	rsp_params = (struct mc_rsp_api_ver *)cmd->params;
+	*major_ver = le16_to_cpu(rsp_params->major_ver);
+	*minor_ver = le16_to_cpu(rsp_params->minor_ver);
 }
 
 #endif /* __FSL_MC_CMD_H */
