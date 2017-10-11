@@ -71,6 +71,13 @@
 #define GIV_SRC_CONTIG		1
 #define GIV_DST_CONTIG		(1 << 1)
 
+enum optype {
+	ENCRYPT = 0,
+	DECRYPT,
+	GIVENCRYPT,
+	NUM_OP
+};
+
 /*
  * This is a a cache of buffers, from which the users of CAAM QI driver
  * can allocate short buffers. It's speedier than doing kmalloc on the hotpath.
@@ -809,7 +816,7 @@ static struct aead_edesc *aead_edesc_alloc(struct aead_request *req,
 		       CRYPTO_TFM_REQ_MAY_SLEEP)) ? GFP_KERNEL : GFP_ATOMIC;
 	int assoc_nents, src_nents, dst_nents = 0;
 	struct aead_edesc *edesc;
-	dma_addr_t iv_dma;
+	dma_addr_t iv_dma = 0;
 	int sgc;
 	bool all_contig;
 	bool assoc_chained = false, src_chained = false, dst_chained = false;
@@ -983,7 +990,7 @@ static struct aead_edesc *aead_giv_edesc_alloc(struct aead_givcrypt_request
 		       CRYPTO_TFM_REQ_MAY_SLEEP)) ? GFP_KERNEL : GFP_ATOMIC;
 	int assoc_nents, src_nents, dst_nents = 0;
 	struct aead_edesc *edesc;
-	dma_addr_t iv_dma;
+	dma_addr_t iv_dma = 0;
 	int sgc;
 	u32 contig = GIV_SRC_CONTIG | GIV_DST_CONTIG;
 	int ivsize = crypto_aead_ivsize(aead);
@@ -1011,7 +1018,7 @@ static struct aead_edesc *aead_giv_edesc_alloc(struct aead_givcrypt_request
 					 DMA_FROM_DEVICE, dst_chained);
 	}
 
-	iv_dma = dma_map_single(dev, areq->giv, ivsize, DMA_FROM_DEVICE);
+	iv_dma = dma_map_single(dev, areq->giv, ivsize, DMA_TO_DEVICE);
 	if (dma_mapping_error(dev, iv_dma)) {
 		dev_err(dev, "unable to map IV\n");
 		return ERR_PTR(-ENOMEM);
@@ -1702,7 +1709,7 @@ static struct ablkcipher_edesc *ablkcipher_edesc_alloc(struct ablkcipher_request
 		       GFP_KERNEL : GFP_ATOMIC;
 	int src_nents, dst_nents = 0, qm_sg_bytes;
 	struct ablkcipher_edesc *edesc;
-	dma_addr_t iv_dma;
+	dma_addr_t iv_dma = 0;
 	bool iv_contig = false;
 	int sgc;
 	int ivsize = crypto_ablkcipher_ivsize(ablkcipher);
@@ -1824,7 +1831,7 @@ static struct ablkcipher_edesc *ablkcipher_giv_edesc_alloc(
 		       GFP_KERNEL : GFP_ATOMIC;
 	int src_nents, dst_nents = 0, qm_sg_bytes;
 	struct ablkcipher_edesc *edesc;
-	dma_addr_t iv_dma;
+	dma_addr_t iv_dma = 0;
 	bool iv_contig = false;
 	int sgc;
 	int ivsize = crypto_ablkcipher_ivsize(ablkcipher);
@@ -1847,7 +1854,7 @@ static struct ablkcipher_edesc *ablkcipher_giv_edesc_alloc(
 					 DMA_FROM_DEVICE, dst_chained);
 	}
 
-	iv_dma = dma_map_single(dev, greq->giv, ivsize, DMA_FROM_DEVICE);
+	iv_dma = dma_map_single(dev, greq->giv, ivsize, DMA_TO_DEVICE);
 	if (dma_mapping_error(dev, iv_dma)) {
 		dev_err(dev, "unable to map IV\n");
 		return ERR_PTR(-ENOMEM);
@@ -1926,7 +1933,7 @@ static void caam_unmap(struct device *dev, struct scatterlist *src,
 		       struct scatterlist *dst, int src_nents,
 		       bool src_chained, int dst_nents, bool dst_chained,
 		       dma_addr_t iv_dma, int ivsize, dma_addr_t qm_sg_dma,
-		       int qm_sg_bytes, enum optype op_type)
+		       int qm_sg_bytes)
 {
 	if (dst != src) {
 		dma_unmap_sg_chained(dev, src, src_nents ? : 1, DMA_TO_DEVICE,
@@ -1939,10 +1946,7 @@ static void caam_unmap(struct device *dev, struct scatterlist *src,
 	}
 
 	if (iv_dma)
-		dma_unmap_single(dev, iv_dma, ivsize,
-				 op_type == GIVENCRYPT ? DMA_FROM_DEVICE :
-							 DMA_TO_DEVICE);
-
+		dma_unmap_single(dev, iv_dma, ivsize, DMA_TO_DEVICE);
 	if (qm_sg_bytes)
 		dma_unmap_single(dev, qm_sg_dma, qm_sg_bytes, DMA_TO_DEVICE);
 }
@@ -1952,7 +1956,6 @@ static void aead_unmap(struct device *dev, struct aead_edesc *edesc,
 {
 	struct crypto_aead *aead = crypto_aead_reqtfm(req);
 	int ivsize = crypto_aead_ivsize(aead);
-	struct caam_request *caam_req = aead_request_ctx(req);
 
 	dma_unmap_sg_chained(dev, req->assoc, edesc->assoc_nents,
 			     DMA_TO_DEVICE, edesc->assoc_chained);
@@ -1960,7 +1963,7 @@ static void aead_unmap(struct device *dev, struct aead_edesc *edesc,
 	caam_unmap(dev, req->src, req->dst,
 		   edesc->src_nents, edesc->src_chained, edesc->dst_nents,
 		   edesc->dst_chained, edesc->iv_dma, ivsize,
-		   edesc->qm_sg_dma, edesc->qm_sg_bytes, caam_req->op_type);
+		   edesc->qm_sg_dma, edesc->qm_sg_bytes);
 }
 
 static void ablkcipher_unmap(struct device *dev,
@@ -1969,12 +1972,11 @@ static void ablkcipher_unmap(struct device *dev,
 {
 	struct crypto_ablkcipher *ablkcipher = crypto_ablkcipher_reqtfm(req);
 	int ivsize = crypto_ablkcipher_ivsize(ablkcipher);
-	struct caam_request *caam_req = ablkcipher_request_ctx(req);
 
 	caam_unmap(dev, req->src, req->dst,
 		   edesc->src_nents, edesc->src_chained, edesc->dst_nents,
 		   edesc->dst_chained, edesc->iv_dma, ivsize,
-		   edesc->qm_sg_dma, edesc->qm_sg_bytes, caam_req->op_type);
+		   edesc->qm_sg_dma, edesc->qm_sg_bytes);
 }
 
 static void aead_encrypt_done(void *cbk_ctx, u32 err)
@@ -2085,7 +2087,6 @@ static int aead_encrypt(struct aead_request *req)
 			 req->cryptlen);
 	caam_req->flc = &ctx->flc[ENCRYPT];
 	caam_req->flc_dma = ctx->flc_dma[ENCRYPT];
-	caam_req->op_type = ENCRYPT;
 	caam_req->cbk = aead_encrypt_done;
 	caam_req->ctx = &req->base;
 	caam_req->edesc = edesc;
@@ -2120,7 +2121,6 @@ static int aead_givencrypt(struct aead_givcrypt_request *areq)
 			 req->cryptlen);
 	caam_req->flc = &ctx->flc[GIVENCRYPT];
 	caam_req->flc_dma = ctx->flc_dma[GIVENCRYPT];
-	caam_req->op_type = GIVENCRYPT;
 	caam_req->cbk = aead_encrypt_done;
 	caam_req->ctx = &req->base;
 	caam_req->edesc = edesc;
@@ -2153,7 +2153,6 @@ static int aead_decrypt(struct aead_request *req)
 			 req->cryptlen);
 	caam_req->flc = &ctx->flc[DECRYPT];
 	caam_req->flc_dma = ctx->flc_dma[DECRYPT];
-	caam_req->op_type = DECRYPT;
 	caam_req->cbk = aead_decrypt_done;
 	caam_req->ctx = &req->base;
 	caam_req->edesc = edesc;
@@ -2249,7 +2248,6 @@ static int ablkcipher_encrypt(struct ablkcipher_request *req)
 	dpaa2_fl_set_len(&caam_req->fd_flt[1], req->nbytes + ivsize);
 	caam_req->flc = &ctx->flc[ENCRYPT];
 	caam_req->flc_dma = ctx->flc_dma[ENCRYPT];
-	caam_req->op_type = ENCRYPT;
 	caam_req->cbk = ablkcipher_encrypt_done;
 	caam_req->ctx = &req->base;
 	caam_req->edesc = edesc;
@@ -2282,7 +2280,6 @@ static int ablkcipher_givencrypt(struct skcipher_givcrypt_request *greq)
 	dpaa2_fl_set_len(&caam_req->fd_flt[1], req->nbytes);
 	caam_req->flc = &ctx->flc[GIVENCRYPT];
 	caam_req->flc_dma = ctx->flc_dma[GIVENCRYPT];
-	caam_req->op_type = GIVENCRYPT;
 	caam_req->cbk = ablkcipher_encrypt_done;
 	caam_req->ctx = &req->base;
 	caam_req->edesc = edesc;
@@ -2314,7 +2311,6 @@ static int ablkcipher_decrypt(struct ablkcipher_request *req)
 	dpaa2_fl_set_len(&caam_req->fd_flt[1], req->nbytes + ivsize);
 	caam_req->flc = &ctx->flc[DECRYPT];
 	caam_req->flc_dma = ctx->flc_dma[DECRYPT];
-	caam_req->op_type = DECRYPT;
 	caam_req->cbk = ablkcipher_decrypt_done;
 	caam_req->ctx = &req->base;
 	caam_req->edesc = edesc;
