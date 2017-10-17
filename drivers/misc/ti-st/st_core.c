@@ -460,13 +460,6 @@ static void st_int_enqueue(struct st_data_s *st_gdata, struct sk_buff *skb)
  * - TTY layer when write's finished
  * - st_write (in context of the protocol stack)
  */
-static void work_fn_write_wakeup(struct work_struct *work)
-{
-	struct st_data_s *st_gdata = container_of(work, struct st_data_s,
-			work_write_wakeup);
-
-	st_tx_wakeup((void *)st_gdata);
-}
 void st_tx_wakeup(struct st_data_s *st_data)
 {
 	struct sk_buff *skb;
@@ -818,12 +811,8 @@ static void st_tty_wakeup(struct tty_struct *tty)
 	/* don't do an wakeup for now */
 	clear_bit(TTY_DO_WRITE_WAKEUP, &tty->flags);
 
-	/*
-	 * schedule the internal wakeup instead of calling directly to
-	 * avoid lockup (port->lock needed in tty->ops->write is
-	 * already taken here
-	 */
-	schedule_work(&st_gdata->work_write_wakeup);
+	/* call our internal wakeup */
+	st_tx_wakeup((void *)st_gdata);
 }
 
 static void st_tty_flush_buffer(struct tty_struct *tty)
@@ -891,9 +880,6 @@ int st_core_init(struct st_data_s **core_data)
 			pr_err("unable to un-register ldisc");
 		return err;
 	}
-
-	INIT_WORK(&st_gdata->work_write_wakeup, work_fn_write_wakeup);
-
 	*core_data = st_gdata;
 	return 0;
 }
