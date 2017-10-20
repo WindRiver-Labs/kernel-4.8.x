@@ -1504,7 +1504,7 @@ static long intel_ipu4_ioctl_dqevent(struct intel_ipu4_psys_event *event,
 
 	if (!(f_flags & O_NONBLOCK)) {
 		rval = wait_event_interruptible(fh->wait,
-			kcmd = intel_ipu4_get_completed_kcmd(psys, fh));
+			(kcmd = intel_ipu4_get_completed_kcmd(psys, fh)));
 		if (rval == -ERESTARTSYS)
 			return rval;
 	}
