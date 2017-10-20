@@ -2461,7 +2461,6 @@ out_free_pgs:
 		kfree(kpg);
 	}
 
-out_free_pkg_dir:
 	if (!isp->secure_mode)
 		intel_ipu4_cpd_free_pkg_dir(adev, psys->pkg_dir,
 					    psys->pkg_dir_dma_addr,
