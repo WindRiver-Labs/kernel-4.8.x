@@ -275,7 +275,6 @@ u64 shared_memory_alloc(int mmid, size_t bytes)
 {
 	struct wrapper_base *mine = get_mem_sub_system(mmid);
 	struct my_css_memory_buffer_item *buf;
-	dma_addr_t dma_addr;
 	unsigned long flags;
 
 	dev_dbg(mine->dev, "%s: in, size: %zu\n", __func__, bytes);
