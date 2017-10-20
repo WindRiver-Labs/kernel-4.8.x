@@ -32,7 +32,7 @@ static void intel_ipu5_pkg_dir_configure_spc(struct intel_ipu4_device *isp,
 
 #else
 
-static int intel_ipu5_isys_load_pkg_dir(struct intel_ipu4_isys *isys)
+static inline int intel_ipu5_isys_load_pkg_dir(struct intel_ipu4_isys *isys)
 {
 	return 0;
 }
