@@ -342,8 +342,7 @@ static int ls_scfg_msi_setup_hwirq(struct ls_scfg_msi_ctrl *ctrl,
 			return -ENODEV;
 		}
 	} else {
-		irq_set_chained_handler(msir->virq, ls_scfg_msi_cascade);
-		irq_set_handler_data(msir->virq, msir);
+		irq_set_chained_handler_and_data(msir->virq, ls_scfg_msi_cascade, msir);
 		irq_set_affinity(msir->virq, get_cpu_mask(index));
 	}
 
