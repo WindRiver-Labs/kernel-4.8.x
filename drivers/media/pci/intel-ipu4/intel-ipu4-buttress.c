@@ -1549,7 +1549,7 @@ u64 intel_ipu4_buttress_tsc_ticks_to_ns(u64 ticks)
 	 *    = ticks * 1000 000 000 / 19200000Hz
 	 *    = ticks * 10000 / 192 ns
 	 */
-	return ticks * 10000 / 192;
+	return div_u64(ticks * 10000, 192);
 }
 EXPORT_SYMBOL_GPL(intel_ipu4_buttress_tsc_ticks_to_ns);
 
@@ -1579,7 +1579,7 @@ static int intel_ipu4_buttress_psys_force_freq_set(void *data, u64 val)
 		    val > BUTTRESS_MAX_FORCE_PS_FREQ))
 		return -EINVAL;
 
-	isp->buttress.psys_force_ratio = val / BUTTRESS_PS_FREQ_STEP;
+	isp->buttress.psys_force_ratio = div_u64(val, BUTTRESS_PS_FREQ_STEP);
 
 	if (isp->buttress.psys_force_ratio)
 		intel_ipu4_buttress_set_psys_ratio(
