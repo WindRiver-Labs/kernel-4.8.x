@@ -113,13 +113,14 @@ static int ecb_encrypt(struct blkcipher_desc *desc, struct scatterlist *dst,
 	blkcipher_walk_init(&walk, dst, src, nbytes);
 	err = blkcipher_walk_virt(desc, &walk);
 
-	kernel_neon_begin();
 	for (first = 1; (blocks = (walk.nbytes / AES_BLOCK_SIZE)); first = 0) {
+		kernel_neon_begin();
 		aes_ecb_encrypt(walk.dst.virt.addr, walk.src.virt.addr,
 				(u8 *)ctx->key_enc, rounds, blocks, first);
+		kernel_neon_end();
 		err = blkcipher_walk_done(desc, &walk, walk.nbytes % AES_BLOCK_SIZE);
 	}
-	kernel_neon_end();
+
 	return err;
 }
 
@@ -135,13 +136,14 @@ static int ecb_decrypt(struct blkcipher_desc *desc, struct scatterlist *dst,
 	blkcipher_walk_init(&walk, dst, src, nbytes);
 	err = blkcipher_walk_virt(desc, &walk);
 
-	kernel_neon_begin();
 	for (first = 1; (blocks = (walk.nbytes / AES_BLOCK_SIZE)); first = 0) {
+		kernel_neon_begin();
 		aes_ecb_decrypt(walk.dst.virt.addr, walk.src.virt.addr,
 				(u8 *)ctx->key_dec, rounds, blocks, first);
+		kernel_neon_end();
 		err = blkcipher_walk_done(desc, &walk, walk.nbytes % AES_BLOCK_SIZE);
 	}
-	kernel_neon_end();
+
 	return err;
 }
 
@@ -157,14 +159,15 @@ static int cbc_encrypt(struct blkcipher_desc *desc, struct scatterlist *dst,
 	blkcipher_walk_init(&walk, dst, src, nbytes);
 	err = blkcipher_walk_virt(desc, &walk);
 
-	kernel_neon_begin();
 	for (first = 1; (blocks = (walk.nbytes / AES_BLOCK_SIZE)); first = 0) {
+		kernel_neon_begin();
 		aes_cbc_encrypt(walk.dst.virt.addr, walk.src.virt.addr,
 				(u8 *)ctx->key_enc, rounds, blocks, walk.iv,
 				first);
+		kernel_neon_end();
 		err = blkcipher_walk_done(desc, &walk, walk.nbytes % AES_BLOCK_SIZE);
 	}
-	kernel_neon_end();
+
 	return err;
 }
 
@@ -180,14 +183,15 @@ static int cbc_decrypt(struct blkcipher_desc *desc, struct scatterlist *dst,
 	blkcipher_walk_init(&walk, dst, src, nbytes);
 	err = blkcipher_walk_virt(desc, &walk);
 
-	kernel_neon_begin();
 	for (first = 1; (blocks = (walk.nbytes / AES_BLOCK_SIZE)); first = 0) {
+		kernel_neon_begin();
 		aes_cbc_decrypt(walk.dst.virt.addr, walk.src.virt.addr,
 				(u8 *)ctx->key_dec, rounds, blocks, walk.iv,
 				first);
+		kernel_neon_end();
 		err = blkcipher_walk_done(desc, &walk, walk.nbytes % AES_BLOCK_SIZE);
 	}
-	kernel_neon_end();
+
 	return err;
 }
 
@@ -204,11 +208,12 @@ static int ctr_encrypt(struct blkcipher_desc *desc, struct scatterlist *dst,
 	err = blkcipher_walk_virt_block(desc, &walk, AES_BLOCK_SIZE);
 
 	first = 1;
-	kernel_neon_begin();
 	while ((blocks = (walk.nbytes / AES_BLOCK_SIZE))) {
+		kernel_neon_begin();
 		aes_ctr_encrypt(walk.dst.virt.addr, walk.src.virt.addr,
 				(u8 *)ctx->key_enc, rounds, blocks, walk.iv,
 				first);
+		kernel_neon_end();
 		first = 0;
 		nbytes -= blocks * AES_BLOCK_SIZE;
 		if (nbytes && nbytes == walk.nbytes % AES_BLOCK_SIZE)
@@ -226,13 +231,13 @@ static int ctr_encrypt(struct blkcipher_desc *desc, struct scatterlist *dst,
 		 * to tell aes_ctr_encrypt() to only read half a block.
 		 */
 		blocks = (nbytes <= 8) ? -1 : 1;
-
+		kernel_neon_begin();
 		aes_ctr_encrypt(tail, tsrc, (u8 *)ctx->key_enc, rounds,
 				blocks, walk.iv, first);
+		kernel_neon_end();
 		memcpy(tdst, tail, nbytes);
 		err = blkcipher_walk_done(desc, &walk, 0);
 	}
-	kernel_neon_end();
 
 	return err;
 }
