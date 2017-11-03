@@ -240,25 +240,11 @@ void * __init early_init_dt_alloc_memory_arch(u64 size, u64 align)
 	return __alloc_bootmem(size, align, 0);
 }
 
-<<<<<<< found
 void __init early_init_devtree(void *params)
 {
 	if (sysmem.nr_banks == 0)
 		dt_memory_scan = true;
 
-||||||| expected
-void cpu_reset(void)
-{
-#if XCHAL_HAVE_PTP_MMU
-	local_irq_disable();
-	/*
-=======
-void cpu_reset(void)
-{
-#if XCHAL_HAVE_PTP_MMU && IS_ENABLED(CONFIG_MMU)
-	local_irq_disable();
-	/*
->>>>>>> replacement
 	early_init_dt_scan(params);
 	of_scan_flat_dt(xtensa_dt_io_area, NULL);
 
