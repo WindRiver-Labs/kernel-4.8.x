@@ -363,6 +363,7 @@ void kgdboc_init_hook(void)
 		configure_kgdboc();
 	}
 }
+EXPORT_SYMBOL(kgdboc_init_hook);
 #endif
 
 static int __init init_kgdboc(void)
