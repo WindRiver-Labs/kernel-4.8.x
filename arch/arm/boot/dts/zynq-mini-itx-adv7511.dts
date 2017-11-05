@@ -24,7 +24,8 @@ fpag-axi@0 {
 
 		i2c@41600000 {
 			compatible = "xlnx,axi-iic-1.02.a", "xlnx,xps-iic-2.00.a";
-			status = "disabled";
+			status = "okay";
+			clocks = <&clkc 15>;
 			interrupt-parent = <&intc>;
 			interrupts = <0 58 4>;
 			reg = <0x41600000 0x10000>;
@@ -58,17 +59,22 @@ fpag-axi@0 {
 						compatible = "adi,adv7511";
 						reg = <0x39>;
 
-						adi,input-style = <0x02>;
-						adi,input-id = <0x01>;
-						adi,input-color-depth = <0x3>;
-						adi,sync-pulse = <0x03>;
-						adi,bit-justification = <0x01>;
-						adi,up-conversion = <0x00>;
-						adi,timing-generation-sequence = <0x00>;
-						adi,vsync-polarity = <0x02>;
-						adi,hsync-polarity = <0x02>;
-						adi,tdms-clock-inversion;
+						adi,input-depth = <8>;
+						adi,input-colorspace = "yuv422";
+						adi,input-clock = "1x";
+						adi,input-style = <3>;
+						adi,input-justification = "right";
 						adi,clock-delay = <0x03>;
+					};
+				};
+
+				i2c@2 {
+					#address-cells = <1>;
+					#size-cells = <0>;
+					reg = <2>;
+					eeprom@50 {
+						compatible = "at,24c08";
+						reg = <0x50>;
 					};
 				};
 
