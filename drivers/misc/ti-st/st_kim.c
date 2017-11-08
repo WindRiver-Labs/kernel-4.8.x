@@ -742,7 +742,6 @@ static const struct of_device_id kim_of_match[] = {
 	},
 	{}
 };
-MODULE_DEVICE_TABLE(of, kim_of_match);
 
 static struct ti_st_plat_data *get_platform_data(struct device *dev)
 {
