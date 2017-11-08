@@ -230,6 +230,14 @@ static int ti_st_close(struct hci_dev *hdev)
 	int err, i;
 	struct ti_st *hst = hci_get_drvdata(hdev);
 
+	/*
+         * A workaround plug to a mismatch between driver and proto. This should
+         * never happen normally, but unlucky we have a wrong TI_ST driver and
+         * apps, so we set the plug to workaround.
+	 */
+	if(test_bit(HCI_RUNNING, hdev->dev_flags))
+		return 0;
+
 	for (i = MAX_BT_CHNL_IDS-1; i >= 0; i--) {
 		err = st_unregister(&ti_st_proto[i]);
 		if (err)
@@ -307,6 +315,7 @@ static int bt_ti_probe(struct platform_device *pdev)
 	hdev->send = ti_st_send_frame;
 
 	err = hci_register_dev(hdev);
+	clear_bit(HCI_AUTO_OFF, (hdev)->dev_flags);
 	if (err < 0) {
 		BT_ERR("Can't register HCI device error %d", err);
 		hci_free_dev(hdev);
