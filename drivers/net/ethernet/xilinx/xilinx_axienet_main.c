@@ -1510,8 +1510,8 @@ err_rx_irq:
 	free_irq(lp->tx_irq, ndev);
 err_tx_irq:
 	napi_disable(&lp->napi);
-	if (phydev)
-		phy_disconnect(phydev);
+	if (lp->phy_dev)
+		phy_disconnect(lp->phy_dev);
 	tasklet_kill(&lp->dma_err_tasklet);
 	dev_err(lp->dev, "request_irq() failed\n");
 	return ret;
@@ -1726,7 +1726,7 @@ static int axienet_ioctl(struct net_device *dev, struct ifreq *rq, int cmd)
 	case SIOCGMIIPHY:
 	case SIOCGMIIREG:
 	case SIOCSMIIREG:
-		return phy_mii_ioctl(lp->phy_dev, rq, cmd);
+		return phy_mii_ioctl(dev->phydev, rq, cmd);
 #ifdef CONFIG_XILINX_AXI_EMAC_HWTSTAMP
 	case SIOCSHWTSTAMP:
 		return axienet_set_ts_config(lp, rq);
