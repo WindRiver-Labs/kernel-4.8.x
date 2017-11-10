@@ -786,6 +786,7 @@ static const struct of_device_id nwl_pcie_of_match[] = {
 
 static int nwl_pcie_probe(struct platform_device *pdev)
 {
+	struct device *dev = &pdev->dev;
 	struct device_node *node = pdev->dev.of_node;
 	struct nwl_pcie *pcie;
 	struct pci_bus *bus;
