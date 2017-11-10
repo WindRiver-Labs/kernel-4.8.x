@@ -253,6 +253,7 @@ static int init_service_irqs(struct pci_dev *dev, int *irqs, int mask)
 			irqs[i] = irq;
 	}
 	irqs[PCIE_PORT_SERVICE_VC_SHIFT] = -1;
+	irqs[PCIE_PORT_SERVICE_PME_SHIFT] = of_irq_get_byname(np, "pme");
 
 	if (irq < 0 && irqs[PCIE_PORT_SERVICE_AER_SHIFT] < 0)
 		return -ENODEV;
