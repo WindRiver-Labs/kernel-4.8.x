@@ -570,10 +570,6 @@ static int __init ls_add_pcie_port(struct pcie_port *pp,
 		return ret;
 	}
 
-	ret = ls_pcie_host_pme_init(pcie, pdev);
-	if (ret)
-		dev_warn(pp->dev, "failed to initialize PME\n");
-
 	return 0;
 }
 
