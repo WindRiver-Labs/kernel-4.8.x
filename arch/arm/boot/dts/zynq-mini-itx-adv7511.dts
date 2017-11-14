@@ -16,7 +16,9 @@
 /include/ "zynq-mini-itx.dtsi"
 
 / {
-fpag-axi@0 {
+	compatible = "xlnx,zynq-7000", "xlnx,mini-itx";
+
+	fpag-axi@0 {
 		compatible = "simple-bus";
 		#address-cells = <0x1>;
 		#size-cells = <0x1>;
@@ -162,4 +164,9 @@ fpag-axi@0 {
 		};
 
 	};
+};
+
+&clkc {
+	fclk-enable = <0xf>;
+	ps-clk-frequency = <33333333>;
 };

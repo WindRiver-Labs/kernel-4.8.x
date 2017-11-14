@@ -781,6 +781,8 @@ int adau1761_probe(struct device *dev, struct regmap *regmap,
 	} else {
 		dai_drv = &adau1761_dai_driver;
 		firmware_name = ADAU1761_FIRMWARE;
+		if (of_machine_is_compatible("xlnx,mini-itx"))
+			firmware_name = NULL;
 	}
 
 	ret = adau17x1_probe(dev, regmap, type, switch_mode, firmware_name);
