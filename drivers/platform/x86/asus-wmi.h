@@ -51,6 +51,7 @@ struct quirk_entry {
 	 * and let the ACPI interrupt to send out the key event.
 	 */
 	int no_display_toggle;
+	u32 xusb2pr;
 };
 
 struct asus_wmi_driver {
