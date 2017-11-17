@@ -2005,7 +2005,7 @@ static int kcm_ioctl(struct socket *sock, unsigned int cmd, unsigned long arg)
 		struct kcm_attach info;
 
 		if (copy_from_user(&info, (void __user *)arg, sizeof(info)))
-			err = -EFAULT;
+			return -EFAULT;
 
 		err = kcm_attach_ioctl(sock, &info);
 
@@ -2015,7 +2015,7 @@ static int kcm_ioctl(struct socket *sock, unsigned int cmd, unsigned long arg)
 		struct kcm_unattach info;
 
 		if (copy_from_user(&info, (void __user *)arg, sizeof(info)))
-			err = -EFAULT;
+			return -EFAULT;
 
 		err = kcm_unattach_ioctl(sock, &info);
 
@@ -2026,7 +2026,7 @@ static int kcm_ioctl(struct socket *sock, unsigned int cmd, unsigned long arg)
 		struct socket *newsock = NULL;
 
 		if (copy_from_user(&info, (void __user *)arg, sizeof(info)))
-			err = -EFAULT;
+			return -EFAULT;
 
 		err = kcm_clone(sock, &info, &newsock);
 
