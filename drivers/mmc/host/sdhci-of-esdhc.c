@@ -942,16 +942,19 @@ static const struct sdhci_ops sdhci_esdhc_le_ops = {
 };
 
 static const struct sdhci_pltfm_data sdhci_esdhc_be_pdata = {
-	.quirks = ESDHC_DEFAULT_QUIRKS | SDHCI_QUIRK_BROKEN_CARD_DETECTION
-		| SDHCI_QUIRK_NO_CARD_NO_RESET
-		| SDHCI_QUIRK_NO_ENDATTR_IN_NOPDESC,
+	.quirks = ESDHC_DEFAULT_QUIRKS |
+#ifdef CONFIG_PPC
+		  SDHCI_QUIRK_BROKEN_CARD_DETECTION |
+#endif
+		  SDHCI_QUIRK_NO_CARD_NO_RESET |
+		  SDHCI_QUIRK_NO_ENDATTR_IN_NOPDESC,
 	.ops = &sdhci_esdhc_be_ops,
 };
 
 static const struct sdhci_pltfm_data sdhci_esdhc_le_pdata = {
-	.quirks = ESDHC_DEFAULT_QUIRKS | SDHCI_QUIRK_BROKEN_CARD_DETECTION
-		| SDHCI_QUIRK_NO_CARD_NO_RESET
-		| SDHCI_QUIRK_NO_ENDATTR_IN_NOPDESC,
+	.quirks = ESDHC_DEFAULT_QUIRKS |
+		  SDHCI_QUIRK_NO_CARD_NO_RESET |
+		  SDHCI_QUIRK_NO_ENDATTR_IN_NOPDESC,
 	.ops = &sdhci_esdhc_le_ops,
 };
 
