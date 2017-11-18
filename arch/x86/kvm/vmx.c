@@ -171,6 +171,8 @@ module_param(ple_window_max, int, S_IRUGO);
 
 extern const ulong vmx_return;
 
+u64 global_trace_time_stamp(void);
+
 #define NR_AUTOLOAD_MSRS 8
 #define VMCS02_POOL_SIZE 1
 
@@ -5581,6 +5583,13 @@ static int handle_io(struct kvm_vcpu *vcpu)
 	int size, in, string;
 	unsigned port;
 
+#ifdef CONFIG_TRACING
+	static bool got_2nd_part = true;
+	static u64 guest_time;
+	static u64 host_time;
+	extern s64 host_guest_delta;
+#endif
+
 	exit_qualification = vmcs_readl(EXIT_QUALIFICATION);
 	string = (exit_qualification & 16) != 0;
 	in = (exit_qualification & 8) != 0;
@@ -5592,6 +5601,36 @@ static int handle_io(struct kvm_vcpu *vcpu)
 
 	port = exit_qualification >> 16;
 	size = (exit_qualification & 7) + 1;
+
+#ifdef CONFIG_TRACING
+	/* magic trap from KVM guest */
+	if (port == 0x55) {
+		trace_printk("Delta between host and guest: %lli\n", host_guest_delta);
+		trace_printk("Disabling tracing due to magic trap from KVM guest!\n");
+		tracing_off();
+	}
+	if (port == 0x56) {
+		if (got_2nd_part) {
+			tracing_on();
+			trace_printk("Enabling tracing due to magic trap from KVM guest!\n");
+
+			guest_time = kvm_register_read(vcpu, VCPU_REGS_RAX);
+			guest_time = guest_time << 32;
+			host_time = global_trace_time_stamp();
+		}
+		else {
+			guest_time += kvm_register_read(vcpu, VCPU_REGS_RAX);
+			host_guest_delta = (host_time - guest_time) / 1000;
+
+			trace_printk("Guest time: %llu\n", guest_time);
+			trace_printk("Host time: %llu\n", host_time);
+			trace_printk("Delta between host and guest: %lli\n", host_guest_delta);
+		}
+
+		got_2nd_part = !got_2nd_part;
+	}
+#endif
+
 	skip_emulated_instruction(vcpu);
 
 	return kvm_fast_pio_out(vcpu, size, port);
@@ -8007,8 +8046,6 @@ static bool nested_vmx_exit_handled(struct kvm_vcpu *vcpu)
 	case EXIT_REASON_TASK_SWITCH:
 		return true;
 	case EXIT_REASON_CPUID:
-		if (kvm_register_read(vcpu, VCPU_REGS_RAX) == 0xa)
-			return false;
 		return true;
 	case EXIT_REASON_HLT:
 		return nested_cpu_has(vmcs12, CPU_BASED_HLT_EXITING);
@@ -8092,6 +8129,9 @@ static bool nested_vmx_exit_handled(struct kvm_vcpu *vcpu)
 		 */
 		return nested_cpu_has2(vmcs12, SECONDARY_EXEC_XSAVES);
 	case EXIT_REASON_PREEMPTION_TIMER:
+		return false;
+	case EXIT_REASON_PML_FULL:
+		/* We don't expose PML support to L1. */
 		return false;
 	default:
 		return true;
@@ -10036,6 +10076,18 @@ static void prepare_vmcs02(struct kvm_vcpu *vcpu, struct vmcs12 *vmcs12)
 			vmx_flush_tlb(vcpu);
 		}
 
+	}
+
+	if (enable_pml) {
+		/*
+		 * Conceptually we want to copy the PML address and index from
+		 * vmcs01 here, and then back to vmcs01 on nested vmexit. But,
+		 * since we always flush the log on each vmexit, this happens
+		 * to be equivalent to simply resetting the fields in vmcs02.
+		 */
+		ASSERT(vmx->pml_pg);
+		vmcs_write64(PML_ADDRESS, page_to_phys(vmx->pml_pg));
+		vmcs_write16(GUEST_PML_INDEX, PML_ENTITY_NUM - 1);
 	}
 
 	if (nested_cpu_has_ept(vmcs12)) {
