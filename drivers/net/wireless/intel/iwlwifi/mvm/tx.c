@@ -459,7 +459,6 @@ iwl_mvm_set_tx_params(struct iwl_mvm *mvm, struct sk_buff *skb,
 		      struct ieee80211_sta *sta, u8 sta_id)
 {
 	struct ieee80211_hdr *hdr = (struct ieee80211_hdr *)skb->data;
-	struct ieee80211_tx_info *skb_info = IEEE80211_SKB_CB(skb);
 	struct iwl_device_cmd *dev_cmd;
 	struct iwl_tx_cmd *tx_cmd;
 
@@ -479,12 +478,18 @@ iwl_mvm_set_tx_params(struct iwl_mvm *mvm, struct sk_buff *skb,
 
 	iwl_mvm_set_tx_cmd_rate(mvm, tx_cmd, info, sta, hdr->frame_control);
 
+	return dev_cmd;
+}
+
+static void iwl_mvm_skb_prepare_status(struct sk_buff *skb,
+				       struct iwl_device_cmd *cmd)
+{
+	struct ieee80211_tx_info *skb_info = IEEE80211_SKB_CB(skb);
+
 	memset(&skb_info->status, 0, sizeof(skb_info->status));
 	memset(skb_info->driver_data, 0, sizeof(skb_info->driver_data));
 
-	skb_info->driver_data[1] = dev_cmd;
-
-	return dev_cmd;
+	skb_info->driver_data[1] = cmd;
 }
 
 static int iwl_mvm_get_ctrl_vif_queue(struct iwl_mvm *mvm,
@@ -545,9 +550,10 @@ int iwl_mvm_tx_skb_non_sta(struct iwl_mvm *mvm, struct sk_buff *skb)
 	 * (this is not possible for unicast packets as a TLDS discovery
 	 * response are sent without a station entry); otherwise use the
 	 * AUX station.
-	 * In DQA mode, if vif is of type STATION and frames are not multicast,
-	 * they should be sent from the BSS queue. For example, TDLS setup
-	 * frames should be sent on this queue, as they go through the AP.
+	 * In DQA mode, if vif is of type STATION and frames are not multicast
+	 * or offchannel, they should be sent from the BSS queue.
+	 * For example, TDLS setup frames should be sent on this queue,
+	 * as they go through the AP.
 	 */
 	sta_id = mvm->aux_sta.sta_id;
 	if (info.control.vif) {
@@ -566,7 +572,8 @@ int iwl_mvm_tx_skb_non_sta(struct iwl_mvm *mvm, struct sk_buff *skb)
 			if (ap_sta_id != IWL_MVM_STATION_COUNT)
 				sta_id = ap_sta_id;
 		} else if (iwl_mvm_is_dqa_supported(mvm) &&
-			   info.control.vif->type == NL80211_IFTYPE_STATION) {
+			   info.control.vif->type == NL80211_IFTYPE_STATION &&
+			   queue != mvm->aux_queue) {
 			queue = IWL_MVM_DQA_BSS_CLIENT_QUEUE;
 		}
 	}
@@ -576,6 +583,9 @@ int iwl_mvm_tx_skb_non_sta(struct iwl_mvm *mvm, struct sk_buff *skb)
 	dev_cmd = iwl_mvm_set_tx_params(mvm, skb, &info, hdrlen, NULL, sta_id);
 	if (!dev_cmd)
 		return -1;
+
+	/* From now on, we cannot access info->control */
+	iwl_mvm_skb_prepare_status(skb, dev_cmd);
 
 	tx_cmd = (struct iwl_tx_cmd *)dev_cmd->payload;
 
@@ -871,7 +881,6 @@ static int iwl_mvm_tx_mpdu(struct iwl_mvm *mvm, struct sk_buff *skb,
 		goto drop;
 
 	tx_cmd = (struct iwl_tx_cmd *)dev_cmd->payload;
-	/* From now on, we cannot access info->control */
 
 	/*
 	 * we handle that entirely ourselves -- for uAPSD the firmware
@@ -961,6 +970,9 @@ static int iwl_mvm_tx_mpdu(struct iwl_mvm *mvm, struct sk_buff *skb,
 
 	IWL_DEBUG_TX(mvm, "TX to [%d|%d] Q:%d - seq: 0x%x\n", mvmsta->sta_id,
 		     tid, txq_id, IEEE80211_SEQ_TO_SN(seq_number));
+
+	/* From now on, we cannot access info->control */
+	iwl_mvm_skb_prepare_status(skb, dev_cmd);
 
 	if (iwl_trans_tx(mvm->trans, skb, dev_cmd, txq_id))
 		goto drop_unlock_sta;
@@ -1238,8 +1250,6 @@ static void iwl_mvm_rx_tx_cmd_single(struct iwl_mvm *mvm,
 
 		memset(&info->status, 0, sizeof(info->status));
 
-		info->flags &= ~IEEE80211_TX_CTL_AMPDU;
-
 		/* inform mac80211 about what happened with the frame */
 		switch (status & TX_STATUS_MSK) {
 		case TX_STATUS_SUCCESS:
@@ -1262,10 +1272,11 @@ static void iwl_mvm_rx_tx_cmd_single(struct iwl_mvm *mvm,
 			(void *)(uintptr_t)le32_to_cpu(tx_resp->initial_rate);
 
 		/* Single frame failure in an AMPDU queue => send BAR */
-		if (txq_id >= mvm->first_agg_queue &&
+		if (info->flags & IEEE80211_TX_CTL_AMPDU &&
 		    !(info->flags & IEEE80211_TX_STAT_ACK) &&
 		    !(info->flags & IEEE80211_TX_STAT_TX_FILTERED))
 			info->flags |= IEEE80211_TX_STAT_AMPDU_NO_BACK;
+		info->flags &= ~IEEE80211_TX_CTL_AMPDU;
 
 		/* W/A FW bug: seq_ctl is wrong when the status isn't success */
 		if (status != TX_STATUS_SUCCESS) {
@@ -1300,7 +1311,7 @@ static void iwl_mvm_rx_tx_cmd_single(struct iwl_mvm *mvm,
 		ieee80211_tx_status(mvm->hw, skb);
 	}
 
-	if (txq_id >= mvm->first_agg_queue) {
+	if (iwl_mvm_is_dqa_supported(mvm) || txq_id >= mvm->first_agg_queue) {
 		/* If this is an aggregation queue, we use the ssn since:
 		 * ssn = wifi seq_num % 256.
 		 * The seq_ctl is the sequence control of the packet to which
