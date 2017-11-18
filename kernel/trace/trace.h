@@ -747,6 +747,9 @@ enum print_line_t print_trace_line(struct trace_iterator *iter);
 
 extern char trace_find_mark(unsigned long long duration);
 
+u64 rb_time_stamp(struct ring_buffer *buffer);
+u64 global_trace_time_stamp(void);
+
 /* Standard output formatting function used for function return traces */
 #ifdef CONFIG_FUNCTION_GRAPH_TRACER
 
