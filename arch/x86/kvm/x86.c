@@ -2061,6 +2061,8 @@ int kvm_set_msr_common(struct kvm_vcpu *vcpu, struct msr_data *msr_info)
 	case MSR_VM_HSAVE_PA:
 	case MSR_AMD64_PATCH_LOADER:
 	case MSR_AMD64_BU_CFG2:
+	case MSR_LBR_NHM_FROM ... MSR_LBR_NHM_FROM_MAX:
+	case MSR_LBR_NHM_TO ... MSR_LBR_NHM_TO_MAX:
 		break;
 
 	case MSR_EFER:
@@ -2453,6 +2455,9 @@ int kvm_get_msr_common(struct kvm_vcpu *vcpu, struct msr_data *msr_info)
 		if (!guest_cpuid_has_osvw(vcpu))
 			return 1;
 		msr_info->data = vcpu->arch.osvw.status;
+		break;
+	case MSR_IA32_PERF_CAPABILITIES:
+		rdmsrl(MSR_IA32_PERF_CAPABILITIES, data);
 		break;
 	default:
 		if (kvm_pmu_is_valid_msr(vcpu, msr_info->index))
@@ -3000,6 +3005,12 @@ static int kvm_vcpu_ioctl_x86_set_vcpu_events(struct kvm_vcpu *vcpu,
 
 	if (events->exception.injected &&
 	    (events->exception.nr > 31 || events->exception.nr == NMI_VECTOR))
+		return -EINVAL;
+
+	/* INITs are latched while in SMM */
+	if (events->flags & KVM_VCPUEVENT_VALID_SMM &&
+	    (events->smi.smm || events->smi.pending) &&
+	    vcpu->arch.mp_state == KVM_MP_STATE_INIT_RECEIVED)
 		return -EINVAL;
 
 	process_nmi(vcpu);
@@ -7121,6 +7132,12 @@ int kvm_arch_vcpu_ioctl_set_mpstate(struct kvm_vcpu *vcpu,
 {
 	if (!lapic_in_kernel(vcpu) &&
 	    mp_state->mp_state != KVM_MP_STATE_RUNNABLE)
+		return -EINVAL;
+
+	/* INITs are latched while in SMM */
+	if ((is_smm(vcpu) || vcpu->arch.smi_pending) &&
+	    (mp_state->mp_state == KVM_MP_STATE_SIPI_RECEIVED ||
+	     mp_state->mp_state == KVM_MP_STATE_INIT_RECEIVED))
 		return -EINVAL;
 
 	if (mp_state->mp_state == KVM_MP_STATE_SIPI_RECEIVED) {
