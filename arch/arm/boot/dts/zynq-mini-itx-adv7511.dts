@@ -53,20 +53,39 @@
 				};
 
 				i2c@1 {
-					#size-cells = <0>;
 					#address-cells = <1>;
+					#size-cells = <0>;
 					reg = <1>;
 
-					adv7511: adv7511@39 {
+					adv7511: adv7511 {
 						compatible = "adi,adv7511";
-						reg = <0x39>;
+						reg = <0x39>, <0x3f>;
+						reg-names = "primary", "edid";
 
 						adi,input-depth = <8>;
 						adi,input-colorspace = "yuv422";
 						adi,input-clock = "1x";
-						adi,input-style = <3>;
+						adi,input-style = <1>;
 						adi,input-justification = "right";
-						adi,clock-delay = <0x03>;
+						adi,clock-delay = <0>;
+
+						#sound-dai-cells = <0>;
+
+						ports {
+							#address-cells = <1>;
+							#size-cells = <0>;
+
+							port@0 {
+								reg = <0>;
+								adv7511_in: endpoint {
+									remote-endpoint = <&axi_hdmi_out>;
+								};
+							};
+
+							port@1 {
+								reg = <1>;
+							};
+						};
 					};
 				};
 
@@ -103,16 +122,20 @@
 			#address-cells = <1>;
 			#size-cells = <1>;
 			#dma-cells = <1>;
-			compatible = "xlnx,axi-vdma";
+                        clock-names = "s_axi_lite_aclk", "m_axi_mm2s_aclk", "m_axi_mm2s_aclk", "m_axi_s2mm_aclk", "m_axi_s2mm_aclk";
+                        clocks = <&clkc 15>, <&clkc 15>, <&clkc 15>, <&clkc 15>, <&clkc 15>;
+			compatible = "xlnx,axi-vdma-1.00.a";
 			reg = <0x43000000 0x1000>;
-			xlnx,include-sg = <0x0>;
+			xlnx,flush-fsync = <0x1>;
 			xlnx,num-fstores = <0x3>;
+			interrupt-parent = <&intc>;
 			dma-channel@43000000 {
 				compatible = "xlnx,axi-vdma-mm2s-channel";
 				interrupts = <0 59 0x4>;
 				xlnx,datawidth = <0x40>;
 				xlnx,genlock-mode = <0x0>;
 				xlnx,include-dre = <0x0>;
+				xlnx,fstore-enable = <0x1>;
 			};
 		};
 
@@ -126,26 +149,27 @@
 		axi_hdmi@70e00000 {
 			compatible = "adi,axi-hdmi-tx-1.00.a";
 			reg = <0x70e00000 0x10000>;
-			encoder-slave = <&adv7511>;
 			dmas = <&axi_vdma_0 0>;
 			dma-names = "video";
 			clocks = <&hdmi_clock>;
 			adi,is-rgb;
+
+			port {
+				axi_hdmi_out: endpoint {
+					remote-endpoint = <&adv7511_in>;
+				};
+			};
 		};
 
-		axi_spdif_tx_0: axi-spdif-tx@0x75c00000 {
+		axi_spdif_tx_0: axi-spdif-tx@75c00000 {
 			compatible = "adi,axi-spdif-tx-1.00.a";
 			reg = <0x75c00000 0x1000>;
 			dmas = <&dmac_s 0>;
 			dma-names = "tx";
 			clocks = <&clkc 15>, <&audio_clock>, <&audio_clock>;
 			clock-names = "axi", "ref", "spdif";
-		};
 
-		adv7511_hdmi_snd: adv7511_hdmi_snd {
-			compatible = "adv7511-hdmi-snd";
-			audio-codec = <&adv7511>;
-			cpu-dai = <&axi_spdif_tx_0>;
+			#sound-dai-cells = <0>;
 		};
 
 		axi_i2s_0: axi-i2s@77600000 {
@@ -164,6 +188,27 @@
 		compatible = "fixed-clock";
 		#clock-cells = <0>;
 		clock-frequency = <12288000>;
+	};
+
+	adv7511_hdmi_snd {
+		compatible = "simple-audio-card";
+		simple-audio-card,name = "HDMI monitor";
+		simple-audio-card,widgets =
+			"Speaker", "Speaker";
+		simple-audio-card,routing =
+			"Speaker", "TX";
+
+		simple-audio-card,dai-link@0 {
+			format = "spdif";
+			cpu {
+				sound-dai = <&axi_spdif_tx_0>;
+				frame-master;
+				bitclock-master;
+			};
+			codec {
+				sound-dai = <&adv7511>;
+			};
+		};
 	};
 
 	zed_sound {

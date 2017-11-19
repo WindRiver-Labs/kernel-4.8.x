@@ -2628,6 +2628,7 @@ static int xilinx_dma_probe(struct platform_device *pdev)
 	if (!(xdev->dma_config->dmatype == XDMA_TYPE_CDMA)) {
 		dma_cap_set(DMA_SLAVE, xdev->common.cap_mask);
 		dma_cap_set(DMA_PRIVATE, xdev->common.cap_mask);
+		dma_cap_set(DMA_INTERLEAVE, xdev->common.cap_mask);
 	}
 
 	xdev->common.device_alloc_chan_resources =
