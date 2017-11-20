@@ -24,6 +24,10 @@
 #define __DRM_EDID_H__
 
 #include <linux/types.h>
+#include <drm/drm_crtc.h>
+
+struct drm_device;
+struct i2c_adapter;
 
 #define EDID_LENGTH 128
 #define DDC_ADDR 0x50
@@ -412,6 +416,21 @@ static inline int drm_eld_size(const uint8_t *eld)
 }
 
 /**
+ * drm_connector_get_edid - Get current EDID from the given connector
+ * @connector: pointer to the connector stucture
+ *
+ * This is a helper for accessing the drm blob buffered in the connector
+ * struct (if any)
+ */
+static inline struct edid *drm_connector_get_edid(struct drm_connector *connector)
+{
+	if (!connector->edid_blob_ptr)
+		return NULL;
+
+	return (struct edid *)connector->edid_blob_ptr->data;
+}
+
+/**
  * drm_eld_get_conn_type - Get device type hdmi/dp connected
  * @eld: pointer to an ELD memory structure
  *
@@ -423,9 +442,36 @@ static inline u8 drm_eld_get_conn_type(const uint8_t *eld)
 	return eld[DRM_ELD_SAD_COUNT_CONN_TYPE] & DRM_ELD_CONN_TYPE_MASK;
 }
 
+bool drm_probe_ddc(struct i2c_adapter *adapter);
 struct edid *drm_do_get_edid(struct drm_connector *connector,
 	int (*get_edid_block)(void *data, u8 *buf, unsigned int block,
 			      size_t len),
 	void *data);
+struct edid *drm_get_edid(struct drm_connector *connector,
+			  struct i2c_adapter *adapter);
+struct edid *drm_get_edid_switcheroo(struct drm_connector *connector,
+				     struct i2c_adapter *adapter);
+struct edid *drm_edid_duplicate(const struct edid *edid);
+int drm_add_edid_modes(struct drm_connector *connector, struct edid *edid);
+
+u8 drm_match_cea_mode(const struct drm_display_mode *to_match);
+enum hdmi_picture_aspect drm_get_cea_aspect_ratio(const u8 video_code);
+bool drm_detect_hdmi_monitor(struct edid *edid);
+bool drm_detect_monitor_audio(struct edid *edid);
+bool drm_rgb_quant_range_selectable(struct edid *edid);
+int drm_add_modes_noedid(struct drm_connector *connector,
+			 int hdisplay, int vdisplay);
+void drm_set_preferred_mode(struct drm_connector *connector,
+			    int hpref, int vpref);
+
+int drm_edid_header_is_valid(const u8 *raw_edid);
+bool drm_edid_block_valid(u8 *raw_edid, int block, bool print_bad_edid,
+			  bool *edid_corrupt);
+bool drm_edid_is_valid(struct edid *edid);
+void drm_edid_get_monitor_name(struct edid *edid, char *name,
+			       int buflen);
+struct drm_display_mode *drm_mode_find_dmt(struct drm_device *dev,
+					   int hsize, int vsize, int fresh,
+					   bool rb);
 
 #endif /* __DRM_EDID_H__ */
