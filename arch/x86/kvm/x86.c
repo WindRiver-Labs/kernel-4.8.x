@@ -2457,7 +2457,7 @@ int kvm_get_msr_common(struct kvm_vcpu *vcpu, struct msr_data *msr_info)
 		msr_info->data = vcpu->arch.osvw.status;
 		break;
 	case MSR_IA32_PERF_CAPABILITIES:
-		rdmsrl(MSR_IA32_PERF_CAPABILITIES, data);
+		rdmsrl(MSR_IA32_PERF_CAPABILITIES, msr_info->data);
 		break;
 	default:
 		if (kvm_pmu_is_valid_msr(vcpu, msr_info->index))
