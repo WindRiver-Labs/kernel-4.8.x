@@ -309,7 +309,8 @@ static const struct sdhci_acpi_slot sdhci_acpi_slot_int_emmc = {
 static const struct sdhci_acpi_slot sdhci_acpi_slot_amd_emmc = {
     .chip    = &sdhci_acpi_chip_amd,
     .caps    = MMC_CAP_8_BIT_DATA | MMC_CAP_NONREMOVABLE |  MMC_CAP_HW_RESET,
-    .quirks  =  SDHCI_QUIRK_BROKEN_DMA | SDHCI_QUIRK_BROKEN_ADMA,
+	.quirks = SDHCI_QUIRK_32BIT_DMA_ADDR | SDHCI_QUIRK_32BIT_DMA_SIZE |
+				SDHCI_QUIRK_32BIT_ADMA_SIZE,
     .quirks2 =  SDHCI_QUIRK2_BROKEN_TUNING_WA,
     .probe_slot     = sdhci_acpi_emmc_probe_slot,
 };
