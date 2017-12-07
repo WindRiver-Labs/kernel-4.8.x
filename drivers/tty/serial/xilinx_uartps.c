@@ -31,7 +31,6 @@
 #include <linux/of.h>
 #include <linux/module.h>
 #include <linux/pm_runtime.h>
-#include <linux/kdb.h>
 
 #define CDNS_UART_TTY_NAME	"ttyPS"
 #define CDNS_UART_NAME		"xuartps"
@@ -1206,7 +1205,7 @@ static void cdns_uart_console_write(struct console *co, const char *s,
 
 	if (port->sysrq)
 		locked = 0;
-	else if (oops_in_progress || in_kdb_printk())
+	else if (oops_in_progress)
 		locked = spin_trylock_irqsave(&port->lock, flags);
 	else
 		spin_lock_irqsave(&port->lock, flags);
