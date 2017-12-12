@@ -93,7 +93,7 @@ static inline void crash_setup_regs(struct pt_regs *newregs,
 			"adr	 %1, 1f\n"
 		"1:\n"
 			"stp	 %1, %0,   [%2, #16 * 16]\n"
-			: "+r" (tmp1), "+r" (tmp2)
+			: "=&r" (tmp1), "=&r" (tmp2)
 			: "r" (newregs)
 			: "memory"
 		);
