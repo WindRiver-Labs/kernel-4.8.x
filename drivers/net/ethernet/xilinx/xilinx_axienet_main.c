@@ -2321,8 +2321,9 @@ static int axienet_stop(struct net_device *ndev)
 	u32 cr;
 	u32 i;
 	struct axienet_local *lp = netdev_priv(ndev);
-	dev_dbg(&ndev->dev, "axienet_close()\n");
 	struct axienet_dma_q *q;
+
+	dev_dbg(&ndev->dev, "axienet_close()\n");
 
 	if (!lp->is_tsn || lp->temac_no == XAE_TEMAC1) {
 		for_each_dma_queue(lp, i) {
@@ -3871,6 +3872,7 @@ static int axienet_probe(struct platform_device *pdev)
 		}
 
 		of_node_put(np);
+	}
 #endif
 
 	if (!slave) {

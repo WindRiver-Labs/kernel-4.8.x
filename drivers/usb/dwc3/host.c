@@ -32,6 +32,7 @@ int dwc3_host_init(struct dwc3 *dwc)
 	struct property_entry	props[3];
 	struct platform_device	*xhci;
 	int			ret, irq;
+	unsigned int		index = 0;
 	struct resource		*res;
 	struct platform_device	*dwc3_pdev = to_platform_device(dwc->dev);
 	int			prop_idx = 0;

@@ -649,6 +649,8 @@ struct axienet_local {
 
 	struct tasklet_struct dma_err_tasklet[XAE_MAX_QUEUES];
 	struct napi_struct napi[XAE_MAX_QUEUES];	/* NAPI Structure */
+	int tx_irq;
+	int rx_irq;
 
 	#define XAE_TEMAC1 0
 	#define XAE_TEMAC2 1
