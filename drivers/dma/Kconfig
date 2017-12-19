@@ -533,6 +533,8 @@ config XGENE_DMA
 	help
 	  Enable support for the APM X-Gene SoC DMA engine.
 
+source "drivers/dma/xilinx/Kconfig"
+
 config XILINX_VDMA
 	tristate "Xilinx AXI VDMA Engine"
 	depends on (ARCH_ZYNQ || MICROBLAZE)
