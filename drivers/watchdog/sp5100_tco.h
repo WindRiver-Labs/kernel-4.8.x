@@ -14,6 +14,8 @@
 #define SP5100_WDT_COUNT(base)		((base) + 0x04) /* Watchdog Count */
 
 #define SP5100_WDT_START_STOP_BIT	(1 << 0)
+#define SP5100_WDT_FIRED		(1 << 1)
+#define SP5100_WDT_ACTION_RESET		(1 << 2)
 #define SP5100_WDT_TRIGGER_BIT		(1 << 7)
 
 #define SP5100_PM_IOPORTS_SIZE		0x02
@@ -32,9 +34,6 @@
 
 #define SP5100_PM_WATCHDOG_CONTROL	0x69
 #define SP5100_PM_WATCHDOG_BASE		0x6C
-
-#define SP5100_PM_WATCHDOG_FIRED	(1 << 1)
-#define SP5100_PM_WATCHDOG_ACTION_RESET	(1 << 2)
 
 #define SP5100_PCI_WATCHDOG_MISC_REG	0x41
 #define SP5100_PCI_WATCHDOG_DECODE_EN	(1 << 3)
