@@ -267,7 +267,7 @@ int xilinx_drm_plane_mode_set(struct drm_plane *base_plane,
 		xilinx_rgb2yuv_configure(plane->rgb2yuv, crtc_w, crtc_h);
 
 	DRM_DEBUG_KMS("h: %d(%d), v: %d(%d)\n",
-		      src_w, crtc_x, src_h, crtc_y);
+			src_w, crtc_x, src_h, crtc_y);
 	DRM_DEBUG_KMS("bpp: %d\n", fb->bits_per_pixel / 8);
 
 	hsub = drm_format_horz_chroma_subsampling(fb->pixel_format);
@@ -602,7 +602,6 @@ void xilinx_drm_plane_restore(struct xilinx_drm_plane_manager *manager)
 u32 xilinx_drm_plane_get_format(struct drm_plane *base_plane)
 {
 	struct xilinx_drm_plane *plane = to_xilinx_plane(base_plane);
-
 	return plane->format;
 }
 

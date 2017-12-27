@@ -117,7 +117,7 @@ xilinx_drm_encoder_get_crtc(struct drm_encoder *base_encoder)
 	return base_encoder->crtc;
 }
 
-static const struct drm_encoder_helper_funcs xilinx_drm_encoder_helper_funcs = {
+static struct drm_encoder_helper_funcs xilinx_drm_encoder_helper_funcs = {
 	.dpms		= xilinx_drm_encoder_dpms,
 	.mode_fixup	= xilinx_drm_encoder_mode_fixup,
 	.mode_set	= xilinx_drm_encoder_mode_set,
@@ -142,7 +142,7 @@ void xilinx_drm_encoder_destroy(struct drm_encoder *base_encoder)
 	put_device(encoder->dev);
 }
 
-static const struct drm_encoder_funcs xilinx_drm_encoder_funcs = {
+static struct drm_encoder_funcs xilinx_drm_encoder_funcs = {
 	.destroy	= xilinx_drm_encoder_destroy,
 };
 
@@ -197,13 +197,13 @@ struct drm_encoder *xilinx_drm_encoder_create(struct drm_device *drm,
 	} else {
 		platform_slv = of_find_device_by_node(node);
 		if (!platform_slv) {
-			DRM_DEBUG_KMS("No encoder slv device, deferring\n");
+			DRM_DEBUG_KMS("failed to get an encoder slv\n");
 			return ERR_PTR(-EPROBE_DEFER);
 		}
 
 		device_driver = platform_slv->dev.driver;
 		if (!device_driver) {
-			DRM_DEBUG_KMS("No encoder slv driver, deferring\n");
+			DRM_DEBUG_KMS("failed to get device driver\n");
 			return ERR_PTR(-EPROBE_DEFER);
 		}
 
