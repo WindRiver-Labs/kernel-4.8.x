@@ -35,6 +35,7 @@
 #include <linux/types.h>
 #include <linux/uaccess.h>
 #include <linux/wait.h>
+#include <linux/swait.h>
 
 #include "../dmaengine.h"
 
@@ -294,7 +295,7 @@ struct xilinx_dpdma_chan {
 	void __iomem *reg;
 	enum xilinx_dpdma_chan_id id;
 
-	wait_queue_head_t wait_to_stop;
+	struct swait_queue_head wait_to_stop;
 	enum xilinx_dpdma_chan_status status;
 	bool first_frame;
 	bool video_group;
@@ -789,7 +790,7 @@ xilinx_dpdma_chan_alloc_tx_desc(struct xilinx_dpdma_chan *chan)
 {
 	struct xilinx_dpdma_tx_desc *tx_desc;
 
-	tx_desc = kzalloc(sizeof(*tx_desc), GFP_KERNEL);
+	tx_desc = kzalloc(sizeof(*tx_desc), GFP_ATOMIC);
 	if (!tx_desc)
 		return NULL;
 
@@ -1467,7 +1468,7 @@ static int xilinx_dpdma_chan_notify_no_ostand(struct xilinx_dpdma_chan *chan)
 	/* Disable 'no oustanding' interrupt */
 	dpdma_write(chan->xdev->reg, XILINX_DPDMA_IDS,
 		    1 << (XILINX_DPDMA_INTR_NO_OSTAND_SHIFT + chan->id));
-	wake_up(&chan->wait_to_stop);
+	swake_up(&chan->wait_to_stop);
 
 	return 0;
 }
@@ -1487,7 +1488,7 @@ static int xilinx_dpdma_chan_wait_no_ostand(struct xilinx_dpdma_chan *chan)
 	int ret;
 
 	/* Wait for a no outstanding transaction interrupt upto 50msec */
-	ret = wait_event_interruptible_timeout(chan->wait_to_stop,
+	ret = swait_event_interruptible_timeout(chan->wait_to_stop,
 					       !xilinx_dpdma_chan_ostand(chan),
 					       msecs_to_jiffies(50));
 	if (ret > 0) {
@@ -2070,7 +2071,7 @@ xilinx_dpdma_chan_probe(struct device_node *node,
 
 	spin_lock_init(&chan->lock);
 	INIT_LIST_HEAD(&chan->done_list);
-	init_waitqueue_head(&chan->wait_to_stop);
+	init_swait_queue_head(&chan->wait_to_stop);
 
 	tasklet_init(&chan->done_task, xilinx_dpdma_chan_done_task,
 		     (unsigned long)chan);
