@@ -125,7 +125,7 @@ static irqreturn_t srio_uio_irq_handler(int irq, struct uio_info *dev_info)
 	return IRQ_HANDLED;
 }
 
-static int __init srio_uio_setup(struct srio_dev *sriodev, u8 type, u32 port_id)
+static int srio_uio_setup(struct srio_dev *sriodev, u8 type, u32 port_id)
 {
 	int err;
 	struct srio_uio_info *info;
