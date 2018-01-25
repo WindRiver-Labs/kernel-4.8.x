@@ -151,6 +151,22 @@ TRACE_EVENT(kvm_ack_irq,
 	{ KVM_TRACE_MMIO_READ, "read" }, \
 	{ KVM_TRACE_MMIO_WRITE, "write" }
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,34))
+
+LTTNG_TRACEPOINT_EVENT(kvm_mmio,
+	TP_PROTO(int type, int len, u64 gpa, void *val),
+	TP_ARGS(type, len, gpa, val),
+
+	TP_FIELDS(
+		ctf_integer(u32, type, type)
+		ctf_integer(u32, len, len)
+		ctf_integer(u64, gpa, gpa)
+		ctf_sequence_hex(unsigned char, val, val, u32, len)
+	)
+)
+
+#else /* #if (LINUX_VERSION_CODE >= KERNEL_VERSION(4,15,0)) */
+
 TRACE_EVENT(kvm_mmio,
 	TP_PROTO(int type, int len, u64 gpa, u64 val),
 	TP_ARGS(type, len, gpa, val),
@@ -173,6 +189,8 @@ TRACE_EVENT(kvm_mmio,
 		  __print_symbolic(__entry->type, kvm_trace_symbol_mmio),
 		  __entry->len, __entry->gpa, __entry->val)
 );
+
+#endif /* #else #if (LINUX_VERSION_CODE >= KERNEL_VERSION(4,15,0)) */
 
 #define kvm_fpu_load_symbol	\
 	{0, "unload"},		\
