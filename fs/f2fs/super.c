@@ -1566,6 +1566,8 @@ static void init_sb_info(struct f2fs_sb_info *sbi)
 	mutex_init(&sbi->wio_mutex[NODE]);
 	mutex_init(&sbi->wio_mutex[DATA]);
 
+    mutex_init(&sbi->sb_lock);
+
 #ifdef CONFIG_F2FS_FS_ENCRYPTION
 	memcpy(sbi->key_prefix, F2FS_KEY_DESC_PREFIX,
 				F2FS_KEY_DESC_PREFIX_SIZE);
