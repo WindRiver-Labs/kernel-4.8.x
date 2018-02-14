@@ -3492,7 +3492,22 @@ static void set_dte_irq_entry(u16 devid, struct irq_remap_table *table)
 
 #define IRTE_ALLOCATED (~1U)
 
-static struct irq_remap_table *get_irq_table(u16 devid, bool ioapic)
+static struct irq_remap_table *get_irq_table(u16 devid)
+{
+	struct irq_remap_table *table;
+
+	if (WARN_ONCE(!amd_iommu_rlookup_table[devid],
+		      "%s: no iommu for devid %x\n", __func__, devid))
+		return NULL;
+
+	table = irq_lookup_table[devid];
+	if (WARN_ONCE(!table, "%s: no table for devid %x\n", __func__, devid))
+		return NULL;
+
+	return table;
+}
+
+static struct irq_remap_table *alloc_irq_table(u16 devid, bool ioapic)
 {
 	struct irq_remap_table *table = NULL;
 	struct amd_iommu *iommu;
@@ -3570,7 +3585,7 @@ static int alloc_irq_index(u16 devid, int count)
 	unsigned long flags;
 	int index, c;
 
-	table = get_irq_table(devid, false);
+	table = alloc_irq_table(devid, false);
 	if (!table)
 		return -ENODEV;
 
@@ -3613,7 +3628,7 @@ static int modify_irte_ga(u16 devid, int index, struct irte_ga *irte)
 	if (iommu == NULL)
 		return -EINVAL;
 
-	table = get_irq_table(devid, false);
+	table = get_irq_table(devid);
 	if (!table)
 		return -ENOMEM;
 
@@ -3644,7 +3659,7 @@ static int modify_irte(u16 devid, int index, union irte *irte)
 	if (iommu == NULL)
 		return -EINVAL;
 
-	table = get_irq_table(devid, false);
+	table = get_irq_table(devid);
 	if (!table)
 		return -ENOMEM;
 
@@ -3668,7 +3683,7 @@ static void free_irte(u16 devid, int index)
 	if (iommu == NULL)
 		return;
 
-	table = get_irq_table(devid, false);
+	table = get_irq_table(devid);
 	if (!table)
 		return;
 
@@ -3987,7 +4002,7 @@ static int irq_remapping_alloc(struct irq_domain *domain, unsigned int virq,
 		return ret;
 
 	if (info->type == X86_IRQ_ALLOC_TYPE_IOAPIC) {
-		if (get_irq_table(devid, true))
+		if (alloc_irq_table(devid, true))
 			index = info->ioapic_pin;
 		else
 			ret = -ENOMEM;
@@ -4155,7 +4170,7 @@ int amd_iommu_update_ga(int cpu, bool is_run, void *data)
 	if (!iommu)
 		return -ENODEV;
 
-	irt = get_irq_table(devid, false);
+	irt = get_irq_table(devid);
 	if (!irt)
 		return -ENODEV;
 
