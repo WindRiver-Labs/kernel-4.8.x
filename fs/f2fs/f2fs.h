@@ -801,7 +801,7 @@ struct f2fs_sb_info {
 	struct super_block *sb;			/* pointer to VFS super block */
 	struct proc_dir_entry *s_proc;		/* proc entry */
 	struct f2fs_super_block *raw_super;	/* raw super block pointer */
-	struct mutex sb_lock;			/* lock for raw super block */
+	struct rw_semaphore sb_lock;		/* lock for raw super block */
 	int valid_super_block;			/* valid super block no */
 	int s_flag;				/* flags for sbi */
 
@@ -1976,6 +1976,8 @@ void handle_failed_inode(struct inode *);
 /*
  * namei.c
  */
+int update_extension_list(struct f2fs_sb_info *sbi, const char *name,
+								bool set);
 struct dentry *f2fs_get_parent(struct dentry *child);
 
 /*
