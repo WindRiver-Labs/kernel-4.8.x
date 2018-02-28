@@ -458,6 +458,7 @@ struct f2fs_map_blocks {
 #define FADVISE_LOST_PINO_BIT	0x02
 #define FADVISE_ENCRYPT_BIT	0x04
 #define FADVISE_ENC_NAME_BIT	0x08
+#define FADVISE_HOT_BIT		0x20
 
 #define file_is_cold(inode)	is_file(inode, FADVISE_COLD_BIT)
 #define file_wrong_pino(inode)	is_file(inode, FADVISE_LOST_PINO_BIT)
@@ -470,6 +471,9 @@ struct f2fs_map_blocks {
 #define file_clear_encrypt(inode) clear_file(inode, FADVISE_ENCRYPT_BIT)
 #define file_enc_name(inode)	is_file(inode, FADVISE_ENC_NAME_BIT)
 #define file_set_enc_name(inode) set_file(inode, FADVISE_ENC_NAME_BIT)
+#define file_is_hot(inode)	is_file(inode, FADVISE_HOT_BIT)
+#define file_set_hot(inode)	set_file(inode, FADVISE_HOT_BIT)
+#define file_clear_hot(inode)	clear_file(inode, FADVISE_HOT_BIT)
 
 #define DEF_DIR_LEVEL		0
 
@@ -1979,7 +1983,7 @@ void handle_failed_inode(struct inode *);
  * namei.c
  */
 int update_extension_list(struct f2fs_sb_info *sbi, const char *name,
-								bool set);
+							bool hot, bool set);
 struct dentry *f2fs_get_parent(struct dentry *child);
 
 /*

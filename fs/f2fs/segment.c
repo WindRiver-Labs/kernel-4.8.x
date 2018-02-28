@@ -1352,7 +1352,8 @@ static int __get_segment_type_6(struct page *page, enum page_type p_type)
 
 		if (is_cold_data(page) || file_is_cold(inode))
 			return CURSEG_COLD_DATA;
-		if (is_inode_flag_set(inode, FI_HOT_DATA))
+		if (file_is_hot(inode) ||
+				is_inode_flag_set(inode, FI_HOT_DATA))
 			return CURSEG_HOT_DATA;
 		return CURSEG_WARM_DATA;
 	} else {

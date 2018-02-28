@@ -95,7 +95,8 @@ struct f2fs_super_block {
 	__le32 feature;			/* defined features */
 	__u8 encryption_level;		/* versioning level for encryption */
 	__u8 encrypt_pw_salt[16];	/* Salt used for string2key algorithm */
-	__u8 reserved[871];		/* valid reserved region */
+	__u8 hot_ext_count;		/* # of hot file extension */
+	__u8 reserved[314];		/* valid reserved region */
 } __packed;
 
 /*
