@@ -45,7 +45,7 @@ config X86
 	select ARCH_USE_CMPXCHG_LOCKREF		if X86_64
 	select ARCH_USE_QUEUED_RWLOCKS
 	select ARCH_USE_QUEUED_SPINLOCKS
-	select ARCH_WANT_BATCHED_UNMAP_TLB_FLUSH if SMP
+	select ARCH_WANT_BATCHED_UNMAP_TLB_FLUSH
 	select ARCH_WANTS_DYNAMIC_TASK_STRUCT
 	select ARCH_WANT_FRAME_POINTERS
 	select ARCH_WANT_IPC_PARSE_VERSION	if X86_32
@@ -64,6 +64,7 @@ config X86
 	select GENERIC_CLOCKEVENTS_MIN_ADJUST
 	select GENERIC_CMOS_UPDATE
 	select GENERIC_CPU_AUTOPROBE
+	select GENERIC_CPU_VULNERABILITIES
 	select GENERIC_EARLY_IOREMAP
 	select GENERIC_FIND_FIRST_BIT
 	select GENERIC_IOMAP
@@ -93,6 +94,7 @@ config X86
 	select HAVE_ARCH_TRANSPARENT_HUGEPAGE
 	select HAVE_ARCH_WITHIN_STACK_FRAMES
 	select HAVE_EBPF_JIT			if X86_64
+	select HAVE_ARCH_VMAP_STACK		if X86_64
 	select HAVE_CC_STACKPROTECTOR
 	select HAVE_CMPXCHG_DOUBLE
 	select HAVE_CMPXCHG_LOCAL
@@ -157,6 +159,7 @@ config X86
 	select SPARSE_IRQ
 	select SRCU
 	select SYSCTL_EXCEPTION_TRACE
+	select THREAD_INFO_IN_TASK
 	select USER_STACKTRACE_SUPPORT
 	select VIRT_TO_BUS
 	select X86_DEV_DMA_OPS			if X86_64
@@ -418,6 +421,19 @@ config INTEL_RDT_A
 	  Developer Manual.
 
 	  Say N if unsure.
+
+config RETPOLINE
+	bool "Avoid speculative indirect branches in kernel"
+	default y
+	---help---
+	  Compile kernel with the retpoline compiler options to guard against
+	  kernel-to-user data leaks by avoiding speculative indirect
+	  branches. Requires a compiler with -mindirect-branch=thunk-extern
+	  support for full protection. The kernel may run slower.
+
+	  Without compiler support, at least indirect branches in assembler
+	  code are eliminated. Since this includes the syscall entry path,
+	  it is not entirely pointless.
 
 if X86_32
 config X86_EXTENDED_PLATFORM
