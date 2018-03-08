@@ -20,6 +20,7 @@
 #include <linux/export.h>
 #include <linux/context_tracking.h>
 #include <linux/user-return-notifier.h>
+#include <linux/nospec.h>
 #include <linux/uprobes.h>
 
 #include <asm/desc.h>
@@ -30,13 +31,6 @@
 
 #define CREATE_TRACE_POINTS
 #include <trace/events/syscalls.h>
-
-static struct thread_info *pt_regs_to_thread_info(struct pt_regs *regs)
-{
-	unsigned long top_of_stack =
-		(unsigned long)(regs + 1) + TOP_OF_KERNEL_STACK_PADDING;
-	return (struct thread_info *)(top_of_stack - THREAD_SIZE);
-}
 
 #ifdef CONFIG_CONTEXT_TRACKING
 /* Called on entry from user mode with IRQs off. */
@@ -71,7 +65,7 @@ static long syscall_trace_enter(struct pt_regs *regs)
 {
 	u32 arch = in_ia32_syscall() ? AUDIT_ARCH_I386 : AUDIT_ARCH_X86_64;
 
-	struct thread_info *ti = pt_regs_to_thread_info(regs);
+	struct thread_info *ti = current_thread_info();
 	unsigned long ret = 0;
 	bool emulated = false;
 	u32 work;
@@ -173,18 +167,17 @@ static void exit_to_usermode_loop(struct pt_regs *regs, u32 cached_flags)
 		/* Disable IRQs and retry */
 		local_irq_disable();
 
-		cached_flags = READ_ONCE(pt_regs_to_thread_info(regs)->flags);
+		cached_flags = READ_ONCE(current_thread_info()->flags);
 
 		if (!(cached_flags & EXIT_TO_USERMODE_LOOP_FLAGS))
 			break;
-
 	}
 }
 
 /* Called with IRQs disabled. */
 __visible inline void prepare_exit_to_usermode(struct pt_regs *regs)
 {
-	struct thread_info *ti = pt_regs_to_thread_info(regs);
+	struct thread_info *ti = current_thread_info();
 	u32 cached_flags;
 
 	if (IS_ENABLED(CONFIG_PROVE_LOCKING) && WARN_ON(!irqs_disabled()))
@@ -247,7 +240,7 @@ static void syscall_slow_exit_work(struct pt_regs *regs, u32 cached_flags)
  */
 __visible inline void syscall_return_slowpath(struct pt_regs *regs)
 {
-	struct thread_info *ti = pt_regs_to_thread_info(regs);
+	struct thread_info *ti = current_thread_info();
 	u32 cached_flags = READ_ONCE(ti->flags);
 
 	CT_WARN_ON(ct_state() != CONTEXT_KERNEL);
@@ -270,7 +263,7 @@ __visible inline void syscall_return_slowpath(struct pt_regs *regs)
 #ifdef CONFIG_X86_64
 __visible void do_syscall_64(struct pt_regs *regs)
 {
-	struct thread_info *ti = pt_regs_to_thread_info(regs);
+	struct thread_info *ti = current_thread_info();
 	unsigned long nr = regs->orig_ax;
 
 	enter_from_user_mode();
@@ -285,7 +278,8 @@ __visible void do_syscall_64(struct pt_regs *regs)
 	 * regs->orig_ax, which changes the behavior of some syscalls.
 	 */
 	if (likely((nr & __SYSCALL_MASK) < NR_syscalls)) {
-		regs->ax = sys_call_table[nr & __SYSCALL_MASK](
+		nr = array_index_nospec(nr & __SYSCALL_MASK, NR_syscalls);
+		regs->ax = sys_call_table[nr](
 			regs->di, regs->si, regs->dx,
 			regs->r10, regs->r8, regs->r9);
 	}
@@ -303,7 +297,7 @@ __visible void do_syscall_64(struct pt_regs *regs)
  */
 static __always_inline void do_syscall_32_irqs_on(struct pt_regs *regs)
 {
-	struct thread_info *ti = pt_regs_to_thread_info(regs);
+	struct thread_info *ti = current_thread_info();
 	unsigned int nr = (unsigned int)regs->orig_ax;
 
 #ifdef CONFIG_IA32_EMULATION
@@ -321,6 +315,7 @@ static __always_inline void do_syscall_32_irqs_on(struct pt_regs *regs)
 	}
 
 	if (likely(nr < IA32_NR_syscalls)) {
+		nr = array_index_nospec(nr, IA32_NR_syscalls);
 		/*
 		 * It's possible that a 32-bit syscall implementation
 		 * takes a 64-bit parameter but nonetheless assumes that
