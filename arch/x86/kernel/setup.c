@@ -114,6 +114,7 @@
 #include <asm/microcode.h>
 #include <asm/mmu_context.h>
 #include <asm/kaslr.h>
+#include <asm/kaiser.h>
 
 /*
  * max_low_pfn_mapped: highest direct mapped pfn under 4GB
@@ -1019,6 +1020,12 @@ void __init setup_arch(char **cmdline_p)
 	 */
 	init_hypervisor_platform();
 
+	/*
+	 * This needs to happen right after XENPV is set on xen and
+	 * kaiser_enabled is checked below in cleanup_highmap().
+	 */
+	kaiser_check_boottime_disable();
+
 	x86_init.resources.probe_roms();
 
 	/* after parse_early_param, so could debug it */
@@ -1137,7 +1144,7 @@ void __init setup_arch(char **cmdline_p)
 	 * auditing all the early-boot CR4 manipulation would be needed to
 	 * rule it out.
 	 */
-	mmu_cr4_features = __read_cr4_safe();
+	mmu_cr4_features = __read_cr4();
 
 	memblock_set_current_limit(get_max_mapped());
 
