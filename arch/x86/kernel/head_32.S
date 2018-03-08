@@ -23,6 +23,7 @@
 #include <asm/percpu.h>
 #include <asm/nops.h>
 #include <asm/bootparam.h>
+#include <asm/export.h>
 
 /* Physical address */
 #define pa(X) ((X) - __PAGE_OFFSET)
@@ -676,6 +677,7 @@ empty_zero_page:
 .globl swapper_pg_dir
 swapper_pg_dir:
 	.fill 1024,4,0
+EXPORT_SYMBOL(empty_zero_page)
 
 /*
  * This starts the data section.
