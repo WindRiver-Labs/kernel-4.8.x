@@ -44,6 +44,8 @@
 #include <asm/alternative-asm.h>
 #include <asm/asm.h>
 #include <asm/smap.h>
+#include <asm/export.h>
+#include <asm/nospec-branch.h>
 
 	.section .entry.text, "ax"
 
@@ -204,34 +206,82 @@
 	POP_GS_EX
 .endm
 
+/*
+ * %eax: prev task
+ * %edx: next task
+ */
+ENTRY(__switch_to_asm)
+	/*
+	 * Save callee-saved registers
+	 * This must match the order in struct inactive_task_frame
+	 */
+	pushl	%ebp
+	pushl	%ebx
+	pushl	%edi
+	pushl	%esi
+
+	/* switch stack */
+	movl	%esp, TASK_threadsp(%eax)
+	movl	TASK_threadsp(%edx), %esp
+
+#ifdef CONFIG_CC_STACKPROTECTOR
+	movl	TASK_stack_canary(%edx), %ebx
+	movl	%ebx, PER_CPU_VAR(stack_canary)+stack_canary_offset
+#endif
+
+#ifdef CONFIG_RETPOLINE
+	/*
+	 * When switching from a shallower to a deeper call stack
+	 * the RSB may either underflow or use entries populated
+	 * with userspace addresses. On CPUs where those concerns
+	 * exist, overwrite the RSB with entries which capture
+	 * speculative execution to prevent attack.
+	 */
+	/* Clobbers %ebx */
+	FILL_RETURN_BUFFER RSB_CLEAR_LOOPS, X86_FEATURE_RSB_CTXSW
+#endif
+
+	/* restore callee-saved registers */
+	popl	%esi
+	popl	%edi
+	popl	%ebx
+	popl	%ebp
+
+	jmp	__switch_to
+END(__switch_to_asm)
+
+/*
+ * A newly forked process directly context switches into this address.
+ *
+ * eax: prev task we switched from
+ * ebx: kernel thread func (NULL for user thread)
+ * edi: kernel thread arg
+ */
 ENTRY(ret_from_fork)
 	pushl	%eax
 	call	schedule_tail
 	popl	%eax
 
+	testl	%ebx, %ebx
+	jnz	1f		/* kernel threads are uncommon */
+
+2:
 	/* When we fork, we trace the syscall return in the child, too. */
 	movl    %esp, %eax
 	call    syscall_return_slowpath
 	jmp     restore_all
-END(ret_from_fork)
 
-ENTRY(ret_from_kernel_thread)
-	pushl	%eax
-	call	schedule_tail
-	popl	%eax
-	movl	PT_EBP(%esp), %eax
-	call	*PT_EBX(%esp)
-	movl	$0, PT_EAX(%esp)
-
+	/* kernel thread */
+1:	movl	%edi, %eax
+	CALL_NOSPEC %ebx
 	/*
-	 * Kernel threads return to userspace as if returning from a syscall.
-	 * We should check whether anything actually uses this path and, if so,
-	 * consider switching it over to ret_from_fork.
+	 * A kernel thread is allowed to return here after successfully
+	 * calling do_execve().  Exit to userspace to complete the execve()
+	 * syscall.
 	 */
-	movl    %esp, %eax
-	call    syscall_return_slowpath
-	jmp     restore_all
-ENDPROC(ret_from_kernel_thread)
+	movl	$0, PT_EAX(%esp)
+	jmp	2b
+END(ret_from_fork)
 
 /*
  * Return to user mode is not as complex as all this looks,
@@ -947,7 +997,8 @@ trace:
 	movl	0x4(%ebp), %edx
 	subl	$MCOUNT_INSN_SIZE, %eax
 
-	call	*ftrace_trace_function
+	movl    ftrace_trace_function, %ecx
+	CALL_NOSPEC %ecx
 
 	popl	%edx
 	popl	%ecx
@@ -955,6 +1006,7 @@ trace:
 	jmp	ftrace_stub
 END(mcount)
 #endif /* CONFIG_DYNAMIC_FTRACE */
+EXPORT_SYMBOL(mcount)
 #endif /* CONFIG_FUNCTION_TRACER */
 
 #ifdef CONFIG_FUNCTION_GRAPH_TRACER
@@ -982,7 +1034,7 @@ return_to_handler:
 	movl	%eax, %ecx
 	popl	%edx
 	popl	%eax
-	jmp	*%ecx
+	JMP_NOSPEC %ecx
 #endif
 
 #ifdef CONFIG_TRACING
@@ -1024,7 +1076,7 @@ error_code:
 	movl	%ecx, %es
 	TRACE_IRQS_OFF
 	movl	%esp, %eax			# pt_regs pointer
-	call	*%edi
+	CALL_NOSPEC %edi
 	jmp	ret_from_exception
 END(page_fault)
 
