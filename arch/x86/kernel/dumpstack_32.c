@@ -95,6 +95,9 @@ show_stack_log_lvl(struct task_struct *task, struct pt_regs *regs,
 	unsigned long *stack;
 	int i;
 
+	if (!try_get_task_stack(task))
+		return;
+
 	if (sp == NULL) {
 		if (regs)
 			sp = (unsigned long *)regs->sp;
@@ -118,6 +121,8 @@ show_stack_log_lvl(struct task_struct *task, struct pt_regs *regs,
 	}
 	pr_cont("\n");
 	show_trace_log_lvl(task, regs, sp, bp, log_lvl);
+
+	put_task_stack(task);
 }
 
 
