@@ -253,6 +253,9 @@ show_stack_log_lvl(struct task_struct *task, struct pt_regs *regs,
 	int cpu;
 	int i;
 
+	if (!try_get_task_stack(task))
+		return;
+
 	migrate_disable();
 	cpu = smp_processor_id();
 
@@ -303,6 +306,8 @@ show_stack_log_lvl(struct task_struct *task, struct pt_regs *regs,
 
 	pr_cont("\n");
 	show_trace_log_lvl(task, regs, sp, bp, log_lvl);
+
+	put_task_stack(task);
 }
 
 void show_regs(struct pt_regs *regs)
