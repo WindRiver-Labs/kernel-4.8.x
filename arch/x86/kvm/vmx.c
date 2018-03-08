@@ -48,6 +48,7 @@
 #include <asm/kexec.h>
 #include <asm/apic.h>
 #include <asm/irq_remapping.h>
+#include <asm/nospec-branch.h>
 
 #include "trace.h"
 #include "pmu.h"
@@ -8652,14 +8653,14 @@ static void vmx_handle_external_intr(struct kvm_vcpu *vcpu)
 #endif
 			"pushf\n\t"
 			__ASM_SIZE(push) " $%c[cs]\n\t"
-			"call *%[entry]\n\t"
+			CALL_NOSPEC
 			:
 #ifdef CONFIG_X86_64
 			[sp]"=&r"(tmp),
 #endif
 			"+r"(__sp)
 			:
-			[entry]"r"(entry),
+			THUNK_TARGET(entry),
 			[ss]"i"(__KERNEL_DS),
 			[cs]"i"(__KERNEL_CS)
 			);
@@ -8990,6 +8991,9 @@ static void __noclone vmx_vcpu_run(struct kvm_vcpu *vcpu)
 		, "eax", "ebx", "edi", "esi"
 #endif
 	      );
+
+	/* Eliminate branch target predictions from guest mode */
+	vmexit_fill_RSB();
 
 	/* MSR_IA32_DEBUGCTLMSR is zeroed on vmexit. Restore it if needed */
 	if (debugctlmsr)
