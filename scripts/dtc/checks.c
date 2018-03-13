@@ -773,7 +773,7 @@ static void check_pci_device_reg(struct check *c, struct dt_info *dti, struct no
 	unsigned int dev, func, reg;
 	cell_t *cells;
 
-	if (!node->parent || (node->parent->bus != &pci_bus))
+	if (!node->parent || (node->parent->bus != &pci_bus) || (*unitname == '\0'))
 		return;
 
 	prop = get_property(node, "reg");
