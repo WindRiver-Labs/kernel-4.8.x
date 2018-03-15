@@ -193,11 +193,14 @@ void show_stack(struct task_struct *task, unsigned long *sp)
 	unsigned long bp = 0;
 	unsigned long stack;
 
+
+	task = task ? : current;
+
 	/*
 	 * Stack frames below this one aren't interesting.  Don't show them
 	 * if we're printing for %current.
 	 */
-	if (!sp && (!task || task == current)) {
+	if (!sp && task == current) {
 		sp = &stack;
 		bp = stack_frame(current, NULL);
 	}
