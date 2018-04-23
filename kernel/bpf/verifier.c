@@ -706,12 +706,13 @@ static int check_ctx_access(struct verifier_env *env, int off, int size,
 	return -EACCES;
 }
 
-static bool is_pointer_value(struct verifier_env *env, int regno)
+static bool __is_pointer_value(bool allow_ptr_leaks,
+                              const struct reg_state *reg)
 {
-	if (env->allow_ptr_leaks)
+       if (allow_ptr_leaks)
 		return false;
 
-	switch (env->cur_state.regs[regno].type) {
+       switch (reg->type) {
 	case UNKNOWN_VALUE:
 	case CONST_IMM:
 		return false;
@@ -719,6 +720,12 @@ static bool is_pointer_value(struct verifier_env *env, int regno)
 		return true;
 	}
 }
+
+static bool is_pointer_value(struct verifier_env *env, int regno)
+{
+       return __is_pointer_value(env->allow_ptr_leaks, &env->cur_state.regs[regno]);
+}
+
 
 static int check_ptr_alignment(struct verifier_env *env, struct reg_state *reg,
 			       int off, int size)
@@ -2147,9 +2154,9 @@ static bool states_equal(struct verifier_state *old, struct verifier_state *cur)
 
 		if (memcmp(rold, rcur, sizeof(*rold)) == 0)
 			continue;
-
 		if (rold->type == NOT_INIT ||
-		    (rold->type == UNKNOWN_VALUE && rcur->type != NOT_INIT))
+		    (rold->type == UNKNOWN_VALUE && rcur->type != NOT_INIT &&
+		    !__is_pointer_value(capable(CAP_SYS_ADMIN), rcur)))
 			continue;
 
 		if (rold->type == PTR_TO_PACKET && rcur->type == PTR_TO_PACKET &&
