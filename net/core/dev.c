@@ -4221,7 +4221,7 @@ ncls:
 	/* deliver only exact match when indicated */
 	if (likely(!deliver_exact)) {
 #ifdef CONFIG_BONDING_DEVINFO
-		skb->real_dev = skb->dev;
+		skb->real_dev = orig_dev;
 #endif
 		deliver_ptype_list_skb(skb, &pt_prev, orig_dev, type,
 				       &ptype_base[ntohs(type) &
