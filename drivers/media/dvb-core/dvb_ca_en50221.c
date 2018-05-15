@@ -1341,6 +1341,7 @@ static ssize_t dvb_ca_en50221_io_write(struct file *file,
 
 	if (slot >= ca->slot_count)
 		return -EINVAL;
+	slot = array_index_nospec(slot, ca->slot_count);
 
 	/* check if the slot is actually running */
 	if (ca->slot_info[slot].slot_state != DVB_CA_SLOTSTATE_RUNNING)
