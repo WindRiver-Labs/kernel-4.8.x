@@ -688,11 +688,19 @@ free_auth_buf:
 
 static int crypto_auth_zc_aead(struct csession *ses_ptr, struct kernel_crypt_auth_op *kcaop)
 {
-	struct scatterlist *dst_sg, *auth_sg, *src_sg;
+	struct scatterlist *dst_sg;
+	struct scatterlist *src_sg;
 	struct crypt_auth_op *caop = &kcaop->caop;
 	unsigned char *auth_buf = NULL;
-	struct scatterlist tmp;
 	int ret;
+
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 2, 0))
+	struct scatterlist tmp;
+	struct scatterlist *auth_sg;
+#else
+	struct scatterlist auth1[2];
+	struct scatterlist auth2[2];
+#endif
 
 	if (unlikely(ses_ptr->cdata.init == 0 ||
 		(ses_ptr->cdata.stream == 0 && ses_ptr->cdata.aead == 0))) {
@@ -711,11 +719,19 @@ static int crypto_auth_zc_aead(struct csession *ses_ptr, struct kernel_crypt_aut
 		return -ENOMEM;
 	}
 
+	ret = get_userbuf(ses_ptr, caop->src, caop->len, caop->dst, kcaop->dst_len,
+			kcaop->task, kcaop->mm, &src_sg, &dst_sg);
+	if (unlikely(ret)) {
+		derr(1, "get_userbuf(): Error getting user pages.");
+		goto free_auth_buf;
+	}
+
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 2, 0))
 	if (caop->auth_src && caop->auth_len > 0) {
 		if (unlikely(copy_from_user(auth_buf, caop->auth_src, caop->auth_len))) {
 			derr(1, "unable to copy auth data from userspace.");
 			ret = -EFAULT;
-			goto free_auth_buf;
+			goto free_pages;
 		}
 
 		sg_init_one(&tmp, auth_buf, caop->auth_len);
@@ -724,16 +740,37 @@ static int crypto_auth_zc_aead(struct csession *ses_ptr, struct kernel_crypt_aut
 		auth_sg = NULL;
 	}
 
-	ret = get_userbuf(ses_ptr, caop->src, caop->len, caop->dst, kcaop->dst_len,
-			kcaop->task, kcaop->mm, &src_sg, &dst_sg);
-	if (unlikely(ret)) {
-		derr(1, "get_userbuf(): Error getting user pages.");
-		goto free_auth_buf;
-	}
-
 	ret = auth_n_crypt(ses_ptr, kcaop, auth_sg, caop->auth_len,
 			src_sg, dst_sg, caop->len);
+#else
+	if (caop->auth_src && caop->auth_len > 0) {
+		if (unlikely(copy_from_user(auth_buf, caop->auth_src, caop->auth_len))) {
+			derr(1, "unable to copy auth data from userspace.");
+			ret = -EFAULT;
+			goto free_pages;
+		}
 
+		sg_init_table(auth1, 2);
+		sg_set_buf(auth1, auth_buf, caop->auth_len);
+		sg_chain(auth1, 2, src_sg);
+
+		if (src_sg == dst_sg) {
+			src_sg = auth1;
+			dst_sg = auth1;
+		} else {
+			sg_init_table(auth2, 2);
+			sg_set_buf(auth2, auth_buf, caop->auth_len);
+			sg_chain(auth2, 2, dst_sg);
+			src_sg = auth1;
+			dst_sg = auth2;
+		}
+	}
+
+	ret = auth_n_crypt(ses_ptr, kcaop, NULL, caop->auth_len,
+			src_sg, dst_sg, caop->len);
+#endif
+
+free_pages:
 	release_user_pages(ses_ptr);
 
 free_auth_buf:
