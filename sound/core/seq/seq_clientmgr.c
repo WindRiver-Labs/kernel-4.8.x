@@ -236,6 +236,7 @@ static struct snd_seq_client *seq_create_client1(int client_index, int poolsize)
 	rwlock_init(&client->ports_lock);
 	mutex_init(&client->ports_mutex);
 	INIT_LIST_HEAD(&client->ports_list_head);
+	mutex_init(&client->ioctl_mutex);
 
 	/* find free slot in the client table */
 	spin_lock_irqsave(&clients_lock, flags);
@@ -1013,7 +1014,7 @@ static ssize_t snd_seq_write(struct file *file, const char __user *buf,
 {
 	struct snd_seq_client *client = file->private_data;
 	int written = 0, len;
-	int err = -EINVAL;
+	int err;
 	struct snd_seq_event event;
 
 	if (!(snd_seq_file_flags(file) & SNDRV_SEQ_LFLG_OUTPUT))
@@ -1028,11 +1029,15 @@ static ssize_t snd_seq_write(struct file *file, const char __user *buf,
 
 	/* allocate the pool now if the pool is not allocated yet */ 
 	if (client->pool->size > 0 && !snd_seq_write_pool_allocated(client)) {
-		if (snd_seq_pool_init(client->pool) < 0)
+		mutex_lock(&client->ioctl_mutex);
+		err = snd_seq_pool_init(client->pool);
+		mutex_unlock(&client->ioctl_mutex);
+		if (err < 0)
 			return -ENOMEM;
 	}
 
 	/* only process whole events */
+	err = -EINVAL;
 	while (count >= sizeof(struct snd_seq_event)) {
 		/* Read in the event header from the user */
 		len = sizeof(event);
@@ -2173,6 +2178,13 @@ static int snd_seq_ioctl_query_next_port(struct snd_seq_client *client,
 
 /* -------------------------------------------------------- */
 
+static const struct ioctl_handler {
+	unsigned int cmd;
+	int (*func)(struct snd_seq_client *client, void *arg);
+} ioctl_handlers[] = {
+	{ 0, NULL },
+};
+
 static struct seq_ioctl_table {
 	unsigned int cmd;
 	int (*func)(struct snd_seq_client *client, void __user * arg);
@@ -2209,6 +2221,65 @@ static struct seq_ioctl_table {
 	{ 0, NULL },
 };
 
+static long seq_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
+{
+	struct snd_seq_client *client = file->private_data;
+	/* To use kernel stack for ioctl data. */
+	union ioctl_arg {
+		int pversion;
+		int client_id;
+		struct snd_seq_system_info	system_info;
+		struct snd_seq_running_info	running_info;
+		struct snd_seq_client_info	client_info;
+		struct snd_seq_port_info	port_info;
+		struct snd_seq_port_subscribe	port_subscribe;
+		struct snd_seq_queue_info	queue_info;
+		struct snd_seq_queue_status	queue_status;
+		struct snd_seq_queue_tempo	tempo;
+		struct snd_seq_queue_timer	queue_timer;
+		struct snd_seq_queue_client	queue_client;
+		struct snd_seq_client_pool	client_pool;
+		struct snd_seq_remove_events	remove_events;
+		struct snd_seq_query_subs	query_subs;
+	} buf = {0};
+	const struct ioctl_handler *handler;
+	unsigned long size;
+	int err;
+
+	if (snd_BUG_ON(!client))
+		return -ENXIO;
+
+	for (handler = ioctl_handlers; handler->cmd > 0; ++handler) {
+		if (handler->cmd == cmd)
+			break;
+	}
+	if (handler->cmd == 0)
+		return -ENOTTY;
+	/*
+	 * All of ioctl commands for ALSA sequencer get an argument of size
+	 * within 13 bits. We can safely pick up the size from the command.
+	 */
+	size = _IOC_SIZE(handler->cmd);
+	if (_IOC_DIR(handler->cmd) & IOC_IN) {
+		if (copy_from_user(&buf, (const void __user *)arg, size))
+			return -EFAULT;
+	}
+
+	mutex_lock(&client->ioctl_mutex);
+	err = handler->func(client, &buf);
+	mutex_unlock(&client->ioctl_mutex);
+	if (err >= 0) {
+		/* Some commands includes a bug in 'dir' field. */
+		if (handler->cmd == SNDRV_SEQ_IOCTL_SET_QUEUE_CLIENT ||
+		    handler->cmd == SNDRV_SEQ_IOCTL_SET_CLIENT_POOL ||
+		    (_IOC_DIR(handler->cmd) & IOC_OUT))
+			if (copy_to_user((void __user *)arg, &buf, size))
+				return -EFAULT;
+	}
+
+	return err;
+}
+
 static int snd_seq_do_ioctl(struct snd_seq_client *client, unsigned int cmd,
 			    void __user *arg)
 {
@@ -2239,9 +2310,12 @@ static long snd_seq_ioctl(struct file *file, unsigned int cmd, unsigned long arg
 {
 	struct snd_seq_client *client = file->private_data;
 
+	if (seq_ioctl(file, cmd, arg) >= 0)
+		return 0;
+
 	if (snd_BUG_ON(!client))
 		return -ENXIO;
-		
+
 	return snd_seq_do_ioctl(client, cmd, (void __user *) arg);
 }
 
@@ -2434,6 +2508,7 @@ EXPORT_SYMBOL(snd_seq_kernel_client_dispatch);
  */
 int snd_seq_kernel_client_ctl(int clientid, unsigned int cmd, void *arg)
 {
+	const struct ioctl_handler *handler;
 	struct snd_seq_client *client;
 	mm_segment_t fs;
 	int result;
@@ -2441,6 +2516,12 @@ int snd_seq_kernel_client_ctl(int clientid, unsigned int cmd, void *arg)
 	client = clientptr(clientid);
 	if (client == NULL)
 		return -ENXIO;
+
+	for (handler = ioctl_handlers; handler->cmd > 0; ++handler) {
+		if (handler->cmd == cmd)
+			return handler->func(client, arg);
+	}
+
 	fs = snd_enter_user();
 	result = snd_seq_do_ioctl(client, cmd, (void __force __user *)arg);
 	snd_leave_user(fs);
