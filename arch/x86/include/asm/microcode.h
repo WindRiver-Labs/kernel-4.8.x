@@ -20,15 +20,6 @@ do {							\
 			 (u32)((u64)(val)),		\
 			 (u32)((u64)(val) >> 32))
 
-struct ucode_patch {
-	struct list_head plist;
-	void *data;		/* Intel uses only this one */
-	u32 patch_id;
-	u16 equiv_cpu;
-};
-
-extern struct list_head microcode_cache;
-
 struct cpu_signature {
 	unsigned int sig;
 	unsigned int pf;
@@ -64,7 +55,6 @@ struct ucode_cpu_info {
 	void			*mc;
 };
 extern struct ucode_cpu_info ucode_cpu_info[];
-struct cpio_data find_microcode_in_initrd(const char *path, bool use_pa);
 
 #ifdef CONFIG_MICROCODE
 int __init microcode_init(void);
