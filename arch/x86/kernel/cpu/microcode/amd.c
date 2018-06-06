@@ -646,7 +646,7 @@ bool check_current_patch_level(u32 *rev, bool early)
 	return ret;
 }
 
-enum ucode_state apply_microcode_amd(int cpu)
+int apply_microcode_amd(int cpu)
 {
 	struct cpuinfo_x86 *c = &cpu_data(cpu);
 	struct microcode_amd *mc_amd;
@@ -660,7 +660,7 @@ enum ucode_state apply_microcode_amd(int cpu)
 
 	p = find_patch(cpu);
 	if (!p)
-		return UCODE_NFOUND;
+		return 0;
 
 	mc_amd  = p->data;
 	uci->mc = p->data;
@@ -672,13 +672,13 @@ enum ucode_state apply_microcode_amd(int cpu)
 	if (rev >= mc_amd->hdr.patch_id) {
 		c->microcode = rev;
 		uci->cpu_sig.rev = rev;
-		return UCODE_OK;
+		return 0;
 	}
 
 	if (__apply_microcode_amd(mc_amd)) {
 		pr_err("CPU%d: update failed for patch_level=0x%08x\n",
 			cpu, mc_amd->hdr.patch_id);
-		return UCODE_ERROR;
+		return -1;
 	}
 	pr_info("CPU%d: new patch_level=0x%08x\n", cpu,
 		mc_amd->hdr.patch_id);
@@ -686,7 +686,7 @@ enum ucode_state apply_microcode_amd(int cpu)
 	uci->cpu_sig.rev = mc_amd->hdr.patch_id;
 	c->microcode = mc_amd->hdr.patch_id;
 
-	return UCODE_UPDATED;
+	return 0;
 }
 
 static int install_equiv_cpu_table(const u8 *buf)
