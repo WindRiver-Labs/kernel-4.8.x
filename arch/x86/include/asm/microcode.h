@@ -20,15 +20,6 @@ do {							\
 			 (u32)((u64)(val)),		\
 			 (u32)((u64)(val) >> 32))
 
-struct ucode_patch {
-	struct list_head plist;
-	void *data;		/* Intel uses only this one */
-	u32 patch_id;
-	u16 equiv_cpu;
-};
-
-extern struct list_head microcode_cache;
-
 struct cpu_signature {
 	unsigned int sig;
 	unsigned int pf;
@@ -37,13 +28,7 @@ struct cpu_signature {
 
 struct device;
 
-enum ucode_state {
-	UCODE_OK	= 0,
-	UCODE_NEW,
-	UCODE_UPDATED,
-	UCODE_NFOUND,
-	UCODE_ERROR,
-};
+enum ucode_state { UCODE_ERROR, UCODE_OK, UCODE_NFOUND };
 
 struct microcode_ops {
 	enum ucode_state (*request_microcode_user) (int cpu,
@@ -60,7 +45,7 @@ struct microcode_ops {
 	 * are being called.
 	 * See also the "Synchronization" section in microcode_core.c.
 	 */
-	enum ucode_state (*apply_microcode) (int cpu);
+	int (*apply_microcode) (int cpu);
 	int (*collect_cpu_info) (int cpu, struct cpu_signature *csig);
 };
 
@@ -70,7 +55,6 @@ struct ucode_cpu_info {
 	void			*mc;
 };
 extern struct ucode_cpu_info ucode_cpu_info[];
-struct cpio_data find_microcode_in_initrd(const char *path, bool use_pa);
 
 #ifdef CONFIG_MICROCODE
 int __init microcode_init(void);
