@@ -630,9 +630,9 @@ static int collect_cpu_info(int cpu_num, struct cpu_signature *csig)
 
 static enum ucode_state apply_microcode_intel(int cpu)
 {
-	struct ucode_cpu_info *uci = ucode_cpu_info + cpu;
-	struct cpuinfo_x86 *c = &cpu_data(cpu);
 	struct microcode_intel *mc;
+	struct ucode_cpu_info *uci;
+	struct cpuinfo_x86 *c = &cpu_data(cpu);
 	static int prev_rev;
 	u32 rev;
 
@@ -640,10 +640,11 @@ static enum ucode_state apply_microcode_intel(int cpu)
 	if (WARN_ON(raw_smp_processor_id() != cpu))
 		return UCODE_ERROR	;
 
-	/* Look for a newer patch in our cache: */
-	mc = find_patch(uci);
+	uci = ucode_cpu_info + cpu;
+	mc = uci->mc;
 	if (!mc) {
-		mc = uci->mc;
+		/* Look for a newer patch in our cache: */
+		mc = find_patch(uci);
 		if (!mc)
 			return UCODE_NFOUND;
 	}
