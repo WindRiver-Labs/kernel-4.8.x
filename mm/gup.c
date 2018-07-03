@@ -872,14 +872,6 @@ __always_inline long __get_user_pages_unlocked(struct task_struct *tsk, struct m
 	long ret;
 	int locked = 1;
 
-<<<<<<< HEAD
-	if (write)
-		gup_flags |= FOLL_WRITE;
-	if (force)
-		gup_flags |= FOLL_FORCE;
-
-=======
->>>>>>> standard/base
 	down_read(&mm->mmap_sem);
 	ret = __get_user_pages_locked(tsk, mm, start, nr_pages, pages, NULL,
 				      &locked, false, gup_flags);
