@@ -3880,19 +3880,14 @@ static int __access_remote_vm(struct task_struct *tsk, struct mm_struct *mm,
  * @addr:	start address to access
  * @buf:	source or destination buffer
  * @len:	number of bytes to transfer
- * @write:	whether the access is a write
+ * @gup_flags:	flags modifying lookup behaviour
  *
  * The caller must hold a reference on @mm.
  */
 int access_remote_vm(struct mm_struct *mm, unsigned long addr,
-		void *buf, int len, int write)
+		void *buf, int len, unsigned int gup_flags)
 {
-	unsigned int flags = FOLL_FORCE;
-
-	if (write)
-		flags |= FOLL_WRITE;
-
-	return __access_remote_vm(NULL, mm, addr, buf, len, flags);
+	return __access_remote_vm(NULL, mm, addr, buf, len, gup_flags);
 }
 
 /*
@@ -3901,7 +3896,7 @@ int access_remote_vm(struct mm_struct *mm, unsigned long addr,
  * Do not walk the page table directly, use get_user_pages
  */
 int access_process_vm(struct task_struct *tsk, unsigned long addr,
-		void *buf, int len, int write)
+		void *buf, int len, unsigned int gup_flags)
 {
 	struct mm_struct *mm;
 	int ret;
@@ -3911,10 +3906,7 @@ int access_process_vm(struct task_struct *tsk, unsigned long addr,
 	if (!mm)
 		return 0;
 
-	if (write)
-		flags |= FOLL_WRITE;
-
-	ret = __access_remote_vm(tsk, mm, addr, buf, len, flags);
+	ret = __access_remote_vm(tsk, mm, addr, buf, len, gup_flags);
 
 	mmput(mm);
 
