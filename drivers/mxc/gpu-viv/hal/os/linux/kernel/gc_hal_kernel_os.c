@@ -4962,7 +4962,6 @@ OnError:
                     memory & PAGE_MASK,
                     pageCount,
                     1,
-                    0,
                     pages,
                     gcvNULL
                     );
