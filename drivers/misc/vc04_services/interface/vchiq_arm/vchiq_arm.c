@@ -1496,7 +1496,6 @@ dump_phys_mem(void *virt_addr, uint32_t num_bytes)
 		(unsigned long)virt_addr, /* start */
 		num_pages,                /* len */
 		0,                        /* write */
-		0,                        /* force */
 		pages,                    /* pages (array of page pointers) */
 		NULL);                    /* vmas */
 	up_read(&current->mm->mmap_sem);
