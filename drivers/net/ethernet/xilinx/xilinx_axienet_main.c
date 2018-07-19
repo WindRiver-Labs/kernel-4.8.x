@@ -1726,7 +1726,7 @@ static int axienet_ioctl(struct net_device *dev, struct ifreq *rq, int cmd)
 	case SIOCGMIIPHY:
 	case SIOCGMIIREG:
 	case SIOCSMIIREG:
-		return phy_mii_ioctl(lp->phy_dev, rq, cmd);
+		return phy_mii_ioctl(dev->phydev, rq, cmd);
 #ifdef CONFIG_XILINX_AXI_EMAC_HWTSTAMP
 	case SIOCSHWTSTAMP:
 		return axienet_set_ts_config(lp, rq);
