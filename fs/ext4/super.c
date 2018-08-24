@@ -2219,6 +2219,7 @@ static int ext4_check_descriptors(struct super_block *sb,
 	struct ext4_sb_info *sbi = EXT4_SB(sb);
 	ext4_fsblk_t first_block = le32_to_cpu(sbi->s_es->s_first_data_block);
 	ext4_fsblk_t last_block;
+	ext4_fsblk_t last_bg_block = sb_block + ext4_bg_num_gdb(sb, 0) + 1;
 	ext4_fsblk_t block_bitmap;
 	ext4_fsblk_t inode_bitmap;
 	ext4_fsblk_t inode_table;
@@ -2251,6 +2252,14 @@ static int ext4_check_descriptors(struct super_block *sb,
 			if (!(sb->s_flags & MS_RDONLY))
 				return 0;
 		}
+		if (block_bitmap >= sb_block + 1 &&
+		    block_bitmap <= last_bg_block) {
+			ext4_msg(sb, KERN_ERR, "ext4_check_descriptors: "
+				 "Block bitmap for group %u overlaps "
+				 "block group descriptors", i);
+			if (!sb_rdonly(sb))
+				return 0;
+		}
 		if (block_bitmap < first_block || block_bitmap > last_block) {
 			ext4_msg(sb, KERN_ERR, "ext4_check_descriptors: "
 			       "Block bitmap for group %u not in group "
@@ -2265,6 +2274,14 @@ static int ext4_check_descriptors(struct super_block *sb,
 			if (!(sb->s_flags & MS_RDONLY))
 				return 0;
 		}
+		if (inode_bitmap >= sb_block + 1 &&
+		    inode_bitmap <= last_bg_block) {
+			ext4_msg(sb, KERN_ERR, "ext4_check_descriptors: "
+				 "Inode bitmap for group %u overlaps "
+				 "block group descriptors", i);
+			if (!sb_rdonly(sb))
+				return 0;
+		}
 		if (inode_bitmap < first_block || inode_bitmap > last_block) {
 			ext4_msg(sb, KERN_ERR, "ext4_check_descriptors: "
 			       "Inode bitmap for group %u not in group "
@@ -2277,6 +2294,14 @@ static int ext4_check_descriptors(struct super_block *sb,
 				 "Inode table for group %u overlaps "
 				 "superblock", i);
 			if (!(sb->s_flags & MS_RDONLY))
+				return 0;
+		}
+		if (inode_table >= sb_block + 1 &&
+		    inode_table <= last_bg_block) {
+			ext4_msg(sb, KERN_ERR, "ext4_check_descriptors: "
+				 "Inode table for group %u overlaps "
+				 "block group descriptors", i);
+			if (!sb_rdonly(sb))
 				return 0;
 		}
 		if (inode_table < first_block ||
@@ -2944,13 +2969,22 @@ static ext4_group_t ext4_has_uninit_itable(struct super_block *sb)
 	ext4_group_t group, ngroups = EXT4_SB(sb)->s_groups_count;
 	struct ext4_group_desc *gdp = NULL;
 
+	if (!ext4_has_group_desc_csum(sb))
+		return ngroups;
+
 	for (group = 0; group < ngroups; group++) {
 		gdp = ext4_get_group_desc(sb, group, NULL);
 		if (!gdp)
 			continue;
 
-		if (!(gdp->bg_flags & cpu_to_le16(EXT4_BG_INODE_ZEROED)))
+		if (gdp->bg_flags & cpu_to_le16(EXT4_BG_INODE_ZEROED))
+			continue;
+		if (group != 0)
 			break;
+		ext4_error(sb, "Inode table for bg 0 marked as "
+			   "needing zeroing");
+		if (sb_rdonly(sb))
+			return ngroups;
 	}
 
 	return group;
@@ -3610,6 +3644,11 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
 	} else {
 		sbi->s_inode_size = le16_to_cpu(es->s_inode_size);
 		sbi->s_first_ino = le32_to_cpu(es->s_first_ino);
+		if (sbi->s_first_ino < EXT4_GOOD_OLD_FIRST_INO) {
+			ext4_msg(sb, KERN_ERR, "invalid first ino: %u",
+				 sbi->s_first_ino);
+			goto failed_mount;
+		}
 		if ((sbi->s_inode_size < EXT4_GOOD_OLD_INODE_SIZE) ||
 		    (!is_power_of_2(sbi->s_inode_size)) ||
 		    (sbi->s_inode_size > blocksize)) {
