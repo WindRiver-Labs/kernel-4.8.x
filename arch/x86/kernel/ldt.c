@@ -77,7 +77,7 @@ static struct ldt_struct *alloc_ldt_struct(int size)
 	}
 
 	ret = kaiser_add_mapping((unsigned long)new_ldt->entries, alloc_size,
-				 __PAGE_KERNEL);
+				 (unsigned long)__PAGE_KERNEL);
 	new_ldt->size = size;
 	if (ret) {
 		__free_ldt_struct(new_ldt);
