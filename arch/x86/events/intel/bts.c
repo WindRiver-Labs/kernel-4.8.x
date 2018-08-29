@@ -138,7 +138,7 @@ bts_buffer_setup_aux(int cpu, void **pages, int nr_pages, bool overwrite)
 		page_size = buf_size(page);
 
 		if (kaiser_add_mapping((unsigned long)kaddr,
-					page_size, __PAGE_KERNEL) < 0) {
+					page_size, (unsigned long)__PAGE_KERNEL) < 0) {
 			buf->nr_bufs = nbuf;
 			bts_buffer_free_aux(buf);
 			return NULL;
