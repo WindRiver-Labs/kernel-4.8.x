@@ -734,9 +734,14 @@ int get_valid_checkpoint(struct f2fs_sb_info *sbi)
 	cp_block = (struct f2fs_checkpoint *)page_address(cur_page);
 	memcpy(sbi->ckpt, cp_block, blk_size);
 
+	if (cur_page == cp1)
+		sbi->cur_cp_pack = 1;
+	else
+		sbi->cur_cp_pack = 2;
+
 	/* Sanity checking of checkpoint */
 	if (sanity_check_ckpt(sbi))
-		goto fail_no_cp;
+		goto free_fail_no_cp;
 
 	if (cp_blks <= 1)
 		goto done;
@@ -759,6 +764,9 @@ done:
 	f2fs_put_page(cp2, 1);
 	return 0;
 
+free_fail_no_cp:
+	f2fs_put_page(cp1, 1);
+	f2fs_put_page(cp2, 1);
 fail_no_cp:
 	kfree(sbi->ckpt);
 	return -EINVAL;
@@ -1081,7 +1089,7 @@ static int do_checkpoint(struct f2fs_sb_info *sbi, struct cp_control *cpc)
 				le32_to_cpu(ckpt->checksum_offset)))
 				= cpu_to_le32(crc32);
 
-	start_blk = __start_cp_addr(sbi);
+	start_blk = __start_cp_next_addr(sbi);
 
 	/* need to wait for end_io results */
 	wait_on_all_pages_writeback(sbi);
@@ -1152,6 +1160,7 @@ static int do_checkpoint(struct f2fs_sb_info *sbi, struct cp_control *cpc)
 
 	clear_prefree_segments(sbi, cpc);
 	clear_sbi_flag(sbi, SBI_IS_DIRTY);
+	__set_cp_next_pack(sbi);
 
 	return 0;
 }
