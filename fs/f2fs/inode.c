@@ -47,20 +47,22 @@ void f2fs_set_inode_flags(struct inode *inode)
 
 static void __get_inode_rdev(struct inode *inode, struct f2fs_inode *ri)
 {
+	int extra_size = get_extra_isize(inode);
+
 	if (S_ISCHR(inode->i_mode) || S_ISBLK(inode->i_mode) ||
 			S_ISFIFO(inode->i_mode) || S_ISSOCK(inode->i_mode)) {
-		if (ri->i_addr[0])
-			inode->i_rdev =
-				old_decode_dev(le32_to_cpu(ri->i_addr[0]));
+		if (ri->i_addr[extra_size])
+			inode->i_rdev = old_decode_dev(
+				le32_to_cpu(ri->i_addr[extra_size]));
 		else
-			inode->i_rdev =
-				new_decode_dev(le32_to_cpu(ri->i_addr[1]));
+			inode->i_rdev = new_decode_dev(
+				le32_to_cpu(ri->i_addr[extra_size + 1]));
 	}
 }
 
 static bool __written_first_block(struct f2fs_inode *ri)
 {
-	block_t addr = le32_to_cpu(ri->i_addr[0]);
+	block_t addr = le32_to_cpu(ri->i_addr[offset_in_addr(ri)]);
 
 	if (addr != NEW_ADDR && addr != NULL_ADDR)
 		return true;
@@ -69,25 +71,27 @@ static bool __written_first_block(struct f2fs_inode *ri)
 
 static void __set_inode_rdev(struct inode *inode, struct f2fs_inode *ri)
 {
+	int extra_size = get_extra_isize(inode);
+
 	if (S_ISCHR(inode->i_mode) || S_ISBLK(inode->i_mode)) {
 		if (old_valid_dev(inode->i_rdev)) {
-			ri->i_addr[0] =
+			ri->i_addr[extra_size] =
 				cpu_to_le32(old_encode_dev(inode->i_rdev));
-			ri->i_addr[1] = 0;
+			ri->i_addr[extra_size + 1] = 0;
 		} else {
-			ri->i_addr[0] = 0;
-			ri->i_addr[1] =
+			ri->i_addr[extra_size] = 0;
+			ri->i_addr[extra_size + 1] =
 				cpu_to_le32(new_encode_dev(inode->i_rdev));
-			ri->i_addr[2] = 0;
+			ri->i_addr[extra_size + 2] = 0;
 		}
 	}
 }
 
 static void __recover_inline_status(struct inode *inode, struct page *ipage)
 {
-	void *inline_data = inline_data_addr(ipage);
+	void *inline_data = inline_data_addr(inode, ipage);
 	__le32 *start = inline_data;
-	__le32 *end = start + MAX_INLINE_DATA / sizeof(__le32);
+	__le32 *end = start + MAX_INLINE_DATA(inode) / sizeof(__le32);
 
 	while (start < end) {
 		if (*start++) {
@@ -100,6 +104,65 @@ static void __recover_inline_status(struct inode *inode, struct page *ipage)
 		}
 	}
 	return;
+}
+
+static bool sanity_check_inode(struct inode *inode, struct page *node_page)
+{
+	struct f2fs_sb_info *sbi = F2FS_I_SB(inode);
+	struct f2fs_inode_info *fi = F2FS_I(inode);
+	unsigned long long iblocks;
+
+	iblocks = le64_to_cpu(F2FS_INODE(node_page)->i_blocks);
+	if (!iblocks) {
+		set_sbi_flag(sbi, SBI_NEED_FSCK);
+		f2fs_msg(sbi->sb, KERN_WARNING,
+			"%s: corrupted inode i_blocks i_ino=%lx iblocks=%llu, "
+			"run fsck to fix.",
+			__func__, inode->i_ino, iblocks);
+		return false;
+	}
+
+	if (ino_of_node(node_page) != nid_of_node(node_page)) {
+		set_sbi_flag(sbi, SBI_NEED_FSCK);
+		f2fs_msg(sbi->sb, KERN_WARNING,
+			"%s: corrupted inode footer i_ino=%lx, ino,nid: "
+			"[%u, %u] run fsck to fix.",
+			__func__, inode->i_ino,
+			ino_of_node(node_page), nid_of_node(node_page));
+		return false;
+	}
+
+	if (f2fs_sb_has_flexible_inline_xattr(sbi->sb)
+			&& !f2fs_has_extra_attr(inode)) {
+		set_sbi_flag(sbi, SBI_NEED_FSCK);
+		f2fs_msg(sbi->sb, KERN_WARNING,
+			"%s: corrupted inode ino=%lx, run fsck to fix.",
+			__func__, inode->i_ino);
+		return false;
+	}
+
+	if (f2fs_has_extra_attr(inode) &&
+			!f2fs_sb_has_extra_attr(sbi->sb)) {
+		set_sbi_flag(sbi, SBI_NEED_FSCK);
+		f2fs_msg(sbi->sb, KERN_WARNING,
+			"%s: inode (ino=%lx) is with extra_attr, "
+			"but extra_attr feature is off",
+			__func__, inode->i_ino);
+		return false;
+	}
+
+	if (fi->i_extra_isize > F2FS_TOTAL_EXTRA_ATTR_SIZE ||
+			fi->i_extra_isize % sizeof(__le32)) {
+		set_sbi_flag(sbi, SBI_NEED_FSCK);
+		f2fs_msg(sbi->sb, KERN_WARNING,
+			"%s: inode (ino=%lx) has corrupted i_extra_isize: %d, "
+			"max: %zu",
+			__func__, inode->i_ino, fi->i_extra_isize,
+			F2FS_TOTAL_EXTRA_ATTR_SIZE);
+		return false;
+	}
+
+	return true;
 }
 
 static int do_read_inode(struct inode *inode)
@@ -150,6 +213,30 @@ static int do_read_inode(struct inode *inode)
 		set_page_dirty(node_page);
 
 	get_inline_info(inode, ri);
+
+	fi->i_extra_isize = f2fs_has_extra_attr(inode) ?
+					le16_to_cpu(ri->i_extra_isize) : 0;
+
+	if (f2fs_sb_has_flexible_inline_xattr(sbi->sb)) {
+		fi->i_inline_xattr_size = le16_to_cpu(ri->i_inline_xattr_size);
+	} else if (f2fs_has_inline_xattr(inode) ||
+				f2fs_has_inline_dentry(inode)) {
+		fi->i_inline_xattr_size = DEFAULT_INLINE_XATTR_ADDRS;
+	} else {
+
+		/*
+		 * Previous inline data or directory always reserved 200 bytes
+		 * in inode layout, even if inline_xattr is disabled. In order
+		 * to keep inline_dentry's structure for backward compatibility,
+		 * we get the space back only from inline_data.
+		 */
+		fi->i_inline_xattr_size = 0;
+	}
+
+	if (!sanity_check_inode(inode, node_page)) {
+		f2fs_put_page(node_page, 1);
+		return -EINVAL;
+	}
 
 	/* check data exist */
 	if (f2fs_has_inline_data(inode) && !f2fs_exist_data(inode))
@@ -272,6 +359,13 @@ int update_inode(struct inode *inode, struct page *node_page)
 	ri->i_generation = cpu_to_le32(inode->i_generation);
 	ri->i_dir_level = F2FS_I(inode)->i_dir_level;
 
+	if (f2fs_has_extra_attr(inode)) {
+		ri->i_extra_isize = cpu_to_le16(F2FS_I(inode)->i_extra_isize);
+
+		if (f2fs_sb_has_flexible_inline_xattr(F2FS_I_SB(inode)->sb))
+			ri->i_inline_xattr_size =
+				cpu_to_le16(F2FS_I(inode)->i_inline_xattr_size);
+    }
 	__set_inode_rdev(inode, ri);
 	set_cold_node(inode, node_page);
 
