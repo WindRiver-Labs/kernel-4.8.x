@@ -105,7 +105,7 @@ static inline void __submit_bio(struct f2fs_sb_info *sbi,
 {
 	if (!is_read_io(bio_op(bio))) {
 		atomic_inc(&sbi->nr_wb_bios);
-		if (f2fs_sb_mounted_hmsmr(sbi->sb) &&
+		if (f2fs_sb_mounted_blkzoned(sbi->sb) &&
 			current->plug && (type == DATA || type == NODE))
 			blk_finish_plug(current->plug);
 	}
@@ -298,10 +298,14 @@ static void __set_data_blkaddr(struct dnode_of_data *dn)
 {
 	struct f2fs_node *rn = F2FS_NODE(dn->node_page);
 	__le32 *addr_array;
+	int base = 0;
+
+	if (IS_INODE(dn->node_page) && f2fs_has_extra_attr(dn->inode))
+		base = get_extra_isize(dn->inode);
 
 	/* Get physical address of data block */
 	addr_array = blkaddr_in_node(rn);
-	addr_array[dn->ofs_in_node] = cpu_to_le32(dn->data_blkaddr);
+	addr_array[base + dn->ofs_in_node] = cpu_to_le32(dn->data_blkaddr);
 }
 
 /*
@@ -344,8 +348,8 @@ int reserve_new_blocks(struct dnode_of_data *dn, blkcnt_t count)
 	f2fs_wait_on_page_writeback(dn->node_page, NODE, true);
 
 	for (; count > 0; dn->ofs_in_node++) {
-		block_t blkaddr =
-			datablock_addr(dn->node_page, dn->ofs_in_node);
+		block_t blkaddr = datablock_addr(dn->inode,
+					dn->node_page, dn->ofs_in_node);
 		if (blkaddr == NULL_ADDR) {
 			dn->data_blkaddr = NEW_ADDR;
 			__set_data_blkaddr(dn);
@@ -592,7 +596,8 @@ static int __allocate_data_block(struct dnode_of_data *dn)
 	if (unlikely(is_inode_flag_set(dn->inode, FI_NO_ALLOC)))
 		return -EPERM;
 
-	dn->data_blkaddr = datablock_addr(dn->node_page, dn->ofs_in_node);
+	dn->data_blkaddr = datablock_addr(dn->inode,
+				dn->node_page, dn->ofs_in_node);
 	if (dn->data_blkaddr == NEW_ADDR)
 		goto alloc;
 
@@ -638,7 +643,7 @@ ssize_t f2fs_preallocate_blocks(struct kiocb *iocb, struct iov_iter *from)
 			return ret;
 		return f2fs_map_blocks(inode, &map, 1, F2FS_GET_BLOCK_PRE_DIO);
 	}
-	if (iocb->ki_pos + iov_iter_count(from) > MAX_INLINE_DATA) {
+	if (iocb->ki_pos + iov_iter_count(from) > MAX_INLINE_DATA(inode)) {
 		ret = f2fs_convert_inline_inode(inode);
 		if (ret)
 			return ret;
@@ -710,7 +715,7 @@ next_dnode:
 	end_offset = ADDRS_PER_PAGE(dn.node_page, inode);
 
 next_block:
-	blkaddr = datablock_addr(dn.node_page, dn.ofs_in_node);
+	blkaddr = datablock_addr(dn.inode, dn.node_page, dn.ofs_in_node);
 
 	if (blkaddr == NEW_ADDR || blkaddr == NULL_ADDR) {
 		if (create) {
@@ -1538,7 +1543,7 @@ restart:
 	set_new_dnode(&dn, inode, ipage, ipage, 0);
 
 	if (f2fs_has_inline_data(inode)) {
-		if (pos + len <= MAX_INLINE_DATA) {
+		if (pos + len <= MAX_INLINE_DATA(inode)) {
 			read_inline_data(page, ipage);
 			set_inode_flag(inode, FI_DATA_EXIST);
 			if (inode->i_nlink)
