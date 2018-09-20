@@ -458,6 +458,7 @@ struct f2fs_map_blocks {
 #define FADVISE_LOST_PINO_BIT	0x02
 #define FADVISE_ENCRYPT_BIT	0x04
 #define FADVISE_ENC_NAME_BIT	0x08
+#define FADVISE_HOT_BIT		0x20
 
 #define file_is_cold(inode)	is_file(inode, FADVISE_COLD_BIT)
 #define file_wrong_pino(inode)	is_file(inode, FADVISE_LOST_PINO_BIT)
@@ -470,6 +471,9 @@ struct f2fs_map_blocks {
 #define file_clear_encrypt(inode) clear_file(inode, FADVISE_ENCRYPT_BIT)
 #define file_enc_name(inode)	is_file(inode, FADVISE_ENC_NAME_BIT)
 #define file_set_enc_name(inode) set_file(inode, FADVISE_ENC_NAME_BIT)
+#define file_is_hot(inode)	is_file(inode, FADVISE_HOT_BIT)
+#define file_set_hot(inode)	set_file(inode, FADVISE_HOT_BIT)
+#define file_clear_hot(inode)	clear_file(inode, FADVISE_HOT_BIT)
 
 #define DEF_DIR_LEVEL		0
 
@@ -693,6 +697,7 @@ struct f2fs_sm_info {
 	unsigned int ipu_policy;	/* in-place-update policy */
 	unsigned int min_ipu_util;	/* in-place-update threshold */
 	unsigned int min_fsync_blocks;	/* threshold for fsync */
+	unsigned int min_hot_blocks;	/* threshold for hot block allocation */
 
 	/* for flush command control */
 	struct flush_cmd_control *cmd_control_info;
@@ -801,6 +806,7 @@ struct f2fs_sb_info {
 	struct super_block *sb;			/* pointer to VFS super block */
 	struct proc_dir_entry *s_proc;		/* proc entry */
 	struct f2fs_super_block *raw_super;	/* raw super block pointer */
+	struct rw_semaphore sb_lock;		/* lock for raw super block */
 	int valid_super_block;			/* valid super block no */
 	int s_flag;				/* flags for sbi */
 
@@ -1625,6 +1631,7 @@ enum {
 	FI_DO_DEFRAG,		/* indicate defragment is running */
 	FI_DIRTY_FILE,		/* indicate regular/symlink has dirty pages */
 	FI_EXTRA_ATTR,		/* indicate file has extra attribute */
+	FI_HOT_DATA,		/* indicate file is hot */
 };
 
 static inline void __mark_inode_dirty_flag(struct inode *inode,
@@ -1975,6 +1982,8 @@ void handle_failed_inode(struct inode *);
 /*
  * namei.c
  */
+int update_extension_list(struct f2fs_sb_info *sbi, const char *name,
+							bool hot, bool set);
 struct dentry *f2fs_get_parent(struct dentry *child);
 
 /*
