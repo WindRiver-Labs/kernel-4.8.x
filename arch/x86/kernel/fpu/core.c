@@ -11,6 +11,7 @@
 #include <asm/fpu/types.h>
 #include <asm/fpu/xstate.h>
 #include <asm/traps.h>
+#include <asm/irq_regs.h>
 
 #include <linux/hardirq.h>
 #include <linux/pkeys.h>
