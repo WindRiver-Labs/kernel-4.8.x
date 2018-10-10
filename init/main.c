@@ -533,6 +533,7 @@ asmlinkage __visible void __init start_kernel(void)
 	softirq_early_init();
 	boot_cpu_state_init();
 	smp_prepare_boot_cpu();	/* arch-specific boot-cpu hooks */
+	boot_cpu_hotplug_init();
 
 	build_all_zonelists(NULL, NULL);
 	page_alloc_init();
