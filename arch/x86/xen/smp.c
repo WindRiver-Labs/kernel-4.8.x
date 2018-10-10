@@ -28,6 +28,7 @@
 #include <xen/interface/vcpu.h>
 #include <xen/interface/xenpmu.h>
 
+#include <asm/spec-ctrl.h>
 #include <asm/xen/interface.h>
 #include <asm/xen/hypercall.h>
 
@@ -92,6 +93,8 @@ static void cpu_bringup(void)
 	 * to incorrect phys_proc_id. Let's re-comupte it.
 	 */
 	topology_update_package_map(apic->cpu_present_to_apicid(cpu), cpu);
+
+	speculative_store_bypass_ht_init();
 
 	xen_setup_cpu_clockevents();
 
@@ -369,6 +372,8 @@ static void __init xen_smp_prepare_cpus(unsigned int max_cpus)
 		zalloc_cpumask_var(&per_cpu(cpu_llc_shared_map, i), GFP_KERNEL);
 	}
 	set_cpu_sibling_map(0);
+
+	speculative_store_bypass_ht_init();
 
 	xen_pmu_init(0);
 
