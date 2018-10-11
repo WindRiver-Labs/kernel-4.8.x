@@ -16,6 +16,7 @@
 #include <linux/platform_device.h>
 #include <linux/usb.h>
 #include <linux/usb/portmux.h>
+#include <linux/irq.h>
 
 #define INTEL_MUX_CFG0		0x00
 #define INTEL_MUX_CFG1		0x04
