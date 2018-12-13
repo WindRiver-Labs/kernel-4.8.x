@@ -488,13 +488,9 @@ extern int root_mountflags;
 
 extern bool early_boot_irqs_disabled;
 
-/*
- * Values used for system_state. Ordering of the states must not be changed
- * as code checks for <, <=, >, >= STATE.
- */
+/* Values used for system_state */
 extern enum system_states {
 	SYSTEM_BOOTING,
-	SYSTEM_SCHEDULING,
 	SYSTEM_RUNNING,
 	SYSTEM_HALT,
 	SYSTEM_POWER_OFF,
