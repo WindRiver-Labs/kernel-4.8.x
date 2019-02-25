@@ -43,7 +43,8 @@ static inline void crash_setup_regs(struct pt_regs *newregs,
 	if (oldregs) {
 		memcpy(newregs, oldregs, sizeof(*newregs));
 	} else {
-		u64 tmp1, tmp2;
+		u64 tmp1 = 0;
+		u64 tmp2 = 0;
 
 		__asm__ __volatile__ (
 			"stp	 x0,   x1, [%2, #16 *  0]\n"
