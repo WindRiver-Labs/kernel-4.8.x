@@ -2803,7 +2803,7 @@ config HAVE_ATOMIC_IOMAP
 
 config X86_DEV_DMA_OPS
 	bool
-	depends on X86_64 || STA2X11
+	depends on X86_64 || STA2X11 || VIDEO_INTEL_IPU4 || VIDEO_INTEL_IPU5
 
 config X86_DMA_REMAP
 	bool
