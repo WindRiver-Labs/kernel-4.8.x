@@ -3915,7 +3915,6 @@ int access_process_vm(struct task_struct *tsk, unsigned long addr,
 {
 	struct mm_struct *mm;
 	int ret;
-	unsigned int flags = FOLL_FORCE;
 
 	mm = get_task_mm(tsk);
 	if (!mm)
