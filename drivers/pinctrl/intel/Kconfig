@@ -56,6 +56,14 @@ config PINCTRL_BROXTON
 	  Broxton pinctrl driver provides an interface that allows
 	  configuring of SoC pins and using them as GPIOs.
 
+config PINCTRL_DENVERTON
+	tristate "Intel Denverton pinctrl and GPIO driver"
+	depends on ACPI
+	select PINCTRL_INTEL
+	help
+	  This pinctrl driver provides an interface that allows configuring
+	  of Intel Denverton SoC pins and using them as GPIOs.
+
 config PINCTRL_SUNRISEPOINT
 	tristate "Intel Sunrisepoint pinctrl and GPIO driver"
 	depends on ACPI
