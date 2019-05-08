@@ -1702,7 +1702,7 @@ static int sdw_register_master(struct sdw_master *mstr)
 	ret = device_register(&mstr->dev);
 	if (ret)
 		goto out_list;
-	kthread_init_worker(&sdw_bus->kworker);
+	init_kthread_worker(&sdw_bus->kworker);
 	sdw_bus->status_thread = kthread_run(kthread_worker_fn,
 					&sdw_bus->kworker, "%s",
 					dev_name(&mstr->dev));
@@ -1711,7 +1711,7 @@ static int sdw_register_master(struct sdw_master *mstr)
 		ret = PTR_ERR(sdw_bus->status_thread);
 		goto task_failed;
 	}
-	kthread_init_work(&sdw_bus->kwork, handle_slave_status);
+	init_kthread_work(&sdw_bus->kwork, handle_slave_status);
 	INIT_LIST_HEAD(&sdw_bus->status_list);
 	spin_lock_init(&sdw_bus->spinlock);
 	ret = sdw_mstr_bw_init(sdw_bus);
@@ -1771,7 +1771,7 @@ int sdw_master_update_slv_status(struct sdw_master *mstr,
 	list_add_tail(&slv_status->node, &bus->status_list);
 	spin_unlock_irqrestore(&bus->spinlock, flags);
 
-	kthread_queue_work(&bus->kworker, &bus->kwork);
+	queue_kthread_work(&bus->kworker, &bus->kwork);
 	return 0;
 }
 EXPORT_SYMBOL_GPL(sdw_master_update_slv_status);
@@ -3325,12 +3325,12 @@ int sdw_mstr_deprep_after_clk_start(struct sdw_master *mstr)
 			ret = slave->driver->post_clk_stop_prep(slave,
 							clock_stop_mode,
 							stop);
-			/*
-			 * Even if Slave fails we continue with other
-			 * Slaves. This should never happen ideally.
-			 */
-			if (ret)
-				dev_err(&mstr->dev, "Post de-prepare failed for Slave %d\n",
+		/*
+		 * Even if Slave fails we continue with other
+		 * Slaves. This should never happen ideally.
+		 */
+		if (ret)
+			dev_err(&mstr->dev, "Post de-prepare failed for Slave %d\n",
 					slave->slv_number);
 	}
 	return 0;
