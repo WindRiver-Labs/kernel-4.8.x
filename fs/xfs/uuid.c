@@ -56,8 +56,3 @@ uuid_is_nil(uuid_t *uuid)
 	return 1;	/* is nil */
 }
 
-int
-uuid_equal(uuid_t *uuid1, uuid_t *uuid2)
-{
-	return memcmp(uuid1, uuid2, sizeof(uuid_t)) ? 0 : 1;
-}
